@@ -45,6 +45,8 @@ Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165),
 
 1. `Database` -> `Driver Manager` -> `New` or `Edit`
     ![image](https://user-images.githubusercontent.com/4270380/251389086-e42d2828-cc68-4306-8595-d300ed1527af.png)
+    * **Driver:** `io.github.jdbcx.WrappedDriver`
+    * **URL Template:** `jdbcx:[ext:]xxx://{host}[:{port}][/{database}]`
 
 2. `Database` -> `New Database Connection` -> select `JDBCX` and click `Next` -> specify `URL` and switch to `Driver Properties` tab to make changes as needed
     ![image](https://user-images.githubusercontent.com/4270380/251389733-52d8318c-f00a-4f37-8635-72388c91130d.png)
