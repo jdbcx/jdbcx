@@ -23,6 +23,7 @@ import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.impl.DefaultDriverExtension;
@@ -106,17 +107,17 @@ public class WrappedDriverTest {
             Assert.assertEquals(count, 10);
         }
 
-        props.setProperty("jdbcx.custom.classpath", "~/Back");
-        props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
-        try (Connection conn = d.connect("jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true", props);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("from `system.events` | take 10")) {
-            int count = 0;
-            while (rs.next()) {
-                count++;
-            }
-            Assert.assertEquals(count, 10);
-        }
+        // props.setProperty("jdbcx.custom.classpath", "~/Back");
+        // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
+        // try (Connection conn = d.connect("jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true", props);
+        //         Statement stmt = conn.createStatement();
+        //         ResultSet rs = stmt.executeQuery("from `system.events` | take 10")) {
+        //     int count = 0;
+        //     while (rs.next()) {
+        //         count++;
+        //     }
+        //     Assert.assertEquals(count, 10);
+        // }
 
         try (Connection conn = d.connect("jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true", props);
                 Statement stmt = conn.createStatement();
@@ -131,27 +132,28 @@ public class WrappedDriverTest {
 
     @Test(groups = { "unit" })
     public void testReconnect() throws Exception {
-        String url = "jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true";
-        Properties props = new Properties();
-        WrappedDriver d = new WrappedDriver();
-        props.setProperty("jdbcx.custom.classpath", "~/Back");
-        props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
-        d.getPropertyInfo(url, new Properties());
-        try (Connection conn = d.connect(url, props);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from numbers(10)")) {
-            int count = 0;
-            while (rs.next()) {
-                Assert.assertEquals(count++, rs.getInt(1));
-            }
-            Assert.assertEquals(count, 10);
-        }
+        throw new SkipException("Skip prqlc test due to extra dependency");
+        // String url = "jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true";
+        // Properties props = new Properties();
+        // WrappedDriver d = new WrappedDriver();
+        // props.setProperty("jdbcx.custom.classpath", "~/Back");
+        // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
+        // d.getPropertyInfo(url, new Properties());
+        // try (Connection conn = d.connect(url, props);
+        //         Statement stmt = conn.createStatement();
+        //         ResultSet rs = stmt.executeQuery("select * from numbers(10)")) {
+        //     int count = 0;
+        //     while (rs.next()) {
+        //         Assert.assertEquals(count++, rs.getInt(1));
+        //     }
+        //     Assert.assertEquals(count, 10);
+        // }
 
-        props.setProperty("jdbcx.prql.compile.fallback", "false");
-        try (Connection conn = d.connect(url, props);
-                Statement stmt = conn.createStatement();) {
-            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select * from numbers(10)"));
-        }
+        // props.setProperty("jdbcx.prql.compile.fallback", "false");
+        // try (Connection conn = d.connect(url, props);
+        //         Statement stmt = conn.createStatement();) {
+        //     Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select * from numbers(10)"));
+        // }
     }
 
     @Test(groups = { "unit" })
