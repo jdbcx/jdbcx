@@ -13,7 +13,7 @@
 
     <name>jdbcx-server</name>
     <description>Bridge Server of JDBCX</description>
-    <url>https://github.com/jdbcx/jdbcx/tree/main/bridge</url>
+    <url>https://github.com/jdbcx/jdbcx/tree/main/server</url>
 
     <dependencies>
         <dependency>
