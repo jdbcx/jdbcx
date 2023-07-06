@@ -68,6 +68,19 @@ jobs:
     timeout-minutes: 10
     name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: Check out PR
+        run: |
+          git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
+            origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
+        if: github.event.inputs.pr != ''
+      - name: Install JDK 17 and Maven
+        uses: actions/setup-java@v3
+        with:
+          distribution: ${{ matrix.dist }}
+          java-version: 17
+          cache: "maven"
       - name: Setup Toolchain
         shell: bash
         run: |
@@ -86,19 +99,6 @@ jobs:
             </toolchain>
           </toolchains>
           EOF
-      - name: Check out repository
-        uses: actions/checkout@v3
-      - name: Check out PR
-        run: |
-          git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
-            origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
-        if: github.event.inputs.pr != ''
-      - name: Install JDK 17 and Maven
-        uses: actions/setup-java@v3
-        with:
-          distribution: ${{ matrix.dist }}
-          java-version: 17
-          cache: "maven"
       - name: Test libraries
         run: mvn --batch-mode --show-version --strict-checksums install
       - name: Upload test results
