@@ -1,0 +1,147 @@
+/*
+ * Copyright 2022-2023, Zhichun Wu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.github.jdbcx;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Locale;
+import java.util.Objects;
+
+public final class Main {
+    private static void println() {
+        System.out.println(); // NOSONAR
+    }
+
+    private static void println(Object msg, Object... args) {
+        if (args == null || args.length == 0) {
+            System.out.println(msg); // NOSONAR
+        } else {
+            System.out.println(String.format(Locale.ROOT, Objects.toString(msg), args)); // NOSONAR
+        }
+    }
+
+    private static void printUsage() {
+        String execFile = "jdbcx-bin";
+        try {
+            File file = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI())
+                    .toFile();
+            if (file.isFile()) {
+                execFile = file.getName();
+                if (!Files.isExecutable(file.toPath())) {
+                    execFile = "java -jar " + execFile;
+                }
+            } else {
+                execFile = "java -cp " + file.getCanonicalPath() + " " + Main.class.getName();
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        final int index = execFile.indexOf(' ');
+        println("Usage: %s <JDBC URL> [@FILE or QUERY]",
+                index > 0 ? (execFile.substring(0, index) + " [PROPERTIES]" + execFile.substring(index))
+                        : (execFile + " [PROPERTIES]"));
+        println();
+        println("Properties: -Dkey=value [-Dkey=value]*");
+        println("  %s \tCustom classpath, defaults to current directory",
+                Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX));
+        println("  verbose\tWhether to show logs, defaults to false");
+        println();
+        println("Examples:");
+        println("  -  %s 'jdbcx:ch://explorer@play.clickhouse.com:443?ssl=true' 'select 1'",
+                index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
+                        : (execFile + " -Dverbose=true"));
+        println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
+    }
+
+    private static String readAllFromFile(String file) throws IOException {
+        final int bufferSize = 2048;
+        try (FileInputStream in = new FileInputStream(Utils.getPath(file, false).toFile());
+                ByteArrayOutputStream out = new ByteArrayOutputStream(bufferSize);) {
+            byte[] bytes = new byte[bufferSize];
+            int len = 0;
+            while ((len = in.read(bytes)) != -1) {
+                out.write(bytes, 0, len);
+            }
+            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+        }
+    }
+
+    static long execute(String url, String fileOrQuery) throws IOException, SQLException {
+        if (fileOrQuery == null || fileOrQuery.isEmpty()) {
+            return 0L;
+        } else if (fileOrQuery.charAt(0) == '@') {
+            fileOrQuery = readAllFromFile(fileOrQuery.substring(1));
+        }
+
+        try (Connection conn = DriverManager.getConnection(url, System.getProperties());
+                Statement stmt = conn.createStatement()) {
+            long rows = 0L;
+            if (stmt.execute(fileOrQuery)) {
+                // only check the first result set
+                try (ResultSet rs = stmt.getResultSet()) {
+                    while (rs.next()) {
+                        rows++;
+                    }
+                }
+            } else {
+                try {
+                    rows = stmt.getLargeUpdateCount();
+                } catch (Exception e) {
+                    rows = stmt.getUpdateCount();
+                }
+            }
+            return rows;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        if ((args == null || args.length < 1) || args.length > 2) {
+            printUsage();
+            System.exit(0);
+        }
+
+        if (Checker.isNullOrEmpty(Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
+            System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
+                    System.getProperty("user.dir"));
+        }
+        final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
+        final String url = args[0];
+        final String fileOrQuery = args[1];
+
+        final long startTime = verbose ? System.nanoTime() : 0L;
+        final long rows = execute(url, fileOrQuery);
+        if (verbose) {
+            long elapsedNanos = System.nanoTime() - startTime;
+            println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,
+                    rows * 1_000_000_000D / elapsedNanos);
+        }
+        System.exit(rows > 0L ? 0 : 1);
+    }
+
+    private Main() {
+    }
+}

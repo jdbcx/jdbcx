@@ -1,0 +1,3 @@
+io.github.jdbcx.BlackholeDriverExtension
+io.github.jdbcx.prql.PrqlDriverExtension
+io.github.jdbcx.script.ScriptDriverExtension
