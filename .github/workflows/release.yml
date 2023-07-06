@@ -8,6 +8,9 @@ on:
         required: true
         default: "0.1.0-SNAPSHOT"
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: "Build and Publish Artifact"
@@ -19,11 +22,11 @@ jobs:
       - name: Install JDK and Maven
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: "temurin"
           java-version: |
             8
             17
-          cache: 'maven'
+          cache: "maven"
       - name: Setup Toolchain
         shell: bash
         run: |
