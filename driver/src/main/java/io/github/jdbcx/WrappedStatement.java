@@ -36,12 +36,12 @@ public class WrappedStatement implements Statement {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return stmt.unwrap(iface);
+        return stmt.getClass() == iface ? iface.cast(iface) : stmt.unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return stmt.isWrapperFor(iface);
+        return stmt.getClass() == iface || stmt.isWrapperFor(iface);
     }
 
     @Override
@@ -121,7 +121,8 @@ public class WrappedStatement implements Statement {
 
     @Override
     public ResultSet getResultSet() throws SQLException {
-        return new WrappedResultSet(this, stmt.getResultSet());
+        final ResultSet rs = stmt.getResultSet();
+        return rs != null ? new WrappedResultSet(this, rs) : rs;
     }
 
     @Override

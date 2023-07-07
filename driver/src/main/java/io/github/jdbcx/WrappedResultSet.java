@@ -37,26 +37,29 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Map;
 
+import io.github.jdbcx.impl.DummyResultSet;
+
 /**
  * This class serves as a wrapper for a {@link ResultSet}.
  */
 public class WrappedResultSet implements ResultSet {
-    private final WrappedStatement stmt;
+    protected final WrappedStatement stmt;
+
     private final ResultSet rs;
 
     protected WrappedResultSet(WrappedStatement stmt, ResultSet rs) {
         this.stmt = stmt;
-        this.rs = rs;
+        this.rs = rs != null ? rs : new DummyResultSet(stmt);
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return rs.unwrap(iface);
+        return rs.getClass() == iface ? iface.cast(rs) : rs.unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return rs.isWrapperFor(iface);
+        return rs.getClass() == iface || rs.isWrapperFor(iface);
     }
 
     @Override
@@ -310,7 +313,7 @@ public class WrappedResultSet implements ResultSet {
 
     @Override
     public boolean isLast() throws SQLException {
-        return rs.isLast();
+        return rs.isLast(); // NOSONAR
     }
 
     @Override

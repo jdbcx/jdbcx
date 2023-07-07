@@ -198,6 +198,10 @@ public class WrappedDriver implements Driver, DriverAction {
     }
 
     protected String normalizeUrl(DriverExtension extension, String url) {
+        if (Checker.isNullOrEmpty(url) || !url.startsWith(JDBCX_PREFIX)) { // invalid
+            return url;
+        }
+
         if (extension == DefaultDriverExtension.getInstance()) {
             return JDBC_PREFIX.concat(url.substring(JDBCX_PREFIX.length()));
         }

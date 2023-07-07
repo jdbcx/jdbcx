@@ -48,12 +48,12 @@ public class WrappedDataSource implements DataSource {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return ds.unwrap(iface);
+        return ds.getClass() == iface ? iface.cast(ds) : ds.unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return ds.isWrapperFor(iface);
+        return ds.getClass() == iface || ds.isWrapperFor(iface);
     }
 
     @Override

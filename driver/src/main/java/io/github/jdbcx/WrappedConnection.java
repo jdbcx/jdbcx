@@ -73,12 +73,12 @@ public class WrappedConnection implements Connection {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return conn.unwrap(iface);
+        return conn.getClass() == iface ? iface.cast(conn) : conn.unwrap(iface);
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return conn.isWrapperFor(iface);
+        return conn.getClass() == iface || conn.isWrapperFor(iface);
     }
 
     @Override
@@ -133,7 +133,7 @@ public class WrappedConnection implements Connection {
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
-        return conn.getMetaData();
+        return listener.onMetaData(conn.getMetaData());
     }
 
     @Override
