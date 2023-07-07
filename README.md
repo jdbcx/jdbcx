@@ -15,16 +15,16 @@ wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
     https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 # SQL
-java -Dverbose=true -jar jdbcx-driver-0.1.0.jar 'jdbcx:hsqldb:mem:test' \
+java -Dverbose=true -jar jdbcx-driver-0.1.1.jar 'jdbcx:hsqldb:mem:test' \
     'SELECT * FROM INFORMATION_SCHEMA.ROUTINES'
 
 # Scripting
-java -Dverbose=true -jar jdbcx-driver-0.1.0.jar 'jdbcx:script:hsqldb:mem:test' \
+java -Dverbose=true -jar jdbcx-driver-0.1.1.jar 'jdbcx:script:hsqldb:mem:test' \
     'helper.format("SELECT * FROM %s.%s", "INFORMATION_SCHEMA", "ROUTINES")'
 
 # PRQL
 cargo install prqlc
-java -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx-driver-0.1.0.jar \
+java -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx-driver-0.1.1.jar \
     'jdbcx:prql:hsqldb:mem:test' 'from `INFORMATION_SCHEMA.ROUTINES`'
 
 # Together on a database in cloud
@@ -36,7 +36,7 @@ helper.format(
 	helper.escapeSingleQuote(helper.cli("~/.cargo/bin/prqlc", "-h"))
 )
 EOF
-java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx-driver-0.1.0.jar \
+java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx-driver-0.1.1.jar \
     'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js
 ```
 
