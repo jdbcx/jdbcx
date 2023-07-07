@@ -20,6 +20,23 @@ import org.testng.annotations.Test;
 
 public class OptionTest {
     @Test(groups = { "unit" })
+    public void testBuilder() {
+        Assert.assertNotNull(Option.builder(), "Builder should never be null");
+        Assert.assertNotNull(Option.CUSTOM_CLASSPATH.update(), "Builder should never be null");
+        Assert.assertNotNull(Option.of(new String[] { "x" }).update(), "Builder should never be null");
+
+        Assert.assertThrows(IllegalArgumentException.class, () -> Option.builder().build());
+        Assert.assertEquals(Option.builder().name("test").build(), Option.of(new String[] { "test" }));
+        Assert.assertFalse(Option.builder().name("test").build() == Option.of(new String[] { "test" }));
+
+        Assert.assertTrue(Option.CUSTOM_CLASSPATH.update().build() == Option.CUSTOM_CLASSPATH);
+        Assert.assertTrue(Option.CUSTOM_CLASSPATH.update().name("test").name("custom.classpath")
+                .build() == Option.CUSTOM_CLASSPATH);
+        Assert.assertFalse(Option.CUSTOM_CLASSPATH.update().name("test").build() == Option.CUSTOM_CLASSPATH);
+        Assert.assertFalse(Option.CUSTOM_CLASSPATH.update().description(null).build() == Option.CUSTOM_CLASSPATH);
+    }
+
+    @Test(groups = { "unit" })
     public void testConstructor() {
         Assert.assertThrows(IllegalArgumentException.class, () -> Option.of(null));
         Assert.assertThrows(IllegalArgumentException.class, () -> Option.of(new String[0]));

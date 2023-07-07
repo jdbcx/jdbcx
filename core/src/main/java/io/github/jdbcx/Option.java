@@ -46,14 +46,19 @@ public final class Option implements Serializable {
         private String defaultValue;
         private List<String> choices;
 
+        private final Option template;
+
         Builder() {
+            this.template = null;
         }
 
         Builder(Option template) {
             this.name = template.name;
-            this.description = template.name;
+            this.description = template.description;
             this.defaultValue = template.defaultValue;
             this.choices = new ArrayList<>(template.choices);
+
+            this.template = template;
         }
 
         public Builder name(String name) {
@@ -93,6 +98,13 @@ public final class Option implements Serializable {
         }
 
         public Option build() {
+            if (choices == null) {
+                choices = Collections.emptyList();
+            }
+            if (template != null && template.name.equals(name) && template.description.equals(description)
+                    && template.defaultValue.equals(defaultValue) && template.choices.equals(choices)) {
+                return template;
+            }
             return Option.of(name, description, defaultValue, choices.toArray(new String[0]));
         }
     }
