@@ -66,8 +66,8 @@ public final class Main {
                         : (execFile + " [PROPERTIES]"));
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
-        println("  %s \tCustom classpath, defaults to current directory",
-                Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX));
+        println("  loopCount\tNumber of times to repeat the same query, defaults to 1");
+        println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -128,18 +128,32 @@ public final class Main {
             System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
                     System.getProperty("user.dir"));
         }
+        final long loopCount = Long.getLong("loopCount", 1L);
+        final long loopInterval = Long.getLong("loopInterval", 0L);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
 
-        final long startTime = verbose ? System.nanoTime() : 0L;
-        final long rows = execute(url, fileOrQuery);
-        if (verbose) {
-            long elapsedNanos = System.nanoTime() - startTime;
-            println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,
-                    rows * 1_000_000_000D / elapsedNanos);
-        }
-        System.exit(rows > 0L ? 0 : 1);
+        long count = 0L;
+        boolean failed = false;
+        do {
+            final long startTime = verbose ? System.nanoTime() : 0L;
+            final long rows = execute(url, fileOrQuery);
+            if (verbose) {
+                long elapsedNanos = System.nanoTime() - startTime;
+                println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,
+                        rows * 1_000_000_000D / elapsedNanos);
+            }
+            failed = failed || rows < 1L;
+            count++;
+            if (loopInterval > 0L) {
+                if (verbose) {
+                    println("Sleep for %,d ms...", loopInterval);
+                }
+                Thread.sleep(loopInterval);
+            }
+        } while (count < loopCount);
+        System.exit(failed ? 1 : 0);
     }
 
     private Main() {
