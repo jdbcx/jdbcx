@@ -34,7 +34,7 @@ concurrency:
 jobs:
   compile:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     name: Compile using JDK 8
     steps:
       - name: Check out repository
@@ -53,16 +53,14 @@ jobs:
       - name: Build and install libraries
         run: mvn --batch-mode --show-version --strict-checksums --threads 2 -Dmaven.wagon.rto=30000 -Dj8 install
 
-  test-multi-env:
+  test-jdk17:
     needs: compile
     strategy:
       matrix:
         # https://whichjdk.com/
         # https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#selecting-a-java-distribution
-        # add "corretto", "liberica", "microsoft", "zulu" only when needed
-        dist: ["temurin"]
-        # fix issue on "macos-latest", "windows-latest"
-        os: ["ubuntu-latest"]
+        dist: ["corretto", "liberica", "microsoft", "temurin", "zulu"]
+        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
