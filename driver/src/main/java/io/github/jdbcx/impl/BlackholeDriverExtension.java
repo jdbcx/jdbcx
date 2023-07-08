@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx;
+package io.github.jdbcx.impl;
+
+import io.github.jdbcx.DriverExtension;
 
 public class BlackholeDriverExtension implements DriverExtension {
 }

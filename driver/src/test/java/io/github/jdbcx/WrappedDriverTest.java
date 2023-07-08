@@ -26,6 +26,7 @@ import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.impl.BlackholeDriverExtension;
 import io.github.jdbcx.impl.DefaultDriverExtension;
 import io.github.jdbcx.prql.PrqlDriverExtension;
 
