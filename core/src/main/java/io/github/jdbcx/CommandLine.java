@@ -64,6 +64,21 @@ public class CommandLine {
     public static final Option OPTION_WORK_DIRECTORY = Option.of("work.dir",
             "Work directory, defaults to current directory", "");
 
+    static String[] toArray(String command) {
+        String[] array = command.split("\\s");
+        if (array.length == 0) {
+            return array;
+        }
+
+        List<String> list = new ArrayList<>(array.length);
+        for (String str : array) {
+            if (!Checker.isNullOrBlank(str)) {
+                list.add(str);
+            }
+        }
+        return list.toArray(Constants.EMPTY_STRING_ARRAY);
+    }
+
     public static final boolean check(String command, int timeout, String... args) {
         if (Checker.isNullOrBlank(command) || args == null) {
             throw new IllegalArgumentException("Non-blank command and non-null arguments are required");
@@ -78,8 +93,9 @@ public class CommandLine {
         if (value == null) {
             value = Boolean.FALSE;
 
-            List<String> list = new ArrayList<>(args.length + 1);
-            list.add(command);
+            String[] array = toArray(command);
+            List<String> list = new ArrayList<>(array.length + args.length);
+            Collections.addAll(list, array);
             Collections.addAll(list, args);
             Process process = null;
             try {
@@ -91,16 +107,16 @@ public class CommandLine {
                 } else if (process.waitFor(timeout, TimeUnit.MILLISECONDS)) {
                     int exitValue = process.exitValue();
                     if (exitValue != 0) {
-                        log.trace("The command \"%s\" exited with code %d", list, exitValue);
+                        log.debug("The command \"%s\" exited with code %d", list, exitValue);
                     }
                     value = exitValue == 0;
                 } else {
-                    log.trace("The command \"%s\" timed out after waiting for %d ms to complete.", list, timeout);
+                    log.debug("The command \"%s\" timed out after waiting for %d ms to complete.", list, timeout);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
-                log.trace("Failed to check the status of the command \"%s\" due to %s", list, e.getMessage());
+                log.debug("Failed to check the status of the command \"%s\" due to %s", list, e.getMessage());
             } finally {
                 if (process != null && process.isAlive()) {
                     process.destroyForcibly();
@@ -141,7 +157,7 @@ public class CommandLine {
 
     public CommandLine(String command, Charset inputCharset, Charset outputCharset, int timeout, String workDir,
             String dockerCliPath, String dockerImage, boolean validate, String... testArgs) {
-        command = Utils.getPath(command, false).toString();
+        command = Utils.normalizePath(command);
 
         this.defaultInputCharset = inputCharset != null ? inputCharset : StandardCharsets.UTF_8;
         this.defaultOutputCharset = outputCharset != null ? outputCharset : StandardCharsets.UTF_8;
@@ -155,7 +171,7 @@ public class CommandLine {
         }
 
         if (!validate || check(command, 0, testArgs)) {
-            this.command = Collections.singletonList(command);
+            this.command = Collections.unmodifiableList(Arrays.asList(toArray(command)));
         } else if (Checker.isNullOrEmpty(dockerImage)) {
             throw new IllegalArgumentException(Utils.format("The \"%s\" command was not found.", command));
         } else {
@@ -239,7 +255,7 @@ public class CommandLine {
         List<String> commands = new ArrayList<>(command.size() + args.length);
         commands.addAll(command);
         for (String arg : args) {
-            if (!Checker.isNullOrEmpty(arg)) {
+            if (!Checker.isNullOrBlank(arg)) {
                 commands.add(arg);
             }
         }
