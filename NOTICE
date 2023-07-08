@@ -30,8 +30,6 @@ This project includes:
   jdbcx-driver under The Apache Software License, Version 2.0
   jdbcx-server under The Apache Software License, Version 2.0
   jquery under MIT License
-  MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
-  PostgreSQL JDBC Driver under BSD-2-Clause
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0
   SLF4J API Module under MIT License

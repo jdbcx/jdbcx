@@ -69,4 +69,5 @@ jobs:
           title: "Release v${{ github.event.inputs.version }}"
           files: |
             LICENSE
+            NOTICE
             **/target/jdbcx*.jar
