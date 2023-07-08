@@ -15,6 +15,10 @@
  */
 package io.github.jdbcx;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.Locale;
+
 /**
  * This class contains shared constants that are accessible by all classes.
  */
@@ -39,6 +43,31 @@ public final class Constants {
     public static final String NAN_EXPR = "NaN";
     public static final String INF_EXPR = "Inf";
     public static final String NINF_EXPR = "-Inf";
+
+    public static final boolean IS_UNIX;
+    public static final boolean IS_WINDOWS;
+
+    public static final String HOME_DIR;
+    public static final String FILE_ENCODING;
+    public static final String FILE_SEPARATOR;
+
+    static {
+        final String osName = System.getProperty("os.name", "");
+
+        // https://github.com/apache/commons-lang/blob/5a3904c8678574a4ddb8502ebbc606be1091fb3f/src/main/java/org/apache/commons/lang3/SystemUtils.java#L1370
+        IS_UNIX = osName.startsWith("AIX") || osName.startsWith("HP-UX") || osName.startsWith("OS/400")
+                || osName.startsWith("Irix") || osName.startsWith("Linux") || osName.startsWith("LINUX")
+                || osName.startsWith("Mac OS X") || osName.startsWith("Solaris") || osName.startsWith("SunOS")
+                || osName.startsWith("FreeBSD") || osName.startsWith("OpenBSD") || osName.startsWith("NetBSD");
+        IS_WINDOWS = osName.toLowerCase(Locale.ROOT).contains("windows");
+
+        HOME_DIR = IS_WINDOWS
+                ? Paths.get(System.getenv("APPDATA"), "jdbcx").toFile().getAbsolutePath()
+                : Paths.get(System.getProperty("user.home"), ".jdbcx").toFile().getAbsolutePath();
+
+        FILE_ENCODING = System.getProperty("file.encoding", StandardCharsets.UTF_8.name());
+        FILE_SEPARATOR = System.getProperty("file.separator");
+    }
 
     private Constants() {
     }

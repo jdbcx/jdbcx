@@ -69,26 +69,6 @@ import java.util.function.UnaryOperator;
  * methods.
  */
 public final class Utils {
-    private static final boolean IS_UNIX;
-    private static final boolean IS_WINDOWS;
-
-    private static final String HOME_DIR;
-
-    static {
-        final String osName = System.getProperty("os.name", "");
-
-        // https://github.com/apache/commons-lang/blob/5a3904c8678574a4ddb8502ebbc606be1091fb3f/src/main/java/org/apache/commons/lang3/SystemUtils.java#L1370
-        IS_UNIX = osName.startsWith("AIX") || osName.startsWith("HP-UX") || osName.startsWith("OS/400")
-                || osName.startsWith("Irix") || osName.startsWith("Linux") || osName.startsWith("LINUX")
-                || osName.startsWith("Mac OS X") || osName.startsWith("Solaris") || osName.startsWith("SunOS")
-                || osName.startsWith("FreeBSD") || osName.startsWith("OpenBSD") || osName.startsWith("NetBSD");
-        IS_WINDOWS = osName.toLowerCase(Locale.ROOT).contains("windows");
-
-        HOME_DIR = IS_WINDOWS
-                ? Paths.get(System.getenv("APPDATA"), "jdbcx").toFile().getAbsolutePath()
-                : Paths.get(System.getProperty("user.home"), ".jdbcx").toFile().getAbsolutePath();
-    }
-
     /**
      * Default charset.
      */
@@ -112,6 +92,20 @@ public final class Utils {
         }
 
         return service;
+    }
+
+    static String normalizePath(String path) {
+        if (path == null || path.isEmpty()) {
+            return Constants.EMPTY_STRING;
+        } else if (path.startsWith("~/")) {
+            String p = path.substring(2);
+            if (p.isEmpty()) {
+                return Constants.HOME_DIR;
+            } else {
+                return new StringBuilder(Constants.HOME_DIR).append(Constants.FILE_SEPARATOR).append(p).toString();
+            }
+        }
+        return path;
     }
 
     static Path getPath(String path, boolean normalize) {
@@ -210,7 +204,7 @@ public final class Utils {
         }
 
         final File f;
-        if (IS_UNIX) {
+        if (Constants.IS_UNIX) {
             FileAttribute<Set<PosixFilePermission>> attr = PosixFilePermissions
                     .asFileAttribute(PosixFilePermissions.fromString("rw-------"));
             f = Files.createTempFile(prefix, suffix, attr).toFile();
@@ -960,7 +954,7 @@ public final class Utils {
             builder.append(',').append(file);
             in = new FileInputStream(path.toFile());
         } else if (!path.isAbsolute()) {
-            path = Paths.get(HOME_DIR, file);
+            path = Paths.get(Constants.HOME_DIR, file);
 
             if (Files.exists(path)) {
                 builder.append(',').append(path.toString());
