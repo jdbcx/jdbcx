@@ -1,3 +1,4 @@
 io.github.jdbcx.impl.BlackholeDriverExtension
 io.github.jdbcx.prql.PrqlDriverExtension
 io.github.jdbcx.script.ScriptDriverExtension
+io.github.jdbcx.shell.ShellDriverExtension
