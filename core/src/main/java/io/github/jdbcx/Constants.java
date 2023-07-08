@@ -48,6 +48,7 @@ public final class Constants {
     public static final boolean IS_WINDOWS;
 
     public static final String HOME_DIR;
+    public static final String CONF_DIR;
     public static final String FILE_ENCODING;
     public static final String FILE_SEPARATOR;
 
@@ -61,9 +62,10 @@ public final class Constants {
                 || osName.startsWith("FreeBSD") || osName.startsWith("OpenBSD") || osName.startsWith("NetBSD");
         IS_WINDOWS = osName.toLowerCase(Locale.ROOT).contains("windows");
 
-        HOME_DIR = IS_WINDOWS
+        HOME_DIR = System.getProperty("user.home");
+        CONF_DIR = IS_WINDOWS
                 ? Paths.get(System.getenv("APPDATA"), "jdbcx").toFile().getAbsolutePath()
-                : Paths.get(System.getProperty("user.home"), ".jdbcx").toFile().getAbsolutePath();
+                : Paths.get(HOME_DIR, ".jdbcx").toFile().getAbsolutePath();
 
         FILE_ENCODING = System.getProperty("file.encoding", StandardCharsets.UTF_8.name());
         FILE_SEPARATOR = System.getProperty("file.separator");
