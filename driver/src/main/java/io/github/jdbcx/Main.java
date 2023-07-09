@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Properties;
 
 public final class Main {
     private static void println() {
@@ -71,7 +72,7 @@ public final class Main {
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
-        println("  -  %s 'jdbcx:ch://explorer@play.clickhouse.com:443?ssl=true' 'select 1'",
+        println("  -  %s 'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
@@ -90,14 +91,14 @@ public final class Main {
         }
     }
 
-    static long execute(String url, String fileOrQuery) throws IOException, SQLException {
+    static long execute(String url, String fileOrQuery, Properties config) throws IOException, SQLException {
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
             return 0L;
         } else if (fileOrQuery.charAt(0) == '@') {
             fileOrQuery = readAllFromFile(fileOrQuery.substring(1));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, System.getProperties());
+        try (Connection conn = DriverManager.getConnection(url, config.isEmpty() ? System.getProperties() : config);
                 Statement stmt = conn.createStatement()) {
             long rows = 0L;
             if (stmt.execute(fileOrQuery)) {
@@ -124,7 +125,13 @@ public final class Main {
             System.exit(0);
         }
 
-        if (Checker.isNullOrEmpty(Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
+        String configPath = Option.CONFIG_PATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX);
+        Properties defaultConfig = new WrappedDriver().loadDefaultConfig(Utils.normalizePath(configPath));
+
+        if (Checker.isNullOrEmpty(
+                defaultConfig.getProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX)))
+                && Checker.isNullOrEmpty(
+                        Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
             System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
                     Constants.CURRENT_DIR);
         }
@@ -138,7 +145,7 @@ public final class Main {
         boolean failed = false;
         do {
             final long startTime = verbose ? System.nanoTime() : 0L;
-            final long rows = execute(url, fileOrQuery);
+            final long rows = execute(url, fileOrQuery, defaultConfig);
             if (verbose) {
                 long elapsedNanos = System.nanoTime() - startTime;
                 println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,
