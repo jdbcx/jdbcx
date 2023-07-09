@@ -126,7 +126,7 @@ public final class Main {
 
         if (Checker.isNullOrEmpty(Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
             System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
-                    System.getProperty("user.dir"));
+                    Constants.CURRENT_DIR);
         }
         final long loopCount = Long.getLong("loopCount", 1L);
         final long loopInterval = Long.getLong("loopInterval", 0L);

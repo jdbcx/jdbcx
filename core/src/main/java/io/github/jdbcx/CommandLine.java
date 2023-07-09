@@ -48,21 +48,24 @@ public class CommandLine {
 
     private static final Map<String, Boolean> cache = Collections.synchronizedMap(new WeakHashMap<>(8));
 
-    public static final Option OPTION_CLI_PATH = Option.of("cli.path", "Command line", "");
+    public static final Option OPTION_CLI_ERROR = Option.of(new String[] { "cli.error", "The approach to handle error",
+            Option.ERROR_HANDLING_IGNORE, Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
+    public static final Option OPTION_CLI_PATH = Option.of("cli.path", "Command line, for examples: ", "");
     public static final Option OPTION_CLI_TIMEOUT = Option.of("cli.timeout",
             "Command line timeout in milliseconds, a negative number or zero disables timeout", "0");
     public static final Option OPTION_CLI_TEST_ARGS = Option.of("cli.test.args",
-            "Comma separated command line arguments for checking if it exists, usually '-V' or '-v'", "");
+            "Arguments to validate both the correctness and existence of the command line, usually '-V' or '-v'", "");
     public static final Option OPTION_DOCKER_PATH = Option.of("docker.path",
-            "Path to docker or podman command line, leave it empty to try docker first and then podman", "");
+            "Path to the Docker or Podman command line, leave it empty to attempt using Docker first and, if not available, fallback to Podman.",
+            "");
     public static final Option OPTION_DOCKER_IMAGE = Option.of("docker_image",
-            "Docker image to use, leave it empty if you don't need to use docker or podman", "");
+            "Docker image to use, leave it empty if you don't want to use Docker or Podman", "");
     public static final Option OPTION_INPUT_CHARSET = Option.of("input.charset", "Charset used for command line input",
             "utf-8");
     public static final Option OPTION_OUTPUT_CHARSET = Option.of("output.charset",
             "Charset used for command line output", "utf-8");
     public static final Option OPTION_WORK_DIRECTORY = Option.of("work.dir",
-            "Work directory, defaults to current directory", "");
+            "Work directory, leave it empty to use current directory", "");
 
     static String[] toArray(String command) {
         String[] array = command.split("\\s");
@@ -138,6 +141,8 @@ public class CommandLine {
     private final int defaultTimeout;
     private final Path defaultWorkDir;
 
+    private final String errorHandling;
+
     public CommandLine(String command) {
         this(command, new Properties());
     }
@@ -147,32 +152,32 @@ public class CommandLine {
     }
 
     public CommandLine(String command, boolean validate, Properties props) {
-        this(props.getProperty(OPTION_CLI_PATH.getName(), command),
-                Charset.forName(OPTION_INPUT_CHARSET.getValue(props)),
-                Charset.forName(OPTION_OUTPUT_CHARSET.getValue(props)),
-                Integer.parseInt(OPTION_CLI_TIMEOUT.getValue(props)), OPTION_WORK_DIRECTORY.getValue(props),
-                OPTION_DOCKER_PATH.getValue(props), OPTION_DOCKER_IMAGE.getValue(props), validate,
-                OPTION_CLI_TEST_ARGS.getValue(props).split(","));
-    }
+        command = Utils.normalizePath(OPTION_CLI_PATH.getValue(props, command));
 
-    public CommandLine(String command, Charset inputCharset, Charset outputCharset, int timeout, String workDir,
-            String dockerCliPath, String dockerImage, boolean validate, String... testArgs) {
-        command = Utils.normalizePath(command);
+        String inputCharset = OPTION_INPUT_CHARSET.getValue(props);
+        String outputCharset = OPTION_OUTPUT_CHARSET.getValue(props);
+        String timeout = OPTION_CLI_TIMEOUT.getValue(props);
+        String workDir = OPTION_WORK_DIRECTORY.getValue(props);
+        String dockerCliPath = OPTION_DOCKER_PATH.getValue(props);
+        String dockerImage = OPTION_DOCKER_IMAGE.getValue(props);
+        String[] testArgs = CommandLine.toArray(OPTION_CLI_TEST_ARGS.getValue(props));
 
-        this.defaultInputCharset = inputCharset != null ? inputCharset : StandardCharsets.UTF_8;
-        this.defaultOutputCharset = outputCharset != null ? outputCharset : StandardCharsets.UTF_8;
+        this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
+                : StandardCharsets.UTF_8;
+        this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
+                : StandardCharsets.UTF_8;
 
-        this.defaultTimeout = timeout;
+        this.defaultTimeout = Integer.parseInt(timeout);
 
         if (Checker.isNullOrEmpty(workDir)) {
-            this.defaultWorkDir = Paths.get(System.getProperty("user.dir")); // current directory
+            this.defaultWorkDir = Paths.get(Constants.CURRENT_DIR);
         } else {
             this.defaultWorkDir = Utils.getPath(workDir, true);
         }
 
         if (!validate || check(command, 0, testArgs)) {
             this.command = Collections.unmodifiableList(Arrays.asList(toArray(command)));
-        } else if (Checker.isNullOrEmpty(dockerImage)) {
+        } else if (Checker.isNullOrEmpty(dockerImage)) { // not going to use docker/podman
             throw new IllegalArgumentException(Utils.format("The \"%s\" command was not found.", command));
         } else {
             String dockerCli;
@@ -192,6 +197,8 @@ public class CommandLine {
             }
             this.command = Collections.unmodifiableList(Arrays.asList(dockerCli, "--rm", "-i", dockerImage, command));
         }
+
+        this.errorHandling = OPTION_CLI_ERROR.getValue(props);
     }
 
     public List<String> getCommand() {
@@ -212,6 +219,18 @@ public class CommandLine {
 
     public Path getDefaultWorkDirectory() {
         return defaultWorkDir;
+    }
+
+    public boolean ignoreError() {
+        return Option.ERROR_HANDLING_IGNORE.equals(errorHandling);
+    }
+
+    public boolean throwExceptionOnError() {
+        return Option.ERROR_HANDLING_THROW.equals(errorHandling);
+    }
+
+    public boolean warnOnError() {
+        return Option.ERROR_HANDLING_WARN.equals(errorHandling);
     }
 
     public String execute(String... args) throws IOException {

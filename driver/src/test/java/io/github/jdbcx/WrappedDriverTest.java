@@ -16,19 +16,21 @@
 package io.github.jdbcx;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.impl.BlackholeDriverExtension;
 import io.github.jdbcx.impl.DefaultDriverExtension;
 import io.github.jdbcx.prql.PrqlDriverExtension;
+import io.github.jdbcx.shell.ShellDriverExtension;
 
 public class WrappedDriverTest {
     @Test(groups = { "unit" })
@@ -98,77 +100,125 @@ public class WrappedDriverTest {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
-        try (Connection conn = d.connect("jdbcx:ch://explorer@play.clickhouse.com:443?ssl=true", props);
+        int tables = 0;
+        try (Connection conn = d.connect("jdbcx:derby:memory:x;create=True", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from numbers(10)")) {
-            int count = 0;
+                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
             while (rs.next()) {
-                Assert.assertEquals(count++, rs.getInt(1));
+                tables++;
             }
-            Assert.assertEquals(count, 10);
+            Assert.assertTrue(tables > 0, "Should have at least one table in the database");
         }
 
-        // props.setProperty("jdbcx.custom.classpath", "~/Back");
+        // props.setProperty("jdbcx.custom.classpath", "~/Backup");
         // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
-        // try (Connection conn = d.connect("jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true", props);
-        //         Statement stmt = conn.createStatement();
-        //         ResultSet rs = stmt.executeQuery("from `system.events` | take 10")) {
-        //     int count = 0;
-        //     while (rs.next()) {
-        //         count++;
-        //     }
-        //     Assert.assertEquals(count, 10);
+        // try (Connection conn = d.connect("jdbcx:prql:derby:memory:x;create=True",
+        // props);
+        // Statement stmt = conn.createStatement();
+        // ResultSet rs = stmt.executeQuery("from `SYS.SYSTABLES`")) {
+        // int count = 0;
+        // while (rs.next()) {
+        // count++;
+        // }
+        // Assert.assertEquals(count, tables);
         // }
 
-        try (Connection conn = d.connect("jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true", props);
+        try (Connection conn = d.connect("jdbcx:script:derby:memory:x;create=True", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("'select * ' + 'from numbers(10)'")) {
+                ResultSet rs = stmt.executeQuery("'select * ' + 'from SYS.SYSTABLES'")) {
             int count = 0;
             while (rs.next()) {
-                Assert.assertEquals(count++, rs.getInt(1));
+                count++;
             }
-            Assert.assertEquals(count, 10);
+            Assert.assertEquals(count, tables);
         }
     }
 
     @Test(groups = { "unit" })
-    public void testReconnect() throws Exception {
-        throw new SkipException("Skip prqlc test due to extra dependency");
-        // String url = "jdbcx:prql:ch://explorer@play.clickhouse.com:443?ssl=true";
-        // Properties props = new Properties();
-        // WrappedDriver d = new WrappedDriver();
-        // props.setProperty("jdbcx.custom.classpath", "~/Back");
-        // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
-        // d.getPropertyInfo(url, new Properties());
-        // try (Connection conn = d.connect(url, props);
-        //         Statement stmt = conn.createStatement();
-        //         ResultSet rs = stmt.executeQuery("select * from numbers(10)")) {
-        //     int count = 0;
-        //     while (rs.next()) {
-        //         Assert.assertEquals(count++, rs.getInt(1));
-        //     }
-        //     Assert.assertEquals(count, 10);
-        // }
+    public void testErrorHandling() throws Exception {
+        String url = "jdbcx:script:derby:memory:x;create=True";
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+        d.getPropertyInfo(url, props);
+        int tables = 0;
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("helper.format('select * from %s.%s', 'SYS', 'SYSTABLES')")) {
+            while (rs.next()) {
+                tables++;
+            }
+            Assert.assertTrue(tables > 0, "Should have at least one table in the database");
+        }
 
-        // props.setProperty("jdbcx.prql.compile.fallback", "false");
-        // try (Connection conn = d.connect(url, props);
-        //         Statement stmt = conn.createStatement();) {
-        //     Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select * from numbers(10)"));
-        // }
+        try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
+        }
+
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
+            int count = 0;
+            while (rs.next()) {
+                count++;
+            }
+            Assert.assertEquals(count, tables);
+        }
+
+        props.setProperty("jdbcx.script.error", "throw");
+        try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
+        }
+        try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select * from SYS.SYSTABLES"));
+        }
+
+        props.setProperty("jdbcx.script.error", "warn");
+        try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
+            Assert.assertThrows(SQLSyntaxErrorException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
+        }
+        props.setProperty("jdbcx.shell.cli.error", "warn");
+        try (Connection conn = DriverManager.getConnection("jdbcx:shell:derby:memory:x;create=True", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
+            Assert.assertNotNull(stmt.getWarnings(), "Should have SQLWarning");
+        }
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
+            Assert.assertNotNull(stmt.getWarnings(), "Should have SQLWarning");
+            int count = 0;
+            while (rs.next()) {
+                count++;
+            }
+            Assert.assertEquals(count, tables);
+        }
     }
 
     @Test(groups = { "unit" })
     public void testExtractExtendedProperties() {
         Properties props = new Properties();
-        Assert.assertEquals(WrappedDriver.extractExtendedProperties(DefaultDriverExtension.getInstance(), props),
+        WrappedDriver d = new WrappedDriver();
+        Assert.assertEquals(d.extractExtendedProperties(DefaultDriverExtension.getInstance(), props),
                 DefaultDriverExtension.getInstance().getDefaultConfig());
         props.setProperty("jdbcx.custom.classpath", "123");
-        Assert.assertEquals(WrappedDriver.extractExtendedProperties(DefaultDriverExtension.getInstance(), props)
+        Assert.assertEquals(d.extractExtendedProperties(DefaultDriverExtension.getInstance(), props)
                 .getProperty("custom.classpath"), "123");
 
         props.clear();
-        Assert.assertEquals(WrappedDriver.extractExtendedProperties(new PrqlDriverExtension(), props).size(),
+        Assert.assertEquals(d.extractExtendedProperties(new PrqlDriverExtension(), props).size(),
                 DefaultDriverExtension.getInstance().getDefaultConfig().size()
                         + new PrqlDriverExtension().getDefaultConfig().size());
+    }
+
+    @Test(groups = { "unit" })
+    public void testLoadDefaultConfig() {
+        Properties props = new Properties();
+        props.setProperty("non-related", "");
+        props.setProperty("jdbcx.config.path", "target/test-classes/test-config.properties");
+        WrappedDriver d = new WrappedDriver();
+        Properties extProps = d.extractExtendedProperties(new ShellDriverExtension(), props);
+        Assert.assertEquals(extProps.getProperty("custom.classpath"), "my-classpath");
+        extProps = d.extractExtendedProperties(new BlackholeDriverExtension(), props);
+        Assert.assertEquals(extProps.getProperty("custom.classpath"), "my-classpath");
     }
 }

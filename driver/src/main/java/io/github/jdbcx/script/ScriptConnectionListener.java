@@ -67,7 +67,13 @@ final class ScriptConnectionListener implements ConnectionListener {
                 throw new SQLException("Script must return SQL query for execution, but we got: " + result);
             }
         } catch (Exception e) {
-            throw SqlExceptionUtils.clientError(e);
+            if (script.ignoreError()) {
+                return query;
+            } else if (script.warnOnError()) {
+                throw SqlExceptionUtils.clientWarning(e);
+            } else {
+                throw SqlExceptionUtils.clientError(e);
+            }
         }
     }
 }

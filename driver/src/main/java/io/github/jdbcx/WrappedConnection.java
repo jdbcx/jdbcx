@@ -33,6 +33,7 @@ import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.impl.DefaultConnectionListener;
 
@@ -45,6 +46,8 @@ public class WrappedConnection implements Connection {
     protected final Connection conn;
     protected final String url;
     protected final Properties props;
+
+    private final AtomicReference<SQLWarning> warning;
 
     protected WrappedConnection(Connection conn) {
         this(null, conn);
@@ -61,11 +64,17 @@ public class WrappedConnection implements Connection {
         this.conn = conn;
         this.url = url;
         this.props = props;
+
+        this.warning = new AtomicReference<>();
     }
 
     protected String handle(String query) throws SQLException {
+        warning.set(null);
         try {
             return listener.onQuery(query);
+        } catch (SQLWarning e) {
+            warning.set(e);
+            return query;
         } catch (Throwable t) { // NOSONAR
             throw SqlExceptionUtils.clientError(t);
         }
@@ -168,11 +177,13 @@ public class WrappedConnection implements Connection {
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-        return conn.getWarnings();
+        SQLWarning w = warning.get();
+        return w != null ? w : conn.getWarnings();
     }
 
     @Override
     public void clearWarnings() throws SQLException {
+        this.warning.set(null);
         conn.clearWarnings();
     }
 

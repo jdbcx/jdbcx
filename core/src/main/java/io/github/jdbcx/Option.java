@@ -25,13 +25,33 @@ import java.util.Optional;
 import java.util.Properties;
 
 /**
- * This class defines a configuration option, which consists of a key, a default
- * value in String format, a description, and optional choices.
+ * This class defines an immutable configuration option, which consists of a
+ * key, a default value in String format, a description, and valid choices.
  */
 public final class Option implements Serializable {
     private static final long serialVersionUID = -2250888694424064713L;
 
+    /**
+     * One of suggested choices for error handling, which simply ignores the error.
+     */
+    public static final String ERROR_HANDLING_IGNORE = "ignore";
+    /**
+     * One of suggested choices for error handling, which throws out an exception
+     * for the error.
+     */
+    public static final String ERROR_HANDLING_THROW = "throw";
+    /**
+     * One of suggested choices for error handling, which takes the error as a
+     * warning.
+     */
+    public static final String ERROR_HANDLING_WARN = "warn";
+
     // most common options
+    /**
+     * Path to config property file.
+     */
+    public static final Option CONFIG_PATH = Option
+            .of(new String[] { "config.path", "Path to config file", "~/.jbdcx/config.prperties" });
     /**
      * Custom classpath using {@link ExpandedUrlClassLoader}.
      */
@@ -216,8 +236,10 @@ public final class Option implements Serializable {
             }
 
             if (!list.isEmpty() && !list.contains(defaultValue)) {
-                throw new IllegalArgumentException(String.format(Locale.ROOT,
-                        "Default value [%s] does not belong to choices [%s]", defaultValue, list));
+                // FIXME an option for Option?
+                defaultValue = list.get(0);
+                // throw new IllegalArgumentException(String.format(Locale.ROOT,
+                // "Invalid default value \"%s\". Valid choices: %s.", defaultValue, list));
             }
         }
         return new Option(name, description, defaultValue,
@@ -271,15 +293,56 @@ public final class Option implements Serializable {
      *         {@link #getDefaultValue()}
      */
     public String getValue(Properties props) {
+        return getValue(props, null);
+    }
+
+    /**
+     * Gets value from the given properties along with preferred default value.
+     *
+     * @param props        properties, may or may not be null
+     * @param defaultValue preferred default value, fallback to
+     *                     {@link #getDefaultValue()} when it's {@code null}
+     * @return non-null value
+     */
+    public String getValue(Properties props, String defaultValue) {
         if (props == null || props.isEmpty()) {
-            return defaultValue;
+            return defaultValue != null ? defaultValue : this.defaultValue;
         }
 
         String value = props.getProperty(name);
         if (value == null || (!choices.isEmpty() && !choices.contains(value))) {
-            value = defaultValue;
+            value = defaultValue != null ? defaultValue : this.defaultValue;
         }
         return value;
+    }
+
+    /**
+     * Sets value in the given properties. Same as
+     * {@code setValue(props, getDefaultValue())}.
+     *
+     * @param props properties, may or may not be null
+     * @return the overrided value, null means it did not exist
+     */
+    public String setValue(Properties props) {
+        return setValue(props, null);
+    }
+
+    /**
+     * Sets value in the given properties.
+     *
+     * @param props properties, may or may not be null
+     * @param value preferred value, fallback to {@link #getDefaultValue()} when
+     *              it's {@code null} or not a valid choice
+     * @return the overrided value, null means it did not exist
+     */
+    public String setValue(Properties props, String value) {
+        if (props == null) {
+            return null;
+        } else if (value == null || (!choices.isEmpty() && !choices.contains(value))) {
+            value = defaultValue;
+        }
+
+        return (String) props.setProperty(name, value);
     }
 
     /**

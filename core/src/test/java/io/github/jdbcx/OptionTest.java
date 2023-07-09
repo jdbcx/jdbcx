@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx;
 
+import java.util.Properties;
+
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -45,7 +47,10 @@ public class OptionTest {
 
         Assert.assertThrows(IllegalArgumentException.class, () -> Option.of(null, null, null));
         Assert.assertThrows(IllegalArgumentException.class, () -> Option.of("", null, null));
-        Assert.assertThrows(IllegalArgumentException.class, () -> Option.of("test", null, null, new String[] { " " }));
+        // Assert.assertThrows(IllegalArgumentException.class, () -> Option.of("test",
+        // null, null, new String[] { " " }));
+        Assert.assertEquals(Option.of("test", "desc", "", new String[] { "y", "x" }).getDefaultValue(), "y");
+        Assert.assertEquals(Option.of("test", "desc", "ttt", new String[] { "y", "x" }).getDefaultValue(), "y");
 
         Option option = Option.of("test", null, null, null);
         Assert.assertEquals(option.getName(), "test");
@@ -95,5 +100,91 @@ public class OptionTest {
         Assert.assertEquals(option.getEffectiveDefaultValue("jdbcx"), "233");
         Assert.assertEquals(option.getEffectiveDefaultValue("jdbcx."), "321");
         Assert.assertEquals(option.getEffectiveDefaultValue("jdbcx.de."), "123");
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetValue() {
+        Assert.assertEquals(Option.of("key", null, "default").getValue(null), "default");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(new Properties()), "default");
+
+        Properties props = new Properties();
+        props.setProperty("key1", "");
+        props.setProperty("key2", " ");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(props), "default");
+        Assert.assertEquals(Option.of("key1", null, "default").getValue(props), "");
+        Assert.assertEquals(Option.of("key2", null, "default").getValue(props), " ");
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetValueWithPreferredDefault() {
+        Assert.assertEquals(Option.of("key", null, "default").getValue(null, null), "default");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(new Properties(), null), "default");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(null, ""), "");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(new Properties(), ""), "");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(null, "x"), "x");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(new Properties(), "x"), "x");
+
+        Properties props = new Properties();
+        props.setProperty("key1", "");
+        props.setProperty("key2", " ");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(props, null), "default");
+        Assert.assertEquals(Option.of("key1", null, "default").getValue(props, null), "");
+        Assert.assertEquals(Option.of("key2", null, "default").getValue(props, null), " ");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(props, ""), "");
+        Assert.assertEquals(Option.of("key1", null, "default").getValue(props, ""), "");
+        Assert.assertEquals(Option.of("key2", null, "default").getValue(props, ""), " ");
+        Assert.assertEquals(Option.of("key", null, "default").getValue(props, "x"), "x");
+        Assert.assertEquals(Option.of("key1", null, "default").getValue(props, "x"), "");
+        Assert.assertEquals(Option.of("key2", null, "default").getValue(props, "x"), " ");
+    }
+
+    @Test(groups = { "unit" })
+    public void testSetValue() {
+        Assert.assertEquals(Option.of("key", null, "default").setValue(null), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(new Properties()), null);
+
+        Properties props = new Properties();
+        props.setProperty("key1", "");
+        props.setProperty("key2", " ");
+        Assert.assertEquals(Option.of("key", null, "default").setValue(props), null);
+        Assert.assertEquals(props.get("key"), "default");
+        Assert.assertEquals(Option.of("key1", null, "default").setValue(props), "");
+        Assert.assertEquals(props.get("key1"), "default");
+        Assert.assertEquals(Option.of("key2", null, "default").setValue(props), " ");
+        Assert.assertEquals(props.get("key2"), "default");
+        Assert.assertEquals(props.size(), 3); // key + key1 + key2
+    }
+
+    @Test(groups = { "unit" })
+    public void testSetValueWithPreferredDefault() {
+        Assert.assertEquals(Option.of("key", null, "default").setValue(null, null), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(new Properties(), null), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(null, ""), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(new Properties(), ""), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(null, "x"), null);
+        Assert.assertEquals(Option.of("key", null, "default").setValue(new Properties(), "x"), null);
+
+        Properties props = new Properties();
+        props.setProperty("key1", "");
+        props.setProperty("key2", " ");
+        Assert.assertEquals(Option.of("key", null, "default").setValue(props, null), null);
+        Assert.assertEquals(props.get("key"), "default");
+        Assert.assertEquals(Option.of("key1", null, "default").setValue(props, null), "");
+        Assert.assertEquals(props.get("key1"), "default");
+        Assert.assertEquals(Option.of("key2", null, "default").setValue(props, null), " ");
+        Assert.assertEquals(props.get("key2"), "default");
+        Assert.assertEquals(Option.of("key", null, "default").setValue(props, ""), "default");
+        Assert.assertEquals(props.get("key"), "");
+        Assert.assertEquals(Option.of("key1", null, "default").setValue(props, ""), "default");
+        Assert.assertEquals(props.get("key1"), "");
+        Assert.assertEquals(Option.of("key2", null, "default").setValue(props, ""), "default");
+        Assert.assertEquals(props.get("key2"), "");
+        Assert.assertEquals(Option.of("key", null, "default").setValue(props, "x"), "");
+        Assert.assertEquals(props.get("key"), "x");
+        Assert.assertEquals(Option.of("key1", null, "default").setValue(props, "x"), "");
+        Assert.assertEquals(props.get("key1"), "x");
+        Assert.assertEquals(Option.of("key2", null, "default").setValue(props, "x"), "");
+        Assert.assertEquals(props.get("key2"), "x");
+        Assert.assertEquals(props.size(), 3); // key + key1 + key2
     }
 }

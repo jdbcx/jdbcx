@@ -24,30 +24,26 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.CommandLine;
 import io.github.jdbcx.ConnectionListener;
 import io.github.jdbcx.Constants;
-import io.github.jdbcx.Logger;
-import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.SqlExceptionUtils;
 
 final class PrqlConnectionListener implements ConnectionListener {
-    private static final Logger log = LoggerFactory.getLogger(PrqlConnectionListener.class);
-
     static final String DEFAULT_COMMAND = "prqlc";
     static final boolean DEFAULT_FALLBACK = true;
 
-    static final Option OPTION_COMPILE_FALLBACK = Option.of(
-            new String[] { "compile.fallback", "Whether to treat the query as SQL when failed to compile using prqlc",
-                    Boolean.toString(DEFAULT_FALLBACK), Boolean.toString(!DEFAULT_FALLBACK) });
+    public static final Option OPTION_COMPILE_ERROR = Option
+            .of(new String[] { "compile.error", "The approach to handle compile error", Option.ERROR_HANDLING_IGNORE,
+                    Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
     static final Option OPTION_COMPILE_TARGET = Option.of(new String[] { "compile.target",
             "PRQL compile target without \"sql.\" prefix, empty string is same as \"any\"" });
 
     private final CommandLine cli;
 
-    private final boolean compileFallback;
     private final String compileTarget;
+    private final String errorHandling;
 
     PrqlConnectionListener(Properties config) {
-        this.compileFallback = Boolean.parseBoolean(OPTION_COMPILE_FALLBACK.getValue(config));
+        this.errorHandling = OPTION_COMPILE_ERROR.getValue(config);
         String target = OPTION_COMPILE_TARGET.getValue(config).toLowerCase(Locale.ROOT);
         this.compileTarget = Checker.isNullOrEmpty(target) || "any".equals(target) ? Constants.EMPTY_STRING
                 : "sql.".concat(target);
@@ -64,7 +60,7 @@ final class PrqlConnectionListener implements ConnectionListener {
             int exitCode = cli.execute(cli.getDefaultTimeout(), cli.getDefaultWorkDirectory(), query,
                     cli.getDefaultInputCharset(), out, cli.getDefaultOutputCharset(), args);
             if (exitCode != 0) {
-                if (compileFallback) {
+                if (Option.ERROR_HANDLING_IGNORE.equals(errorHandling)) {
                     sql = query;
                 } else {
                     throw SqlExceptionUtils.clientError(new String(out.toByteArray(), cli.getDefaultOutputCharset()));
@@ -74,10 +70,13 @@ final class PrqlConnectionListener implements ConnectionListener {
             }
             return sql;
         } catch (Exception e) {
-            if (compileFallback) {
+            if (Option.ERROR_HANDLING_IGNORE.equals(errorHandling)) {
                 return query;
+            } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling)) {
+                throw SqlExceptionUtils.clientWarning("The compilation of the PRQL query to SQL failed.", e);
+            } else {
+                throw SqlExceptionUtils.clientError("The compilation of the PRQL query to SQL failed.", e);
             }
-            throw SqlExceptionUtils.clientError("The compilation of the PRQL query to SQL failed.", e);
         }
     }
 }

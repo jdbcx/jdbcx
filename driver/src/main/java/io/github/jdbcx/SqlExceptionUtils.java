@@ -19,6 +19,7 @@ import java.net.ConnectException;
 import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLWarning;
 
 /**
  * Helper class for building {@link SQLException}.
@@ -71,12 +72,24 @@ public final class SqlExceptionUtils {
         return new SQLException(message, SQL_STATE_CLIENT_ERROR, null);
     }
 
+    public static SQLWarning clientWarning(String message) {
+        return new SQLWarning(message, SQL_STATE_CLIENT_ERROR, null);
+    }
+
     public static SQLException clientError(Throwable e) {
         return e != null ? new SQLException(e.getMessage(), SQL_STATE_CLIENT_ERROR, e) : unknownError();
     }
 
+    public static SQLWarning clientWarning(Throwable e) {
+        return e != null ? new SQLWarning(e.getMessage(), SQL_STATE_CLIENT_ERROR, e) : unknownWarning();
+    }
+
     public static SQLException clientError(String message, Throwable e) {
         return new SQLException(message, SQL_STATE_CLIENT_ERROR, e);
+    }
+
+    public static SQLWarning clientWarning(String message, Throwable e) {
+        return new SQLWarning(message, SQL_STATE_CLIENT_ERROR, e);
     }
 
     public static SQLException handle(Exception e) {
@@ -149,5 +162,9 @@ public final class SqlExceptionUtils {
 
     public static SQLException unknownError() {
         return new SQLException("Unknown error", SQL_STATE_CLIENT_ERROR);
+    }
+
+    public static SQLWarning unknownWarning() {
+        return new SQLWarning("Unknown error", SQL_STATE_CLIENT_ERROR);
     }
 }

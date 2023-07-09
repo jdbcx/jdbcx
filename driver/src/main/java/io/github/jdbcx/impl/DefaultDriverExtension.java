@@ -25,8 +25,8 @@ import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Option;
 
 public final class DefaultDriverExtension implements DriverExtension {
-    private static final List<Option> options = Collections
-            .unmodifiableList(Arrays.asList(Option.CUSTOM_CLASSPATH, CommandLine.OPTION_DOCKER_PATH));
+    private static final List<Option> options = Collections.unmodifiableList(
+            Arrays.asList(Option.CONFIG_PATH, Option.CUSTOM_CLASSPATH, CommandLine.OPTION_DOCKER_PATH));
 
     private static final DriverExtension instance = new DefaultDriverExtension();
 

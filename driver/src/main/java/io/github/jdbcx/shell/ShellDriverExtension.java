@@ -28,9 +28,9 @@ import io.github.jdbcx.Option;
 
 public class ShellDriverExtension implements DriverExtension {
     private static final List<Option> options = Collections
-            .unmodifiableList(Arrays.asList(ShellConnectionListener.OPTION_PATH, ShellConnectionListener.OPTION_TIMEOUT,
-                    ShellConnectionListener.OPTION_TEST_ARGS, CommandLine.OPTION_INPUT_CHARSET,
-                    CommandLine.OPTION_OUTPUT_CHARSET));
+            .unmodifiableList(Arrays.asList(ShellConnectionListener.OPTION_PATH, CommandLine.OPTION_CLI_ERROR,
+                    ShellConnectionListener.OPTION_TIMEOUT, ShellConnectionListener.OPTION_TEST_ARGS,
+                    CommandLine.OPTION_INPUT_CHARSET, CommandLine.OPTION_OUTPUT_CHARSET));
 
     @Override
     public List<Option> getOptions(Properties props) {

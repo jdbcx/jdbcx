@@ -17,6 +17,8 @@ package io.github.jdbcx;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -24,6 +26,32 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 public class CommandLineTest {
+    static Properties newProperties(Charset inputCharset, Charset outputCharset, int timeout, String workDir,
+            String dockerCliPath, String dockerImage, String... testArgs) {
+        Properties props = new Properties();
+        if (inputCharset != null) {
+            props.setProperty(CommandLine.OPTION_INPUT_CHARSET.getName(), inputCharset.name());
+        }
+        if (outputCharset != null) {
+            props.setProperty(CommandLine.OPTION_OUTPUT_CHARSET.getName(), outputCharset.name());
+        }
+        props.setProperty(CommandLine.OPTION_CLI_TIMEOUT.getName(), String.valueOf(timeout));
+        if (workDir != null) {
+            props.setProperty(CommandLine.OPTION_WORK_DIRECTORY.getName(), workDir);
+        }
+        if (dockerCliPath != null) {
+            props.setProperty(CommandLine.OPTION_DOCKER_PATH.getName(), dockerCliPath);
+        }
+        if (dockerImage != null) {
+            props.setProperty(CommandLine.OPTION_DOCKER_IMAGE.getName(), dockerImage);
+        }
+        if (testArgs != null) {
+            props.setProperty(CommandLine.OPTION_CLI_TEST_ARGS.getName(),
+                    testArgs.length == 0 ? "" : String.join(" ", testArgs));
+        }
+        return props;
+    }
+
     @DataProvider(name = "echoCommand")
     public static Object[][] getEchoCommand() {
         return new Object[][] { { Constants.IS_WINDOWS ? "cmd /c echo" : "echo" } };
@@ -51,20 +79,24 @@ public class CommandLineTest {
     @Test(dataProvider = "echoCommand", groups = "unit")
     public void testConstructor(String echoCommand) throws IOException {
         Assert.assertThrows(IllegalArgumentException.class,
-                () -> new CommandLine("non_existing_command", null, null, 0, null, null, null, true));
-        Assert.assertNotNull(new CommandLine("non_existing_command", null, null, 0, null, null, null, false));
+                () -> new CommandLine("non_existing_command", true, newProperties(null, null, 0, null, null, null)));
+        Assert.assertNotNull(
+                new CommandLine("non_existing_command", false, newProperties(null, null, 0, null, null, null)));
 
-        Assert.assertNotNull(new CommandLine(echoCommand, null, null, 0, null, null, null, true));
+        Assert.assertNotNull(new CommandLine(echoCommand, newProperties(null, null, 0, null, null, null)));
     }
 
     @Test(dataProvider = "echoCommand", groups = "unit")
     public void testExecute(String echoCommand) throws IOException {
-        Assert.assertTrue(new CommandLine(echoCommand, null, null, 0, null, null, null, true).execute().length() > 0);
+        Assert.assertTrue(new CommandLine(echoCommand, true, newProperties(null, null, 0, null, null, null)).execute()
+                .length() > 0);
         Assert.assertThrows(IOException.class,
-                () -> new CommandLine(Constants.IS_WINDOWS ? echoCommand : "ls", null, null, 0, null, null, null, true)
+                () -> new CommandLine(Constants.IS_WINDOWS ? echoCommand : "ls", true,
+                        newProperties(null, null, 0, null, null, null))
                         .execute("|"));
         Assert.assertEquals(
-                new CommandLine(echoCommand, null, null, 0, null, null, null, true, "Y").execute("o", "k").trim(),
+                new CommandLine(echoCommand, true, newProperties(null, null, 0, null, null, null, "Y"))
+                        .execute("o", "k").trim(),
                 "o k");
     }
 
@@ -73,12 +105,14 @@ public class CommandLineTest {
         if (!Constants.IS_WINDOWS) {
             throw new SkipException("Skip this is for windows only");
         }
-        Assert.assertTrue(new CommandLine("wsl -- echo", null, null, 0, null, null, null, true).execute().length() > 0);
+        Assert.assertTrue(new CommandLine("wsl -- echo", true, newProperties(null, null, 0, null, null, null)).execute()
+                .length() > 0);
         Assert.assertThrows(IOException.class,
-                () -> new CommandLine("wsl -- echo", null, null, 0, null, null, null, true).execute("|"));
+                () -> new CommandLine("wsl -- echo", true, newProperties(null, null, 0, null, null, null))
+                        .execute("|"));
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(2048)) {
-            CommandLine prqlc = new CommandLine("wsl -- /home/zhicwu/.cargo/bin/prqlc", null, null, 0, null, null, null,
-                    true, "-V");
+            CommandLine prqlc = new CommandLine("wsl -- /home/zhicwu/.cargo/bin/prqlc", true,
+                    newProperties(null, null, 0, null, null, null, "-V"));
             prqlc.execute(3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
             String sql = new String(out.toByteArray());
             sql = sql.replaceAll("[\\s\\t\\r\\n]*", "");

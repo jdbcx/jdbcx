@@ -41,7 +41,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
     protected static URL[] expandURLs(String... urls) { // NOSONAR
         if (urls == null || urls.length == 0) {
-            urls = new String[] { System.getProperty("user.dir", ".") };
+            urls = new String[] { Constants.CURRENT_DIR };
         }
         Set<String> cache = new HashSet<>();
         List<URL> list = new ArrayList<>(urls.length * 2);

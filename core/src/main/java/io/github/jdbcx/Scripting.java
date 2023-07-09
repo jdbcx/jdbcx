@@ -33,18 +33,23 @@ public class Scripting {
     private static final Logger log = LoggerFactory.getLogger(Scripting.class);
 
     public static final String DEFAULT_SCRIPT_LANGUAGE = "javascript";
+
+    public static final Option OPTION_ERROR = Option
+            .of(new String[] { "error", "The approach to handle script execution error", Option.ERROR_HANDLING_IGNORE,
+                    Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
     public static final Option OPTION_LANGUAGE = Option
             .of(new String[] { "language", "Scripting language", DEFAULT_SCRIPT_LANGUAGE });
     public static final Option OPTION_BINDING_ERROR = Option
             .of(new String[] { "binding.error",
-                    "Approach to handle binding error, either throw an exception or simply ignore the error", "throw",
-                    "ignore" });
+                    "Approach to handle binding error, either throw an exception or simply ignore the error",
+                    Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_IGNORE });
 
     private final String defaultLanguage;
     private final ScriptEngineManager manager;
     private final Set<String> supportedLanguages;
 
     private final boolean ignoreBindingError;
+    private final String errorHandling;
 
     public Scripting(String defaultLanguage, Properties props, Map<String, Object> vars) {
         this(defaultLanguage, props, true, vars);
@@ -60,6 +65,7 @@ public class Scripting {
         }
 
         this.ignoreBindingError = !OPTION_BINDING_ERROR.getDefaultValue().equals(OPTION_BINDING_ERROR.getValue(props));
+        this.errorHandling = OPTION_ERROR.getValue(props);
 
         Set<String> langs = new LinkedHashSet<>();
         for (ScriptEngineFactory factory : this.manager.getEngineFactories()) {
@@ -75,7 +81,7 @@ public class Scripting {
                 throw new IllegalArgumentException("No script language detected in classpath.");
             } else if (!langs.contains(defaultLanguage)) {
                 throw new IllegalArgumentException(Utils.format(
-                        "Scripting language \"%s\" is not supported. Available options are [%s].",
+                        "Scripting language \"%s\" is not supported. Available options are %s.",
                         defaultLanguage, langs));
             }
             this.defaultLanguage = defaultLanguage;
@@ -91,6 +97,18 @@ public class Scripting {
                 this.manager.put(v.getKey(), v.getValue());
             }
         }
+    }
+
+    public boolean ignoreError() {
+        return Option.ERROR_HANDLING_IGNORE.equals(errorHandling);
+    }
+
+    public boolean throwExceptionOnError() {
+        return Option.ERROR_HANDLING_THROW.equals(errorHandling);
+    }
+
+    public boolean warnOnError() {
+        return Option.ERROR_HANDLING_WARN.equals(errorHandling);
     }
 
     public String getDefaultLanguage() {

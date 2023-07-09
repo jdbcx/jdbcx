@@ -1,6 +1,6 @@
 # JDBCX
 
-[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/jdbcx/jdbcx?style=plastic&include_prereleases&label=Latest%20Release)](https://github.com/jdbcx/jdbcx/releases/) [![GitHub release (by tag)](https://img.shields.io/github/downloads/jdbcx/jdbcx/latest/total?style=plastic)](https://github.com/jdbcx/jdbcx/releases/) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jdbcx_jdbcx&metric=coverage)](https://sonarcloud.io/summary/new_code?id=jdbcx_jdbcx) [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/io.github.jdbcx/jdbcx?style=plastic&label=Nightly%20Build&server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/content/repositories/snapshots/io/github/jdbcx/)
+[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/jdbcx/jdbcx?style=plastic&include_prereleases&label=Latest%20Release)](https://github.com/jdbcx/jdbcx/releases/) [![GitHub release (by tag)](https://img.shields.io/github/downloads/jdbcx/jdbcx/latest/total?style=plastic)](https://github.com/jdbcx/jdbcx/releases/) [![Docker Pulls](https://img.shields.io/docker/pulls/jdbcx/jdbcx?style=plastic)](https://hub.docker.com/r/jdbcx/jdbcx) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jdbcx_jdbcx&metric=coverage)](https://sonarcloud.io/summary/new_code?id=jdbcx_jdbcx) [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/io.github.jdbcx/jdbcx?style=plastic&label=Nightly%20Build&server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/content/repositories/snapshots/io/github/jdbcx/)
 
 <img align="right" width="96" height="96" src="https://avatars.githubusercontent.com/u/137983508">
 
@@ -9,25 +9,30 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 ## Quick Start
 
 ```bash
-# Download a tiny embedded database and its JDBC driver
-wget https://repo1.maven.org/maven2/org/hsqldb/hsqldb/2.7.2/hsqldb-2.7.2.jar
+# Download latest JDBCX from https://github.com/jdbcx/jdbcx/releases
+wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
+        | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
+        | cut -d : -f 2,3 | tr -d \")
+
+# Download Apache Derby embedded database and its JDBC driver
+wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.16.1.1/derby-10.16.1.1.jar \
+    https://repo1.maven.org/maven2/org/apache/derby/derbyshared/10.16.1.1/derbyshared-10.16.1.1.jar
 
 # Download JavaScript engine
 wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
     https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 # SQL
-java -Dverbose=true -jar jdbcx-driver-0.1.2.jar 'jdbcx:hsqldb:mem:test' \
-    'SELECT * FROM INFORMATION_SCHEMA.ROUTINES'
+java -Dverbose=true -jar jdbcx.jar 'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'
 
 # Scripting
-java -Dverbose=true -jar jdbcx-driver-0.1.2.jar 'jdbcx:script:hsqldb:mem:test' \
-    'helper.format("SELECT * FROM %s.%s", "INFORMATION_SCHEMA", "ROUTINES")'
+java -Dverbose=true -jar jdbcx.jar 'jdbcx:script:derby:memory:x;create=True' \
+    'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
 
 # PRQL
 cargo install prqlc
-java -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx-driver-0.1.2.jar \
-    'jdbcx:prql:hsqldb:mem:test' 'from `INFORMATION_SCHEMA.ROUTINES`'
+java -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx.jar \
+    'jdbcx:prql:derby:memory:x;create=True' 'from `SYS.SYSTABLES`'
 
 # Together on a database in cloud
 wget https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar
@@ -38,7 +43,7 @@ helper.format(
 	helper.escapeSingleQuote(helper.cli("~/.cargo/bin/prqlc", "-h"))
 )
 EOF
-java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx-driver-0.1.2.jar \
+java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx.jar \
     'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js
 ```
 
