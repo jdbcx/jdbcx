@@ -16,8 +16,10 @@
 package io.github.jdbcx;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -164,7 +166,7 @@ public class WrappedDriver implements Driver, DriverAction {
                 }
                 File file = path.toFile();
                 if (file.exists() && file.canRead()) {
-                    try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
+                    try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
                         defaultConfig.load(reader);
                         log.debug("Loaded default config from file \"%s\".", fileName);
                     } catch (IOException e) {

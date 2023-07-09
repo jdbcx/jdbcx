@@ -95,7 +95,7 @@ public class WrappedDriverTest {
                 "jdbc:mysql:localhost");
     }
 
-    @Test(groups = { "unit" })
+    @Test
     public void testConnect() throws Exception {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
@@ -134,7 +134,7 @@ public class WrappedDriverTest {
         }
     }
 
-    @Test(groups = { "unit" })
+    @Test
     public void testErrorHandling() throws Exception {
         String url = "jdbcx:script:derby:memory:x;create=True";
         Properties props = new Properties();
