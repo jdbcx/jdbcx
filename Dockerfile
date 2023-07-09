@@ -31,6 +31,7 @@ RUN locale-gen en_US.UTF-8 \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
     && mkdir -p /app/lib \
+    && chown -R jdbcx:jdbcx /app \
     && wget -nv -P /app \
         https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
         https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
