@@ -8,8 +8,34 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 
 ## Quick Start
 
+Getting started with JDBCX is a breeze. Just download it from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to activate the extension.
+
+### Docker
+
+```bash
+# SQL
+docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
+    'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'
+
+# Scripting
+docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
+    'jdbcx:script:derby:memory:x;create=true' \
+    'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+
+# PRQL
+docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
+    'jdbcx:prql:derby:memory:x;create=true' 'from `SYS.SYSTABLES`'
+
+# Shell
+docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
+    'jdbcx:shell:derby:memory:x;create=true' 'echo "select * from SYS.SYSTABLES"'
+```
+
+### Command Line
+
 ```bash
 # Download latest JDBCX from https://github.com/jdbcx/jdbcx/releases
+# or use nightly build at https://s01.oss.sonatype.org/content/repositories/snapshots/io/github/jdbcx/jdbcx-driver/
 wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
         | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
         | cut -d : -f 2,3 | tr -d \")
@@ -46,8 +72,6 @@ EOF
 java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx.jar \
     'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js
 ```
-
-## IDE Setup
 
 ### DBeaver
 
