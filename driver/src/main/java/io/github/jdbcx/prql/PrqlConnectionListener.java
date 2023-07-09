@@ -73,9 +73,9 @@ final class PrqlConnectionListener implements ConnectionListener {
             if (Option.ERROR_HANDLING_IGNORE.equals(errorHandling)) {
                 return query;
             } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling)) {
-                throw SqlExceptionUtils.clientWarning("The compilation of the PRQL query to SQL failed.", e);
+                throw SqlExceptionUtils.clientWarning(e);
             } else {
-                throw SqlExceptionUtils.clientError("The compilation of the PRQL query to SQL failed.", e);
+                throw SqlExceptionUtils.clientError(e);
             }
         }
     }
