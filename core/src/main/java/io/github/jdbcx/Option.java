@@ -51,7 +51,7 @@ public final class Option implements Serializable {
      * Path to config property file.
      */
     public static final Option CONFIG_PATH = Option
-            .of(new String[] { "config.path", "Path to config file", "~/.jbdcx/config.prperties" });
+            .of(new String[] { "config.path", "Path to config file", "~/.jdbcx/config.prperties" });
     /**
      * Custom classpath using {@link ExpandedUrlClassLoader}.
      */
