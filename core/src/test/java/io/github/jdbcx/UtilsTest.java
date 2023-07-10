@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.testng.Assert;
@@ -28,18 +29,18 @@ public class UtilsTest {
         Assert.assertEquals(Utils.normalizePath("http://s.com/term?w=1"), "http://s.com/term?w=1");
 
         Assert.assertEquals(Utils.normalizePath("~/"), Constants.HOME_DIR);
-        Assert.assertEquals(Utils.normalizePath("~/a"), Constants.HOME_DIR + Constants.FILE_SEPARATOR + "a");
-        Assert.assertEquals(Utils.normalizePath("~/a b c"), Constants.HOME_DIR + Constants.FILE_SEPARATOR + "a b c");
-        Assert.assertEquals(Utils.normalizePath("~/a:b-c"), Constants.HOME_DIR + Constants.FILE_SEPARATOR + "a:b-c");
+        Assert.assertEquals(Utils.normalizePath("~/a"), Constants.HOME_DIR + File.separatorChar + "a");
+        Assert.assertEquals(Utils.normalizePath("~/a b c"), Constants.HOME_DIR + File.separatorChar + "a b c");
+        Assert.assertEquals(Utils.normalizePath("~/a:b-c"), Constants.HOME_DIR + File.separatorChar + "a:b-c");
         Assert.assertEquals(Utils.normalizePath("~/test/dir,/a"),
-                Constants.HOME_DIR + Constants.FILE_SEPARATOR + "test/dir,/a");
+                Constants.HOME_DIR + File.separatorChar + "test/dir,/a");
 
         if (Constants.IS_WINDOWS) {
-            Assert.assertEquals(Utils.normalizePath("~/\\a"), Constants.HOME_DIR + Constants.FILE_SEPARATOR + "\\a");
+            Assert.assertEquals(Utils.normalizePath("~/\\a"), Constants.HOME_DIR + File.separatorChar + "\\a");
             Assert.assertEquals(Utils.normalizePath("~/D:\\a\\b\\c"),
-                    Constants.HOME_DIR + Constants.FILE_SEPARATOR + "D:\\a\\b\\c");
+                    Constants.HOME_DIR + File.separatorChar + "D:\\a\\b\\c");
         } else {
-            Assert.assertEquals(Utils.normalizePath("~//a"), Constants.HOME_DIR + Constants.FILE_SEPARATOR + "/a");
+            Assert.assertEquals(Utils.normalizePath("~//a"), Constants.HOME_DIR + File.separatorChar + "/a");
         }
     }
 }

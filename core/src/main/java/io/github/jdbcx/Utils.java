@@ -117,7 +117,7 @@ public final class Utils {
             if (p.isEmpty()) {
                 return Constants.HOME_DIR;
             } else {
-                return new StringBuilder(Constants.HOME_DIR).append(Constants.FILE_SEPARATOR).append(p).toString();
+                return new StringBuilder(Constants.HOME_DIR).append(File.separatorChar).append(p).toString();
             }
         }
         return path;

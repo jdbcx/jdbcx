@@ -43,7 +43,8 @@ public class ExpandedUrlClassLoaderTest {
             Files.copy(in, localFile, StandardCopyOption.REPLACE_EXISTING);
         }
         // load class from specific file in local file system
-        try (ExpandedUrlClassLoader customLoader = new ExpandedUrlClassLoader(loader, localFile.toFile().getAbsolutePath())) {
+        try (ExpandedUrlClassLoader customLoader = new ExpandedUrlClassLoader(loader,
+                localFile.toFile().getAbsolutePath())) {
             Assert.assertNotNull(customLoader.loadClass(classToLoad));
         }
         // load class from local directory

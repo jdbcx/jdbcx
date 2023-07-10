@@ -53,7 +53,6 @@ public final class Constants {
     public static final String CURRENT_DIR;
     public static final String HOME_DIR;
     public static final String FILE_ENCODING;
-    public static final String FILE_SEPARATOR;
 
     static {
         final String osName = System.getProperty("os.name", "");
@@ -69,7 +68,6 @@ public final class Constants {
         HOME_DIR = System.getProperty("user.home");
 
         FILE_ENCODING = System.getProperty("file.encoding", DEFAULT_CHARSET.name());
-        FILE_SEPARATOR = System.getProperty("file.separator");
     }
 
     private Constants() {

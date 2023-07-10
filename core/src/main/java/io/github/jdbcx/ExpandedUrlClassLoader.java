@@ -57,7 +57,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                 s = s.substring(1);
             }
             if (s.startsWith("~/")) {
-                s = System.getProperty("user.home", "") + s.substring(1);
+                s = Constants.HOME_DIR.concat(s.substring(1));
             }
             URL url = null;
             try {
@@ -65,7 +65,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
             } catch (MalformedURLException e) {
                 // might be a local path?
                 try {
-                    URL tmp = Paths.get(s).normalize().toFile().toURI().toURL();
+                    URL tmp = Paths.get(s).normalize().toUri().toURL();
                     if (cache.add(tmp.toString())) {
                         url = tmp;
                     }

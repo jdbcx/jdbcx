@@ -22,7 +22,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -41,6 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.impl.DefaultDriverExtension;
@@ -140,7 +140,6 @@ public class WrappedDriver implements Driver, DriverAction {
     }
 
     private final AtomicReference<Driver> cache = new AtomicReference<>(null);
-    private final AtomicReference<Properties> config = new AtomicReference<>(null);
     private final AtomicReference<URLClassLoader> loader = new AtomicReference<>(null);
 
     private void closeUrlClassLoader(URLClassLoader loader) {
@@ -154,30 +153,24 @@ public class WrappedDriver implements Driver, DriverAction {
     }
 
     Properties loadDefaultConfig(String fileName) {
-        Properties defaultConfig = config.get();
-        if (defaultConfig == null) {
-            defaultConfig = new Properties();
-            if (Checker.isNullOrEmpty(fileName)) {
-                log.debug("No default config file specified");
-            } else {
-                Path path = Paths.get(fileName);
-                if (!path.isAbsolute()) {
-                    path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
-                }
-                File file = path.toFile();
-                if (file.exists() && file.canRead()) {
-                    try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
-                        defaultConfig.load(reader);
-                        log.debug("Loaded default config from file \"%s\".", fileName);
-                    } catch (IOException e) {
-                        log.warn("Failed to load default config from file \"%s\"", fileName, e);
-                    }
-                } else {
-                    log.debug("Skip loading default config as file \"%s\" is not accessible.", fileName);
-                }
+        Properties defaultConfig = new Properties();
+        if (Checker.isNullOrEmpty(fileName)) {
+            log.debug("No default config file specified");
+        } else {
+            Path path = Paths.get(fileName);
+            if (!path.isAbsolute()) {
+                path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
             }
-            if (!config.compareAndSet(null, defaultConfig)) {
-                defaultConfig = config.get();
+            File file = path.toFile();
+            if (file.exists() && file.canRead()) {
+                try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
+                    defaultConfig.load(reader);
+                    log.debug("Loaded default config from file \"%s\".", fileName);
+                } catch (IOException e) {
+                    log.warn("Failed to load default config from file \"%s\"", fileName, e);
+                }
+            } else {
+                log.debug("Skip loading default config as file \"%s\" is not accessible.", fileName);
             }
         }
         return defaultConfig;
@@ -198,16 +191,22 @@ public class WrappedDriver implements Driver, DriverAction {
                 Option.CONFIG_PATH.getDefaultValue());
         Properties defaultConfig = loadDefaultConfig(Utils.normalizePath(configPath));
         if (!defaultConfig.isEmpty()) {
-            Properties newProps = new Properties(defaultConfig);
-            newProps.putAll(properties);
-            properties = newProps;
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                String name = (String) entry.getKey();
+                String value = (String) entry.getValue();
+                if (name.startsWith(PROPERTY_PREFIX) && value.isEmpty()) {
+                    continue;
+                }
+                defaultConfig.setProperty(name, value);
+            }
+            properties = defaultConfig;
         }
         Properties props = DefaultDriverExtension.getInstance().getDefaultConfig();
         for (String key : props.stringPropertyNames()) {
             String name = PROPERTY_PREFIX.concat(key);
             String value = properties.getProperty(name);
             if (value != null) {
-                props.put(key, value);
+                props.setProperty(key, value);
             }
         }
 
@@ -219,7 +218,7 @@ public class WrappedDriver implements Driver, DriverAction {
                 String name = prefix.concat(key);
                 String value = properties.getProperty(name);
                 if (value != null) {
-                    p.put(key, value);
+                    p.setProperty(key, value);
                 }
             }
 
@@ -270,8 +269,8 @@ public class WrappedDriver implements Driver, DriverAction {
         Driver d = cache.get();
         URLClassLoader l = this.loader.get();
         if (d == null || !d.acceptsURL(url)) {
-            String customClassPath = Utils.getPath(Option.CUSTOM_CLASSPATH.getValue(props), false).toString();
-            if (customClassPath != null && !customClassPath.isEmpty()) {
+            String customClassPath = Utils.normalizePath(Option.CUSTOM_CLASSPATH.getValue(props));
+            if (!Checker.isNullOrEmpty(customClassPath)) {
                 if (!(l instanceof ExpandedUrlClassLoader)
                         || !((ExpandedUrlClassLoader) l).getOriginalUrls().equals(customClassPath)) {
                     closeUrlClassLoader(l);
@@ -354,7 +353,6 @@ public class WrappedDriver implements Driver, DriverAction {
         DriverExtension extension = getDriverExtension(url);
         String actualUrl = normalizeUrl(extension, url);
         Properties props = extractExtendedProperties(extension, info);
-
         return new WrappedConnection(extension, getActualDriver(actualUrl, props).connect(actualUrl, info), actualUrl,
                 props);
     }
