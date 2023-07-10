@@ -16,9 +16,14 @@
 package io.github.jdbcx.script;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 import io.github.jdbcx.CommandLine;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Utils;
 
 public final class ScriptHelper {
@@ -28,20 +33,70 @@ public final class ScriptHelper {
         return instance;
     }
 
-    public String cli(String command, String... args) throws IOException {
-        return new CommandLine(command, false, new Properties()).execute(args);
+    public String cli(Object obj, Object... more) throws IOException {
+        if (obj == null) {
+            return Constants.EMPTY_STRING;
+        }
+        String[] args;
+        if (more == null) {
+            args = Constants.EMPTY_STRING_ARRAY;
+        } else {
+            int len = more.length;
+            args = new String[len];
+            for (int i = 0; i < len; i++) {
+                Object o = more[i];
+                args[i] = o != null ? o.toString() : Constants.EMPTY_STRING;
+            }
+        }
+        return new CommandLine(obj.toString(), false, new Properties()).execute(args);
     }
 
-    public String escapeSingleQuote(String str) {
-        return Utils.escape(str, '\'');
+    public String escapeSingleQuote(Object obj) {
+        if (obj == null) {
+            return Constants.EMPTY_STRING;
+        }
+        return Utils.escape(obj.toString(), '\'');
     }
 
-    public String escapeDoubleQuote(String str) {
-        return Utils.escape(str, '"');
+    public String escapeDoubleQuote(Object obj) {
+        if (obj == null) {
+            return Constants.EMPTY_STRING;
+        }
+        return Utils.escape(obj.toString(), '"');
     }
 
-    public String format(String template, Object... args) {
-        return Utils.format(template, args);
+    public String format(Object obj, Object... args) {
+        if (obj == null) {
+            return Constants.EMPTY_STRING;
+        }
+        return Utils.format(obj.toString(), args);
+    }
+
+    public String shell(Object... more) throws IOException {
+        return cli(Constants.IS_WINDOWS ? "cmd /c" : "sh -c", more);
+    }
+
+    public String load(Object obj) throws IOException {
+        if (obj == null) {
+            return Constants.EMPTY_STRING;
+        }
+
+        final URL url;
+        if (obj instanceof URL) {
+            url = (URL) obj;
+        } else if (obj instanceof URI) {
+            url = ((URI) obj).toURL();
+        } else {
+            String s = obj.toString();
+            if (s.indexOf("://") != -1) {
+                url = new URL(s);
+            } else {
+                Path p = Paths.get(Utils.normalizePath(s));
+                url = p.toUri().toURL();
+            }
+        }
+
+        return Utils.readAllAsString(url.openStream());
     }
 
     // TODO additional methods to simplify execution of sql, prql, script, and web

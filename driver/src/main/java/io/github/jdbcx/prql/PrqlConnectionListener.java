@@ -54,7 +54,7 @@ final class PrqlConnectionListener implements ConnectionListener {
     public String onQuery(String query) throws SQLException {
         try {
             final String sql;
-            ByteArrayOutputStream out = new ByteArrayOutputStream(2048);
+            ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE);
             String[] args = Checker.isNullOrEmpty(compileTarget) ? new String[] { "compile" }
                     : new String[] { "compile", "-t", compileTarget };
             int exitCode = cli.execute(cli.getDefaultTimeout(), cli.getDefaultWorkDirectory(), query,

@@ -166,7 +166,7 @@ public class WrappedDriver implements Driver, DriverAction {
                 }
                 File file = path.toFile();
                 if (file.exists() && file.canRead()) {
-                    try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                    try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
                         defaultConfig.load(reader);
                         log.debug("Loaded default config from file \"%s\".", fileName);
                     } catch (IOException e) {
@@ -191,55 +191,51 @@ public class WrappedDriver implements Driver, DriverAction {
      * @return non-null properties
      */
     protected Properties extractExtendedProperties(DriverExtension extension, Properties properties) {
-        if (extension == null) {
-            return new Properties();
+        if (properties == null) {
+            properties = new Properties();
+        }
+        String configPath = properties.getProperty(PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
+                Option.CONFIG_PATH.getDefaultValue());
+        Properties defaultConfig = loadDefaultConfig(Utils.normalizePath(configPath));
+        if (!defaultConfig.isEmpty()) {
+            Properties newProps = new Properties(defaultConfig);
+            newProps.putAll(properties);
+            properties = newProps;
+        }
+        Properties props = DefaultDriverExtension.getInstance().getDefaultConfig();
+        for (String key : props.stringPropertyNames()) {
+            String name = PROPERTY_PREFIX.concat(key);
+            String value = properties.getProperty(name);
+            if (value != null) {
+                props.put(key, value);
+            }
         }
 
-        Properties props = DefaultDriverExtension.getInstance().getDefaultConfig();
-        if (properties != null && !properties.isEmpty()) {
-            String configPath = properties.getProperty(PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
-                    Option.CONFIG_PATH.getDefaultValue());
-            Properties defaultConfig = loadDefaultConfig(Utils.normalizePath(configPath));
-            if (!defaultConfig.isEmpty()) {
-                Properties newProps = new Properties(defaultConfig);
-                newProps.putAll(properties);
-                properties = newProps;
-            }
-
-            for (String key : props.stringPropertyNames()) {
-                String name = PROPERTY_PREFIX.concat(key);
+        if (extension != DefaultDriverExtension.getInstance()) {
+            Properties p = extension.getDefaultConfig();
+            final String prefix = new StringBuilder(PROPERTY_PREFIX).append(getExtensionName(extension)).append('.')
+                    .toString();
+            for (String key : p.stringPropertyNames()) {
+                String name = prefix.concat(key);
                 String value = properties.getProperty(name);
                 if (value != null) {
-                    props.put(key, value);
+                    p.put(key, value);
                 }
             }
 
-            if (extension != DefaultDriverExtension.getInstance()) {
-                Properties p = extension.getDefaultConfig();
-                final String prefix = new StringBuilder(PROPERTY_PREFIX).append(getExtensionName(extension)).append('.')
-                        .toString();
-                for (String key : p.stringPropertyNames()) {
-                    String name = prefix.concat(key);
-                    String value = properties.getProperty(name);
-                    if (value != null) {
-                        p.put(key, value);
-                    }
-                }
-
-                props.putAll(p);
-            }
-        } else if (extension != DefaultDriverExtension.getInstance()) {
-            props.putAll(extension.getDefaultConfig());
+            props.putAll(p);
         }
         return props;
     }
 
     protected DriverExtension getDriverExtension(String url) {
         DriverExtension extension = null;
-        int index = url.indexOf(':', JDBCX_PREFIX.length());
-        if (index > 0) {
-            String extName = url.substring(JDBCX_PREFIX.length(), index);
-            extension = extensions.get(extName);
+        if (url != null) {
+            int index = url.indexOf(':', JDBCX_PREFIX.length());
+            if (index > 0) {
+                String extName = url.substring(JDBCX_PREFIX.length(), index);
+                extension = extensions.get(extName);
+            }
         }
         return extension != null ? extension : DefaultDriverExtension.getInstance();
     }
@@ -267,6 +263,10 @@ public class WrappedDriver implements Driver, DriverAction {
      * @throws SQLException when failed to get the actual driver
      */
     protected Driver getActualDriver(String url, Properties props) throws SQLException {
+        if (Checker.isNullOrBlank(url)) {
+            return new InvalidDriver(props);
+        }
+
         Driver d = cache.get();
         URLClassLoader l = this.loader.get();
         if (d == null || !d.acceptsURL(url)) {

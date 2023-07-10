@@ -61,9 +61,9 @@ public class CommandLine {
     public static final Option OPTION_DOCKER_IMAGE = Option.of("docker_image",
             "Docker image to use, leave it empty if you don't want to use Docker or Podman", "");
     public static final Option OPTION_INPUT_CHARSET = Option.of("input.charset", "Charset used for command line input",
-            "utf-8");
+            Constants.DEFAULT_CHARSET.name());
     public static final Option OPTION_OUTPUT_CHARSET = Option.of("output.charset",
-            "Charset used for command line output", "utf-8");
+            "Charset used for command line output", Constants.DEFAULT_CHARSET.name());
     public static final Option OPTION_WORK_DIRECTORY = Option.of("work.dir",
             "Work directory, leave it empty to use current directory", "");
 
@@ -163,9 +163,9 @@ public class CommandLine {
         String[] testArgs = CommandLine.toArray(OPTION_CLI_TEST_ARGS.getValue(props));
 
         this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
-                : StandardCharsets.UTF_8;
+                : Constants.DEFAULT_CHARSET;
         this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
-                : StandardCharsets.UTF_8;
+                : Constants.DEFAULT_CHARSET;
 
         this.defaultTimeout = Integer.parseInt(timeout);
 
@@ -234,9 +234,9 @@ public class CommandLine {
     }
 
     public String execute(String... args) throws IOException {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream(2048)) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
             execute(defaultTimeout, defaultWorkDir, null, defaultInputCharset, out, defaultOutputCharset, args);
-            return new String(out.toByteArray(), StandardCharsets.UTF_8);
+            return new String(out.toByteArray(), Constants.DEFAULT_CHARSET);
         }
     }
 
@@ -298,7 +298,7 @@ public class CommandLine {
             try (OutputStream out = p.getOutputStream()) {
                 if (input instanceof InputStream) {
                     try (InputStream in = (InputStream) input) {
-                        byte[] bytes = new byte[2048];
+                        byte[] bytes = new byte[Constants.DEFAULT_BUFFER_SIZE];
                         int len = 0;
                         while ((len = in.read(bytes)) != -1) {
                             out.write(bytes, 0, len);
@@ -333,7 +333,7 @@ public class CommandLine {
             try (InputStream in = p.getInputStream()) {
                 if (output instanceof OutputStream) {
                     try (OutputStream out = (OutputStream) output) {
-                        byte[] bytes = new byte[2048];
+                        byte[] bytes = new byte[Constants.DEFAULT_BUFFER_SIZE];
                         int len = 0;
                         while ((len = in.read(bytes)) != -1) {
                             out.write(bytes, 0, len);
@@ -383,7 +383,7 @@ public class CommandLine {
             }
 
             if (stdErr != null) {
-                byte[] bytes = new byte[2048];
+                byte[] bytes = new byte[Constants.DEFAULT_BUFFER_SIZE];
                 try (InputStream in = stdErr; ByteArrayOutputStream out = new ByteArrayOutputStream(bytes.length)) {
                     int len = 0;
                     while ((len = in.read(bytes)) != -1) {
@@ -392,11 +392,11 @@ public class CommandLine {
 
                     if (out.size() > 0) {
                         if (exitValue != 0) {
-                            throw new IOException(new String(out.toByteArray(), StandardCharsets.UTF_8));
+                            throw new IOException(new String(out.toByteArray(), Constants.DEFAULT_CHARSET));
                         } else {
                             log.debug(
                                     "The command line executed successfully, and the following output was captured in STDERR.\n",
-                                    new String(out.toByteArray(), StandardCharsets.UTF_8));
+                                    new String(out.toByteArray(), Constants.DEFAULT_CHARSET));
                         }
                     }
                 }

@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,7 +28,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -69,11 +69,6 @@ import java.util.function.UnaryOperator;
  * methods.
  */
 public final class Utils {
-    /**
-     * Default charset.
-     */
-    public static final String DEFAULT_CHARSET = StandardCharsets.UTF_8.name();
-
     public static final int MIN_CORE_THREADS = 4;
 
     public static final String VARIABLE_PREFIX = "{{";
@@ -94,7 +89,27 @@ public final class Utils {
         return service;
     }
 
-    static String normalizePath(String path) {
+    static Path getPath(String path, boolean normalize) {
+        if (path.startsWith("~/")) {
+            return Paths.get(System.getProperty("user.home"), path.substring(2)).normalize();
+        }
+
+        return normalize ? Paths.get(path).toAbsolutePath().normalize() : Paths.get(path);
+    }
+
+    public static String readAllAsString(InputStream input) throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE);
+                InputStream in = input) {
+            byte[] bytes = new byte[Constants.DEFAULT_BUFFER_SIZE];
+            int len = 0;
+            while ((len = in.read(bytes)) != -1) {
+                out.write(bytes, 0, len);
+            }
+            return new String(out.toByteArray(), Constants.DEFAULT_CHARSET);
+        }
+    }
+
+    public static String normalizePath(String path) {
         if (path == null || path.isEmpty()) {
             return Constants.EMPTY_STRING;
         } else if (path.startsWith("~/")) {
@@ -106,14 +121,6 @@ public final class Utils {
             }
         }
         return path;
-    }
-
-    static Path getPath(String path, boolean normalize) {
-        if (path.startsWith("~/")) {
-            return Paths.get(System.getProperty("user.home"), path.substring(2)).normalize();
-        }
-
-        return normalize ? Paths.get(path).toAbsolutePath().normalize() : Paths.get(path);
     }
 
     public static String applyVariables(String template, UnaryOperator<String> applyFunc) {
@@ -223,18 +230,18 @@ public final class Utils {
 
     /**
      * Decode given string using {@link URLDecoder} and
-     * {@link StandardCharsets#UTF_8}.
+     * {@link Constants#DEFAULT_CHARSET}.
      *
      * @param encodedString encoded string
      * @return non-null decoded string
      */
     public static String decode(String encodedString) {
         if (Checker.isNullOrEmpty(encodedString)) {
-            return "";
+            return Constants.EMPTY_STRING;
         }
 
         try {
-            return URLDecoder.decode(encodedString, DEFAULT_CHARSET);
+            return URLDecoder.decode(encodedString, Constants.DEFAULT_CHARSET.name());
         } catch (UnsupportedEncodingException e) {
             return encodedString;
         }
@@ -242,7 +249,7 @@ public final class Utils {
 
     /**
      * Encode given string using {@link URLEncoder} and
-     * {@link StandardCharsets#UTF_8}.
+     * {@link Constants#DEFAULT_CHARSET}.
      *
      * @param str string to encode
      * @return non-null encoded string
@@ -253,7 +260,7 @@ public final class Utils {
         }
 
         try {
-            return URLEncoder.encode(str, DEFAULT_CHARSET);
+            return URLEncoder.encode(str, Constants.DEFAULT_CHARSET.name());
         } catch (UnsupportedEncodingException e) {
             return str;
         }

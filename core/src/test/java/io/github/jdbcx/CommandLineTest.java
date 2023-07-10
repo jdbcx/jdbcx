@@ -110,7 +110,7 @@ public class CommandLineTest {
         Assert.assertThrows(IOException.class,
                 () -> new CommandLine("wsl -- echo", true, newProperties(null, null, 0, null, null, null))
                         .execute("|"));
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream(2048)) {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
             CommandLine prqlc = new CommandLine("wsl -- /home/zhicwu/.cargo/bin/prqlc", true,
                     newProperties(null, null, 0, null, null, null, "-V"));
             prqlc.execute(3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");

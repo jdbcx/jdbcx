@@ -15,11 +15,9 @@
  */
 package io.github.jdbcx;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -78,24 +76,11 @@ public final class Main {
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
     }
 
-    private static String readAllFromFile(String file) throws IOException {
-        final int bufferSize = 2048;
-        try (FileInputStream in = new FileInputStream(Utils.getPath(file, false).toFile());
-                ByteArrayOutputStream out = new ByteArrayOutputStream(bufferSize);) {
-            byte[] bytes = new byte[bufferSize];
-            int len = 0;
-            while ((len = in.read(bytes)) != -1) {
-                out.write(bytes, 0, len);
-            }
-            return new String(out.toByteArray(), StandardCharsets.UTF_8);
-        }
-    }
-
     static long execute(String url, String fileOrQuery, Properties config) throws IOException, SQLException {
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
             return 0L;
         } else if (fileOrQuery.charAt(0) == '@') {
-            fileOrQuery = readAllFromFile(fileOrQuery.substring(1));
+            fileOrQuery = Utils.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
         try (Connection conn = DriverManager.getConnection(url, config.isEmpty() ? System.getProperties() : config);

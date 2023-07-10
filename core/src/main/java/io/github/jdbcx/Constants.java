@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -43,6 +44,9 @@ public final class Constants {
     public static final String INF_EXPR = "Inf";
     public static final String NINF_EXPR = "-Inf";
 
+    public static final int DEFAULT_BUFFER_SIZE = 2048;
+    public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+
     public static final boolean IS_UNIX;
     public static final boolean IS_WINDOWS;
 
@@ -64,7 +68,7 @@ public final class Constants {
         CURRENT_DIR = System.getProperty("user.dir");
         HOME_DIR = System.getProperty("user.home");
 
-        FILE_ENCODING = System.getProperty("file.encoding", StandardCharsets.UTF_8.name());
+        FILE_ENCODING = System.getProperty("file.encoding", DEFAULT_CHARSET.name());
         FILE_SEPARATOR = System.getProperty("file.separator");
     }
 
