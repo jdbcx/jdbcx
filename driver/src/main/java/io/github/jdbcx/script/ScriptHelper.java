@@ -16,8 +16,10 @@
 package io.github.jdbcx.script;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
@@ -76,7 +78,7 @@ public final class ScriptHelper {
         return cli(Constants.IS_WINDOWS ? "cmd /c" : "sh -c", more);
     }
 
-    public String load(Object obj) throws IOException {
+    public String read(Object obj) throws IOException {
         if (obj == null) {
             return Constants.EMPTY_STRING;
         }
@@ -88,12 +90,13 @@ public final class ScriptHelper {
             url = ((URI) obj).toURL();
         } else {
             String s = obj.toString();
-            if (s.indexOf("://") != -1) {
-                url = new URL(s);
-            } else {
-                Path p = Paths.get(Utils.normalizePath(s));
-                url = p.toUri().toURL();
+            URL u = null;
+            try {
+                u = new URL(s);
+            } catch (MalformedURLException e) {
+                // ignore
             }
+            url = u != null ? u : Paths.get(Utils.normalizePath(s)).toUri().toURL();
         }
 
         return Utils.readAllAsString(url.openStream());
