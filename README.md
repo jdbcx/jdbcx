@@ -85,3 +85,28 @@ Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165),
 
 2. `Database` -> `New Database Connection` -> select `JDBCX` and click `Next` -> specify `URL` and switch to `Driver Properties` tab to make changes as needed
    ![image](https://user-images.githubusercontent.com/4270380/251389733-52d8318c-f00a-4f37-8635-72388c91130d.png)
+
+## Performance
+
+### Test Environment
+* JDK: openjdk version "17.0.7" 2023-04-18
+* Tool: Apache JMeter 5.6.2
+* Database: ClickHouse 22.8
+* JDBC Driver: clickhouse-jdbc v0.4.6
+
+### Test Configuration
+* Concurrent Users: 20
+* Loop Count: 1000
+* Connection Pool:
+  - Size: 30
+  - Init SQL and Validation Query are identical
+
+### Test Results
+
+| Connection | Init SQL | Test Query | Avg Response Time (ms) | Max Response Time (ms) | Throughput (qps) |
+| ---------- | -------- | ---------- | ---------------------- | ---------------------- | ---------------- |
+| `jdbc:ch` | select * from system.numbers limit 1 | select * from system.numbers limit 50000 | 69 | 815 | 279.87 |
+| `jdbcx:ch` | select * from system.numbers limit 1 | select * from system.numbers limit 50000 | 71 | 891 | 272.99 |
+| `jdbcx:script:ch` | 'select * from system.numbers limit 1' | 'select * from system.numbers limit ' + 50000 | 72 | 1251 | 270.65 |
+| `jdbcx:shell:ch` | echo 'select * from system.numbers limit 1' | echo 'select * from system.numbers limit 50000' | 91 | 650 | 214.45 |
+| `jdbcx:prql:ch` | from \`system.numbers\` \| take 1 | from \`system.numbers\` \| take 50000 | 106 | 1103 | 184.27 |
