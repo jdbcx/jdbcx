@@ -35,6 +35,8 @@ import java.util.Set;
  * support for loading classes from local directories.
  */
 public final class ExpandedUrlClassLoader extends URLClassLoader {
+    private static final Logger log = LoggerFactory.getLogger(ExpandedUrlClassLoader.class);
+
     static final String PROTOCOL_FILE = "file";
     static final String FILE_URL_PREFIX = PROTOCOL_FILE + ":///";
     static final String DRIVER_EXTENSION = ".jar";
@@ -66,11 +68,13 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                 // might be a local path?
                 try {
                     URL tmp = Paths.get(s).normalize().toUri().toURL();
-                    if (cache.add(tmp.toString())) {
+                    if (cache.add(s = tmp.toString())) {
                         url = tmp;
                     }
-                } catch (InvalidPathException | MalformedURLException exp) {
-                    // ignore
+                } catch (InvalidPathException exp) {
+                    log.warn("Skip invalid path [%s]", s);
+                } catch (MalformedURLException exp) {
+                    log.warn("Skip malformed URL [%s]", s);
                 }
             }
 
@@ -83,8 +87,12 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                 Path path = null;
                 try {
                     path = Paths.get(url.toURI());
-                } catch (InvalidPathException | URISyntaxException e) {
+                } catch (URISyntaxException e) {
                     isValid = false;
+                    log.warn("Skip invalid URL [%s]", url);
+                } catch (InvalidPathException e) {
+                    isValid = false;
+                    log.warn("Skip invalid path [%s]", url);
                 }
 
                 if (path != null && Files.isDirectory(path)) {
@@ -106,8 +114,10 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                                 try {
                                     list.add(new URL(file));
                                 } catch (MalformedURLException e) {
-                                    // ignore
+                                    log.warn("Skip invalid file [%s]", file);
                                 }
+                            } else {
+                                log.warn("Discard duplicated file [%s]", file);
                             }
                         }
                     }
@@ -119,7 +129,9 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
             }
         }
 
-        list.removeAll(negativeSet);
+        if (list.removeAll(negativeSet)) {
+            log.debug("Excluded URLs: %s", negativeSet);
+        }
 
         return list.toArray(new URL[0]);
     }
@@ -146,19 +158,30 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
         return loader;
     }
 
+    private final Class<?> caller;
     private final String originalUrls;
 
     public ExpandedUrlClassLoader(Class<?> callerClass, String urls) {
-        this(getSuitableClassLoader(callerClass), urls);
+        super(expandURLs(urls), getSuitableClassLoader(callerClass));
+
+        this.caller = callerClass;
+        this.originalUrls = urls;
     }
 
     public ExpandedUrlClassLoader(ClassLoader parent, String urls) {
         super(expandURLs(urls), parent == null ? ExpandedUrlClassLoader.class.getClassLoader() : parent);
 
+        this.caller = parent == null ? ExpandedUrlClassLoader.class : parent.getClass();
         this.originalUrls = urls;
     }
 
     public String getOriginalUrls() {
         return originalUrls;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(super.toString()).append("(caller=").append(caller).append(",url=")
+                .append(originalUrls).append(')').toString();
     }
 }

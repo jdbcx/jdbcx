@@ -39,7 +39,7 @@ final class ScriptConnectionListener implements ConnectionListener {
     final Scripting script;
     final List<Option> options;
 
-    ScriptConnectionListener(Connection conn, Properties config) {
+    ScriptConnectionListener(Connection conn, Properties config, ClassLoader loader) {
         String varConn = OPTION_VAR_CONNECT.getValue(config);
         String varHelper = OPTION_VAR_HELPER.getValue(config);
 
@@ -50,7 +50,7 @@ final class ScriptConnectionListener implements ConnectionListener {
         if (!Checker.isNullOrEmpty(varHelper)) {
             vars.put(varHelper, ScriptHelper.getInstance());
         }
-        script = new Scripting(Scripting.OPTION_LANGUAGE.getValue(config), config, vars);
+        script = new Scripting(Scripting.OPTION_LANGUAGE.getValue(config), config, vars, loader);
 
         List<Option> list = new ArrayList<>();
         list.add(Scripting.OPTION_LANGUAGE.update().choices(script.getSupportedLanguages()).build());

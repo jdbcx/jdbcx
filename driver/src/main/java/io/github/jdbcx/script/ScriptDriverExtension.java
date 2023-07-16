@@ -27,12 +27,19 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.Scripting;
 
 public class ScriptDriverExtension implements DriverExtension {
+    private final ClassLoader loader;
+
+    public ScriptDriverExtension() {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        this.loader = contextClassLoader != null ? contextClassLoader : getClass().getClassLoader();
+    }
+
     @Override
     public List<Option> getOptions(Properties props) {
         List<Option> list = new ArrayList<>();
-        list.add(Scripting.OPTION_ERROR);
+        list.add(Option.EXEC_ERROR);
         list.add(Scripting.OPTION_LANGUAGE.update()
-                .choices(new Scripting(Scripting.OPTION_LANGUAGE.getDefaultValue(), props, false, null)
+                .choices(new Scripting(Scripting.OPTION_LANGUAGE.getDefaultValue(), props, false, null, loader)
                         .getSupportedLanguages())
                 .build());
         list.add(Scripting.OPTION_BINDING_ERROR);
@@ -43,6 +50,6 @@ public class ScriptDriverExtension implements DriverExtension {
 
     @Override
     public ConnectionListener createListener(Connection conn, String url, Properties props) {
-        return new ScriptConnectionListener(conn, getConfig(props));
+        return new ScriptConnectionListener(conn, getConfig(props), loader);
     }
 }

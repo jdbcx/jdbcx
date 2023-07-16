@@ -34,9 +34,6 @@ public class Scripting {
 
     public static final String DEFAULT_SCRIPT_LANGUAGE = "javascript";
 
-    public static final Option OPTION_ERROR = Option
-            .of(new String[] { "error", "The approach to handle script execution error", Option.ERROR_HANDLING_IGNORE,
-                    Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
     public static final Option OPTION_LANGUAGE = Option
             .of(new String[] { "language", "Scripting language", DEFAULT_SCRIPT_LANGUAGE });
     public static final Option OPTION_BINDING_ERROR = Option
@@ -52,20 +49,19 @@ public class Scripting {
     private final String errorHandling;
 
     public Scripting(String defaultLanguage, Properties props, Map<String, Object> vars) {
-        this(defaultLanguage, props, true, vars);
+        this(defaultLanguage, props, true, vars, null);
     }
 
-    public Scripting(String defaultLanguage, Properties props, boolean validate, Map<String, Object> vars) {
-        final String customClasspath = Option.CUSTOM_CLASSPATH.getValue(props);
-        if (Checker.isNullOrEmpty(customClasspath)) {
-            this.manager = new ScriptEngineManager(Scripting.class.getClassLoader());
-        } else {
-            this.manager = new ScriptEngineManager(
-                    new ExpandedUrlClassLoader(Scripting.class, customClasspath));
-        }
+    public Scripting(String defaultLanguage, Properties props, Map<String, Object> vars, ClassLoader loader) {
+        this(defaultLanguage, props, true, vars, loader);
+    }
+
+    public Scripting(String defaultLanguage, Properties props, boolean validate, Map<String, Object> vars,
+            ClassLoader loader) {
+        this.manager = new ScriptEngineManager(loader != null ? loader : Scripting.class.getClassLoader());
 
         this.ignoreBindingError = !OPTION_BINDING_ERROR.getDefaultValue().equals(OPTION_BINDING_ERROR.getValue(props));
-        this.errorHandling = OPTION_ERROR.getValue(props);
+        this.errorHandling = Option.EXEC_ERROR.getValue(props);
 
         Set<String> langs = new LinkedHashSet<>();
         for (ScriptEngineFactory factory : this.manager.getEngineFactories()) {
@@ -78,7 +74,8 @@ public class Scripting {
 
         if (validate) {
             if (langs.isEmpty()) {
-                throw new IllegalArgumentException("No script language detected in classpath.");
+                throw new IllegalArgumentException(
+                        Utils.format("No script language detected in classpath(loader=%s).", loader));
             } else if (!langs.contains(defaultLanguage)) {
                 throw new IllegalArgumentException(Utils.format(
                         "Scripting language \"%s\" is not supported. Available options are %s.",

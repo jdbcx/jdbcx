@@ -27,7 +27,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -48,8 +47,6 @@ public class CommandLine {
 
     private static final Map<String, Boolean> cache = Collections.synchronizedMap(new WeakHashMap<>(8));
 
-    public static final Option OPTION_CLI_ERROR = Option.of(new String[] { "cli.error", "The approach to handle error",
-            Option.ERROR_HANDLING_IGNORE, Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
     public static final Option OPTION_CLI_PATH = Option.of("cli.path", "Command line, for examples: ", "");
     public static final Option OPTION_CLI_TIMEOUT = Option.of("cli.timeout",
             "Command line timeout in milliseconds, a negative number or zero disables timeout", "0");
@@ -198,7 +195,7 @@ public class CommandLine {
             this.command = Collections.unmodifiableList(Arrays.asList(dockerCli, "--rm", "-i", dockerImage, command));
         }
 
-        this.errorHandling = OPTION_CLI_ERROR.getValue(props);
+        this.errorHandling = Option.EXEC_ERROR.getValue(props);
     }
 
     public List<String> getCommand() {

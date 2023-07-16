@@ -53,9 +53,15 @@ public final class Option implements Serializable {
     public static final Option CONFIG_PATH = Option
             .of(new String[] { "config.path", "Path to config file", "~/.jdbcx/config.properties" });
     /**
-     * Custom classpath using {@link ExpandedUrlClassLoader}.
+     * Custom classpath for {@link ExpandedUrlClassLoader} to load classes.
      */
     public static final Option CUSTOM_CLASSPATH = Option.of(new String[] { "custom.classpath", "Custom classpath" });
+    /**
+     * The approach to handle execution error.
+     */
+    public static final Option EXEC_ERROR = Option
+            .of(new String[] { "exec.error", "The approach to handle execution error", ERROR_HANDLING_IGNORE,
+                    ERROR_HANDLING_THROW, ERROR_HANDLING_WARN });
 
     /**
      * The Builder class is used to construct options.

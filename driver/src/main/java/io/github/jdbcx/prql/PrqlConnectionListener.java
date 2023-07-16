@@ -31,9 +31,6 @@ final class PrqlConnectionListener implements ConnectionListener {
     static final String DEFAULT_COMMAND = "prqlc";
     static final boolean DEFAULT_FALLBACK = true;
 
-    public static final Option OPTION_COMPILE_ERROR = Option
-            .of(new String[] { "compile.error", "The approach to handle compile error", Option.ERROR_HANDLING_IGNORE,
-                    Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_WARN });
     static final Option OPTION_COMPILE_TARGET = Option.of(new String[] { "compile.target",
             "PRQL compile target without \"sql.\" prefix, empty string is same as \"any\"" });
 
@@ -43,7 +40,7 @@ final class PrqlConnectionListener implements ConnectionListener {
     private final String errorHandling;
 
     PrqlConnectionListener(Properties config) {
-        this.errorHandling = OPTION_COMPILE_ERROR.getValue(config);
+        this.errorHandling = Option.EXEC_ERROR.getValue(config);
         String target = OPTION_COMPILE_TARGET.getValue(config).toLowerCase(Locale.ROOT);
         this.compileTarget = Checker.isNullOrEmpty(target) || "any".equals(target) ? Constants.EMPTY_STRING
                 : "sql.".concat(target);

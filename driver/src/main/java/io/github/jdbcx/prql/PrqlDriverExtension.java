@@ -28,8 +28,7 @@ import io.github.jdbcx.Option;
 
 public class PrqlDriverExtension implements DriverExtension {
     private static final List<Option> options = Collections
-            .unmodifiableList(Arrays.asList(PrqlConnectionListener.OPTION_COMPILE_ERROR,
-                    PrqlConnectionListener.OPTION_COMPILE_TARGET,
+            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, PrqlConnectionListener.OPTION_COMPILE_TARGET,
                     CommandLine.OPTION_CLI_PATH.update().defaultValue(PrqlConnectionListener.DEFAULT_COMMAND).build(),
                     CommandLine.OPTION_CLI_TIMEOUT.update().defaultValue("5000").build(),
                     CommandLine.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
