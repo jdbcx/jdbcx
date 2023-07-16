@@ -27,7 +27,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Properties;
 
 public final class Main {
     private static void println() {
@@ -76,14 +75,14 @@ public final class Main {
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
     }
 
-    static long execute(String url, String fileOrQuery, Properties config) throws IOException, SQLException {
+    static long execute(String url, String fileOrQuery) throws IOException, SQLException {
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
             return 0L;
         } else if (fileOrQuery.charAt(0) == '@') {
             fileOrQuery = Utils.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, config.isEmpty() ? System.getProperties() : config);
+        try (Connection conn = DriverManager.getConnection(url, System.getProperties());
                 Statement stmt = conn.createStatement()) {
             long rows = 0L;
             if (stmt.execute(fileOrQuery)) {
@@ -110,13 +109,8 @@ public final class Main {
             System.exit(0);
         }
 
-        String configPath = Option.CONFIG_PATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX);
-        Properties defaultConfig = new WrappedDriver().loadDefaultConfig(Utils.normalizePath(configPath));
-
         if (Checker.isNullOrEmpty(
-                defaultConfig.getProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX)))
-                && Checker.isNullOrEmpty(
-                        Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
+                Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
             System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
                     Constants.CURRENT_DIR);
         }
@@ -130,7 +124,7 @@ public final class Main {
         boolean failed = false;
         do {
             final long startTime = verbose ? System.nanoTime() : 0L;
-            final long rows = execute(url, fileOrQuery, defaultConfig);
+            final long rows = execute(url, fileOrQuery);
             if (verbose) {
                 long elapsedNanos = System.nanoTime() - startTime;
                 println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,

@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -106,6 +108,18 @@ public final class Utils {
                 out.write(bytes, 0, len);
             }
             return new String(out.toByteArray(), Constants.DEFAULT_CHARSET);
+        }
+    }
+
+    public static void writeAll(OutputStream output, Object input) throws IOException {
+        if (input instanceof InputStream) {
+            Stream.pipe((InputStream) input, output);
+        } else if (input instanceof File) {
+            Stream.pipe(new FileInputStream((File) input), output);
+        } else if (input instanceof Readable) {
+            Stream.pipe((Readable) input, new OutputStreamWriter(output, Constants.DEFAULT_CHARSET));
+        } else if (input != null) {
+            Stream.pipe(new ByteArrayInputStream(input.toString().getBytes(Constants.DEFAULT_CHARSET)), output);
         }
     }
 

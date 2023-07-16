@@ -22,17 +22,44 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.WrappedDriver.DriverInfo;
 import io.github.jdbcx.impl.BlackholeDriverExtension;
 import io.github.jdbcx.impl.DefaultDriverExtension;
 import io.github.jdbcx.prql.PrqlDriverExtension;
-import io.github.jdbcx.shell.ShellDriverExtension;
 
 public class WrappedDriverTest {
+    @Test(groups = { "unit" })
+    public void testAcceptsURL() throws SQLException {
+        final WrappedDriver d = new WrappedDriver();
+        Assert.assertFalse(d.acceptsURL(null), "Null URL should NOT be supported");
+        Assert.assertFalse(d.acceptsURL(""), "Empty URL should NOT be supported");
+        Assert.assertFalse(d.acceptsURL(" \t\r\n "), "Blank URL should NOT be supported");
+        Assert.assertFalse(d.acceptsURL("jdbc:"), "JDBC URL should NOT be supported");
+
+        Assert.assertTrue(d.acceptsURL("jdbcx:"), "JDBCX URL with only prefix should be supported");
+        Assert.assertTrue(d.acceptsURL("jdbcx:mysql"), "JDBCX URL should be supported");
+    }
+
+    @Test(groups = { "unit" })
+    public void testConnectURL() throws SQLException {
+        final WrappedDriver d = new WrappedDriver();
+        Assert.assertThrows(SQLException.class, () -> d.connect(null, null));
+        Assert.assertThrows(SQLException.class, () -> d.connect(null, new Properties()));
+        Assert.assertThrows(SQLException.class, () -> d.connect("", null));
+
+        try (Connection c = d.connect("jdbcx:derby:memory:x;create=true", null)) {
+            Assert.assertNotNull(c);
+        }
+    }
+
     @Test(groups = { "unit" })
     public void testCreate() {
         Properties props = new Properties();
@@ -69,29 +96,31 @@ public class WrappedDriverTest {
 
     @Test(groups = { "unit" })
     public void testGetDriverExtension() {
-        WrappedDriver d = new WrappedDriver();
-        Assert.assertNotNull(d.getDriverExtension(""));
-        Assert.assertTrue(d.getDriverExtension("1") == d.getDriverExtension("2"));
+        Assert.assertNotNull(DriverInfo.getDriverExtension("", null));
+        Assert.assertTrue(DriverInfo.getDriverExtension("1", null) == DriverInfo.getDriverExtension("2", null));
 
-        Assert.assertEquals(d.getDriverExtension("JDBCX:blackhole:mysql://localhost").getClass(),
+        Map<String, DriverExtension> extensions = new HashMap<>();
+        extensions.put("blackhole", new BlackholeDriverExtension());
+        extensions.put("prql", new PrqlDriverExtension());
+        Assert.assertEquals(DriverInfo.getDriverExtension("JDBCX:blackhole:mysql://localhost", extensions).getClass(),
                 BlackholeDriverExtension.class);
-        Assert.assertEquals(d.getDriverExtension("jdbcX:prql:mysql://localhost").getClass(), PrqlDriverExtension.class);
+        Assert.assertEquals(DriverInfo.getDriverExtension("jdbcX:prql:mysql://localhost", extensions).getClass(),
+                PrqlDriverExtension.class);
     }
 
     @Test(groups = { "unit" })
     public void testGetExtensionName() {
-        WrappedDriver d = new WrappedDriver();
-        Assert.assertEquals(d.getExtensionName(DefaultDriverExtension.getInstance()), "default");
-        Assert.assertEquals(d.getExtensionName(new BlackholeDriverExtension()), "blackhole");
-        Assert.assertEquals(d.getExtensionName(new PrqlDriverExtension()), "prql");
+        Assert.assertEquals(DriverInfo.getExtensionName(DefaultDriverExtension.getInstance()), "default");
+        Assert.assertEquals(DriverInfo.getExtensionName(new BlackholeDriverExtension()), "blackhole");
+        Assert.assertEquals(DriverInfo.getExtensionName(new PrqlDriverExtension()), "prql");
     }
 
     @Test(groups = { "unit" })
-    public void testNormalizeUrl() {
-        WrappedDriver d = new WrappedDriver();
-        Assert.assertEquals(d.normalizeUrl(DefaultDriverExtension.getInstance(), "jdbcx:mysql:localhost"),
+    public void testActualUrl() {
+        WrappedDriver driver = new WrappedDriver();
+        Assert.assertEquals(new DriverInfo(driver, "jdbcx:mysql:localhost", null).actualUrl,
                 "jdbc:mysql:localhost");
-        Assert.assertEquals(d.normalizeUrl(new BlackholeDriverExtension(), "jdbcx:blackhole:mysql:localhost"),
+        Assert.assertEquals(new DriverInfo(driver, "jdbcx:blackhole:mysql:localhost", null).actualUrl,
                 "jdbc:mysql:localhost");
     }
 
@@ -196,16 +225,15 @@ public class WrappedDriverTest {
 
     @Test(groups = { "unit" })
     public void testExtractExtendedProperties() {
+        WrappedDriver driver = new WrappedDriver();
         Properties props = new Properties();
-        WrappedDriver d = new WrappedDriver();
-        Assert.assertEquals(d.extractExtendedProperties(DefaultDriverExtension.getInstance(), props),
+        Assert.assertEquals(new DriverInfo(driver, null, props).extensionProps,
                 DefaultDriverExtension.getInstance().getDefaultConfig());
         props.setProperty("jdbcx.custom.classpath", "123");
-        Assert.assertEquals(d.extractExtendedProperties(DefaultDriverExtension.getInstance(), props)
-                .getProperty("custom.classpath"), "123");
+        Assert.assertEquals(new DriverInfo(driver, null, props).extensionProps.getProperty("custom.classpath"), "123");
 
         props.clear();
-        Assert.assertEquals(d.extractExtendedProperties(new PrqlDriverExtension(), props).size(),
+        Assert.assertEquals(new DriverInfo(driver, "jdbcx:prql:", props).extensionProps.size(),
                 DefaultDriverExtension.getInstance().getDefaultConfig().size()
                         + new PrqlDriverExtension().getDefaultConfig().size());
     }
@@ -215,10 +243,15 @@ public class WrappedDriverTest {
         Properties props = new Properties();
         props.setProperty("non-related", "");
         props.setProperty("jdbcx.config.path", "target/test-classes/test-config.properties");
-        WrappedDriver d = new WrappedDriver();
-        Properties extProps = d.extractExtendedProperties(new ShellDriverExtension(), props);
-        Assert.assertEquals(extProps.getProperty("custom.classpath"), "my-classpath");
-        extProps = d.extractExtendedProperties(new BlackholeDriverExtension(), props);
-        Assert.assertEquals(extProps.getProperty("custom.classpath"), "my-classpath");
+        WrappedDriver driver = new WrappedDriver();
+        for (Entry<String, DriverExtension> e : new DriverInfo(driver, null, props).getExtensions().entrySet()) {
+            Assert.assertEquals(
+                    DriverInfo.extractExtendedProperties(e.getValue(), props).getProperty("custom.classpath"), "");
+            DriverInfo d = new DriverInfo(driver, Utils.format("jdbcx:%s:", e.getKey()), props);
+            Assert.assertEquals(d.extensionProps.getProperty("custom.classpath"), "my-classpath");
+            for (Entry<Object, Object> p : props.entrySet()) {
+                Assert.assertEquals(d.normalizedInfo.get(p.getKey()), p.getValue());
+            }
+        }
     }
 }

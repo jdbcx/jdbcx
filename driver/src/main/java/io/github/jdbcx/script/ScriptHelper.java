@@ -16,13 +16,16 @@
 package io.github.jdbcx.script;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
+import java.net.URLConnection;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
 
 import io.github.jdbcx.CommandLine;
 import io.github.jdbcx.Constants;
@@ -79,6 +82,23 @@ public final class ScriptHelper {
     }
 
     public String read(Object obj) throws IOException {
+        return read(obj, 0L, 0L, null, null);
+    }
+
+    public String read(Object obj, long connectTimeout, long readTimeout) throws IOException {
+        return read(obj, connectTimeout, readTimeout, null, null);
+    }
+
+    public String read(Object obj, Object request) throws IOException {
+        return read(obj, 0L, 0L, request, null);
+    }
+
+    public String read(Object obj, Object request, Map<?, ?> headers) throws IOException {
+        return read(obj, 0L, 0L, request, headers);
+    }
+
+    public String read(Object obj, long connectTimeout, long readTimeout, Object request, Map<?, ?> headers)
+            throws IOException {
         if (obj == null) {
             return Constants.EMPTY_STRING;
         }
@@ -99,7 +119,48 @@ public final class ScriptHelper {
             url = u != null ? u : Paths.get(Utils.normalizePath(s)).toUri().toURL();
         }
 
-        return Utils.readAllAsString(url.openStream());
+        final URLConnection conn = url.openConnection();
+        try {
+            if (headers != null) {
+                for (Entry<?, ?> header : headers.entrySet()) {
+                    Object key = header.getKey();
+                    Object val = header.getValue();
+                    if (key != null && val != null) {
+                        conn.setRequestProperty(key.toString(), val.toString());
+                    }
+                }
+            }
+            if (connectTimeout > 0L) {
+                conn.setConnectTimeout((int) connectTimeout);
+            }
+            if (readTimeout > 0L) {
+                conn.setReadTimeout((int) readTimeout);
+            }
+            conn.setUseCaches(false);
+            conn.setAllowUserInteraction(false);
+            conn.setDoInput(true);
+            if (request != null && conn instanceof HttpURLConnection) {
+                HttpURLConnection httpConn = (HttpURLConnection) conn;
+                httpConn.setRequestMethod("POST");
+                httpConn.setInstanceFollowRedirects(true);
+                conn.setDoOutput(true);
+
+                try (OutputStream out = conn.getOutputStream()) {
+                    Utils.writeAll(out, request);
+                }
+
+                if (httpConn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("null");
+                }
+            }
+            return Utils.readAllAsString(conn.getInputStream());
+        } finally {
+            try {
+                conn.getInputStream().close();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
     }
 
     // TODO additional methods to simplify execution of sql, prql, script, and web
