@@ -81,7 +81,15 @@
         <caffeine.version>3.1.6</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
         <compress.version>1.22</compress.version>
-        <derby.version>10.16.1.1</derby.version>
+        <!--
+            wget https://parsers.org/download/congocc.jar
+            mvn install:install-file -Dfile=congocc.jar \
+                -DgroupId=org.parsers -DartifactId=congocc \
+                -Dversion=0.0.1 -Dpackaging=jar
+        -->
+        <congocc.version>0.0.1</congocc.version>
+        <!-- stay with 10.14.2.0 for JDK 8 -->
+        <derby.version>10.14.2.0</derby.version>
         <dnsjava.version>3.5.2</dnsjava.version>
         <graphql.version>20.4</graphql.version>
         <groovy.version>4.0.13</groovy.version>
