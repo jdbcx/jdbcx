@@ -17,6 +17,7 @@ package io.github.jdbcx.script;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Collections;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -32,7 +33,10 @@ public class ScriptHelperTest {
         Assert.assertTrue(helper.read("target/test-classes/test-config.properties").length() > 0);
         Assert.assertTrue(helper.read("file:target/test-classes/test-config.properties").length() > 0);
 
-        // Assert.assertEquals(helper.read("https://explorer@play.clickhouse.com"), "Ok.\n");
-        // Assert.assertEquals(helper.read("http://localhost:8123", "select 1\n"), "1\n");
+        Assert.assertEquals(helper.read("https://play.clickhouse.com"), "Ok.\n");
+        Assert.assertEquals(helper.read("https://explorer@play.clickhouse.com", "select 1\n"), "1\n");
+        Assert.assertEquals(helper.read("https://explorer:@play.clickhouse.com", "select 2\n"), "2\n");
+        Assert.assertEquals(helper.read("https://play.clickhouse.com", "select 3\n",
+                Collections.singletonMap("X-ClickHouse-User", "explorer")), "3\n");
     }
 }

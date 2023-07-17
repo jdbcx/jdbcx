@@ -109,11 +109,6 @@ public final class Main {
             System.exit(0);
         }
 
-        if (Checker.isNullOrEmpty(
-                Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(WrappedDriver.PROPERTY_PREFIX))) {
-            System.setProperty(Option.CUSTOM_CLASSPATH.getSystemProperty(WrappedDriver.PROPERTY_PREFIX),
-                    Constants.CURRENT_DIR);
-        }
         final long loopCount = Long.getLong("loopCount", 1L);
         final long loopInterval = Long.getLong("loopInterval", 0L);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));

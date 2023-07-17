@@ -32,6 +32,26 @@ public final class ExecutableBlock {
         this.output = output;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    public String getExtensionName() {
+        return extension;
+    }
+
+    public Properties getProperties() {
+        return props;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public boolean hasOutput() {
+        return output;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;

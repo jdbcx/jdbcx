@@ -41,23 +41,23 @@ wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/l
         | cut -d : -f 2,3 | tr -d \")
 
 # Download Apache Derby embedded database and its JDBC driver
-wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.16.1.1/derby-10.16.1.1.jar \
-    https://repo1.maven.org/maven2/org/apache/derby/derbyshared/10.16.1.1/derbyshared-10.16.1.1.jar
+wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.14.2.0/derby-10.14.2.0.jar
 
 # Download JavaScript engine
 wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
     https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 # SQL
-java -Dverbose=true -jar jdbcx.jar 'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'
+java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
+    'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'
 
 # Scripting
-java -Dverbose=true -jar jdbcx.jar 'jdbcx:script:derby:memory:x;create=True' \
-    'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
+    'jdbcx:script:derby:memory:x;create=True' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
 
 # PRQL
 cargo install prqlc
-java -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx.jar \
+java -Djdbcx.custom.classpath=. -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx.jar \
     'jdbcx:prql:derby:memory:x;create=True' 'from `SYS.SYSTABLES`'
 
 # Together on a database in cloud

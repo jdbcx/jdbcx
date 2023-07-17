@@ -57,11 +57,36 @@ public final class Option implements Serializable {
      */
     public static final Option CUSTOM_CLASSPATH = Option.of(new String[] { "custom.classpath", "Custom classpath" });
     /**
+     * Whether to use dry-run mode.
+     */
+    public static final Option DRY_RUN = Option
+            .of(new String[] { "dryrun", "Whether to use dry-run mode, where query will be returned as result", "false",
+                    "true" });
+    /**
      * The approach to handle execution error.
      */
     public static final Option EXEC_ERROR = Option
             .of(new String[] { "exec.error", "The approach to handle execution error", ERROR_HANDLING_IGNORE,
                     ERROR_HANDLING_THROW, ERROR_HANDLING_WARN });
+    /**
+     * Parallelism level.
+     */
+    public static final Option PARALLEL = Option.of(new String[] { "parallel",
+            "Maximum number of threads for each extension for execution, 0 to enforce sequential execution", "0" });
+    /**
+     * Proxy to use.
+     */
+    public static final Option PROXY = Option.of(new String[] { "proxy", "Proxy server to use, empty means no proxy" });
+
+    public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert", "SSL certificate" });
+    public static final Option SSL_CERT_TYPE = Option
+            .of(new String[] { "ssl.cert.type", "SSL/TLS certificate type", "X.509" });
+    public static final Option SSL_KEY = Option.of(new String[] { "ssl.key", "SSL key passphrase" });
+    public static final Option SSL_KEY_ALGORITHM = Option
+            .of(new String[] { "ssl.key.algorithm", "SSL key algorithm", "RSA" });
+    public static final Option SSL_MODE = Option.of(new String[] { "ssl.mode", "SSL mode", "strict", "none" });
+    public static final Option SSL_PROTOCOL = Option.of(new String[] { "ssl.protocol", "SSL protocol", "TLS" });
+    public static final Option SSL_ROOT_CERT = Option.of(new String[] { "ssl.root.cert", "SSL ROOT certificate" });
 
     /**
      * The Builder class is used to construct options.

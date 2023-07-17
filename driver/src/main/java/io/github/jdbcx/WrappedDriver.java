@@ -217,22 +217,31 @@ public class WrappedDriver implements Driver, DriverAction {
                 log.debug("Adding default extension: %s", DefaultDriverExtension.getInstance());
                 map.put(Constants.EMPTY_STRING, DefaultDriverExtension.getInstance());
                 final ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+                final boolean useCustomClassLoader = customClassLoader instanceof ExpandedUrlClassLoader
+                        && customClassLoader != originalClassLoader;
                 try {
-                    // FIXME this is tricky, perhaps it's better to explicitly initialize extension
-                    Thread.currentThread().setContextClassLoader(customClassLoader);
+                    if (useCustomClassLoader) {
+                        // FIXME this is tricky, perhaps it's better to explicitly initialize extension
+                        Thread.currentThread().setContextClassLoader(customClassLoader);
+                        log.debug("Changed context class loader from [%s] to [%s]...", originalClassLoader,
+                                customClassLoader);
+                    }
                     for (DriverExtension ext : ServiceLoader.load(DriverExtension.class, customClassLoader)) {
                         final String className = ext.getClass().getSimpleName();
                         if (className.endsWith(suffix)) {
                             final String name = className.substring(0, className.length() - suffix.length())
                                     .toLowerCase(Locale.ROOT);
-                            log.debug("Adding extension(%s): %s", name, ext);
+                            log.debug("Adding extension \"%s\": %s", name, ext);
                             map.put(name, ext);
                         } else {
-                            log.warn("Skip extension(%s) as its name does not end with \"%s\"", ext, suffix);
+                            log.warn("Skip extension [%s] as its class name does not end with \"%s\"", ext, suffix);
                         }
                     }
                 } finally {
-                    Thread.currentThread().setContextClassLoader(originalClassLoader);
+                    if (useCustomClassLoader) {
+                        Thread.currentThread().setContextClassLoader(originalClassLoader);
+                        log.debug("Changed context class loader back to [%s]", originalClassLoader);
+                    }
                 }
                 map = Collections.unmodifiableMap(map);
                 if (!driver.extensions.compareAndSet(null, map)) {
@@ -284,6 +293,10 @@ public class WrappedDriver implements Driver, DriverAction {
                 }
             }
             return defaultConfig;
+        }
+
+        DriverInfo() {
+            this(new WrappedDriver(), null, null);
         }
 
         DriverInfo(WrappedDriver driver, String url, Properties info) {
@@ -391,9 +404,7 @@ public class WrappedDriver implements Driver, DriverAction {
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
         final DriverInfo driverInfo = new DriverInfo(this, url, info);
-        return acceptsURL(url) ? new WrappedConnection(driverInfo.extension,
-                getActualDriver(driverInfo).connect(driverInfo.actualUrl, driverInfo.normalizedInfo),
-                driverInfo.actualUrl, driverInfo.extensionProps)
+        return acceptsURL(url) ? new WrappedConnection(driverInfo)
                 : getActualDriver(driverInfo).connect(driverInfo.actualUrl, driverInfo.normalizedInfo);
     }
 

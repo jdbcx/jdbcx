@@ -40,15 +40,7 @@ public class WrappedStatement implements Statement {
     }
 
     protected String handle(String query) throws SQLException {
-        warning.set(null);
-        try {
-            return conn.listener.onQuery(query);
-        } catch (SQLWarning e) {
-            warning.set(e);
-            return query;
-        } catch (Throwable t) { // NOSONAR
-            throw SqlExceptionUtils.clientError(t);
-        }
+        return conn.handle(query, warning);
     }
 
     @Override

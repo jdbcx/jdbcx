@@ -18,7 +18,6 @@ under the License.
 
 This project includes:
   Apache Derby Database Engine and Embedded JDBC Driver under Apache 2
-  Apache Derby Shared Code under Apache 2
   Apache Groovy under The Apache Software License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License

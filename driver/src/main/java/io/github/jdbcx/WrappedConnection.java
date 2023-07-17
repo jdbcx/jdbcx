@@ -35,45 +35,98 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.github.jdbcx.WrappedDriver.DriverInfo;
 import io.github.jdbcx.impl.DefaultConnectionListener;
+import io.github.jdbcx.impl.ExecutableBlock;
+import io.github.jdbcx.impl.ParsedQuery;
+import io.github.jdbcx.impl.QueryParser;
 
 /**
  * This class serves as a wrapper for a {@link Connection}.
  */
 public class WrappedConnection implements Connection {
-    protected final ConnectionListener listener;
+    private static final Logger log = LoggerFactory.getLogger(WrappedConnection.class);
 
     protected final Connection conn;
     protected final String url;
     protected final Properties props;
 
+    protected final ConnectionListener listener;
+
+    protected final DriverExtension defaultExtension;
+    protected final Map<String, DriverExtension> extensions;
     private final AtomicReference<SQLWarning> warning;
 
     protected WrappedConnection(Connection conn) {
-        this(null, conn);
-    }
-
-    protected WrappedConnection(DriverExtension extension, Connection conn) {
-        this(extension, conn, Constants.EMPTY_STRING, new Properties());
-    }
-
-    protected WrappedConnection(DriverExtension extension, Connection conn, String url, Properties props) {
-        this.listener = extension != null ? extension.createListener(conn, url, props)
-                : DefaultConnectionListener.getInstance();
+        DriverInfo info = new DriverInfo();
+        this.defaultExtension = info.extension;
+        this.extensions = info.getExtensions();
 
         this.conn = conn;
-        this.url = url;
-        this.props = props;
+        this.url = Constants.EMPTY_STRING;
+        this.props = info.extensionProps;
+
+        this.listener = DefaultConnectionListener.getInstance();
+
+        this.warning = new AtomicReference<>();
+    }
+
+    protected WrappedConnection(DriverInfo info) throws SQLException {
+        this.defaultExtension = info.extension;
+        this.extensions = info.getExtensions();
+
+        this.conn = info.driver.getActualDriver(info).connect(info.actualUrl, info.normalizedInfo);
+        this.url = info.actualUrl;
+        this.props = info.extensionProps;
+
+        this.listener = info.extension != null ? info.extension.createListener(this.conn, this.url, this.props)
+                : DefaultConnectionListener.getInstance();
 
         this.warning = new AtomicReference<>();
     }
 
     protected String handle(String query) throws SQLException {
-        warning.set(null);
+        return handle(query, null);
+    }
+
+    protected String handle(String query, AtomicReference<SQLWarning> ref) throws SQLException {
+        if (ref == null) {
+            ref = warning;
+        }
+        ref.set(null);
+
+        ParsedQuery pq = QueryParser.parse(query);
+        String[] parts = pq.getQueryParts().toArray(Constants.EMPTY_STRING_ARRAY);
+        for (ExecutableBlock block : pq.getExecutableBlocks()) {
+            DriverExtension ext = Checker.isNullOrEmpty(block.getExtensionName()) ? defaultExtension
+                    : extensions.get(block.getExtensionName());
+            if (ext == null) {
+                ext = defaultExtension;
+                if (log.isWarnEnabled() && block.getExtensionName().equals(DriverInfo.getExtensionName(ext))) {
+                    log.warn("Extension \"%s\" is not supported, use default extension [%s] instead",
+                            block.getExtensionName(), ext);
+                }
+            }
+            Properties p = block.getProperties();
+            if (!p.isEmpty()) {
+                p = new Properties(props);
+                p.putAll(block.getProperties());
+            }
+            ConnectionListener cl = ext.createListener(conn, url, p);
+            if (block.hasOutput()) {
+                parts[block.getIndex()] = cl.onQuery(block.getContent());
+            } else {
+                cl.onQuery(block.getContent());
+            }
+        }
+
+        final String substitutedQuery = String.join(Constants.EMPTY_STRING, parts);
+        log.debug("Original Query: [%s]\r\nSubstituted Query: [%s]", query, substitutedQuery);
+
         try {
-            return listener.onQuery(query);
+            return listener.onQuery(substitutedQuery);
         } catch (SQLWarning e) {
-            warning.set(e);
+            ref.set(e);
             return query;
         } catch (Throwable t) { // NOSONAR
             throw SqlExceptionUtils.clientError(t);

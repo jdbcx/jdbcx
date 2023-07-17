@@ -23,13 +23,22 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Properties;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+
 import java.util.Map.Entry;
 
+import io.github.jdbcx.Checker;
 import io.github.jdbcx.CommandLine;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.security.SslContextProvider;
 
 public final class ScriptHelper {
     private static final ScriptHelper instance = new ScriptHelper();
@@ -119,6 +128,7 @@ public final class ScriptHelper {
             url = u != null ? u : Paths.get(Utils.normalizePath(s)).toUri().toURL();
         }
 
+        // TODO set proxy as needed
         final URLConnection conn = url.openConnection();
         try {
             if (headers != null) {
@@ -141,16 +151,50 @@ public final class ScriptHelper {
             conn.setDoInput(true);
             if (request != null && conn instanceof HttpURLConnection) {
                 HttpURLConnection httpConn = (HttpURLConnection) conn;
+                if (httpConn instanceof HttpsURLConnection) {
+                    HttpsURLConnection secureConn = (HttpsURLConnection) httpConn;
+                    // TODO pass runtime properties
+                    Properties props = new Properties();
+                    SSLContext sslContext = SslContextProvider.getProvider()
+                            .getSslContext(SSLContext.class, props).orElse(null);
+                    // TODO custom hostname verifier
+                    HostnameVerifier verifier = "strict".equalsIgnoreCase(Option.SSL_MODE.getValue(props))
+                            ? HttpsURLConnection.getDefaultHostnameVerifier()
+                            : (hostname, session) -> true; // NOSONAR
+                    secureConn.setHostnameVerifier(verifier);
+                    if (sslContext != null) {
+                        secureConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                    }
+                }
+
+                String userInfo = url.getUserInfo();
+                if (!Checker.isNullOrEmpty(userInfo)) {
+                    String user = Constants.EMPTY_STRING;
+                    String passwd = Constants.EMPTY_STRING;
+                    for (int i = 0, len = userInfo.length(); i < len; i++) {
+                        if (userInfo.charAt(i) == ':') {
+                            user = Utils.decode(userInfo.substring(0, i));
+                            passwd = Utils.decode(userInfo.substring(i + 1));
+                            break;
+                        }
+                    }
+                    if (user.isEmpty() && passwd.isEmpty()) {
+                        user = Utils.decode(userInfo);
+                    }
+                    userInfo = new StringBuilder(user).append(':').append(passwd).toString();
+                    httpConn.setRequestProperty("Authorization", "Basic "
+                            .concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
+                }
                 httpConn.setRequestMethod("POST");
                 httpConn.setInstanceFollowRedirects(true);
-                conn.setDoOutput(true);
+                httpConn.setDoOutput(true);
 
-                try (OutputStream out = conn.getOutputStream()) {
+                try (OutputStream out = httpConn.getOutputStream()) {
                     Utils.writeAll(out, request);
                 }
 
                 if (httpConn.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                    throw new IOException("null");
+                    throw new IOException(Utils.readAllAsString(httpConn.getErrorStream()));
                 }
             }
             return Utils.readAllAsString(conn.getInputStream());

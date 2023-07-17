@@ -311,13 +311,15 @@ public final class QueryParser {
         boolean escaped = false;
         for (int i = 0; i < len; i++) {
             char ch = query.charAt(i);
-            if (escaped) {
-                builder.append(ch);
-                escaped = false;
-            } else if (ch == escapeChar) {
-                escaped = true;
+            if (ch == escapeChar) {
+                if (escaped) {
+                    builder.append(ch).append(ch);
+                    escaped = false;
+                } else {
+                    escaped = true;
+                }
             } else if (prev == '{') {
-                if (ch == prev || ch == '%') { // executable block: {{ ... }} or {% ... %}
+                if (!escaped && (ch == prev || ch == '%')) { // executable block: {{ ... }} or {% ... %}
                     String eob = ch == prev ? "}}" : "%}";
                     int index = indexOf(query, i + 1, eob, escapeChar);
                     if (index > 0) {
@@ -335,9 +337,17 @@ public final class QueryParser {
                         log.debug("Executable block starts at %d but missing %s", i - 1, eob);
                     }
                 } else {
+                    if (escaped) {
+                        builder.append(escapeChar).append(prev);
+                        escaped = false;
+                    }
                     builder.append(ch);
                 }
-            } else if (prev != escapeChar) {
+            } else {
+                if (escaped) {
+                    builder.append(escapeChar);
+                    escaped = false;
+                }
                 builder.append(ch);
             }
 

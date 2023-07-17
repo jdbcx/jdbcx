@@ -155,8 +155,12 @@ public class QueryParserTest {
                 new ParsedQuery(Collections.emptyList(), Collections.emptyList()));
         Assert.assertEquals(QueryParser.parse(str = "select 1"),
                 new ParsedQuery(Arrays.asList(str), Collections.emptyList()));
-        Assert.assertEquals(QueryParser.parse(str = "select\\{%} {{ 1"),
-                new ParsedQuery(Arrays.asList("select{%} {{ 1"), Collections.emptyList()));
+        Assert.assertEquals(
+                QueryParser.parse(
+                        str = "helper.format('select now() t, arrayJoin(splitByChar('\\n', '%s')) a\", \"a\\nb\\nc\")"),
+                new ParsedQuery(Arrays.asList(str), Collections.emptyList()));
+        Assert.assertEquals(QueryParser.parse(str = "select\\{%} {\\{ 1"),
+                new ParsedQuery(Arrays.asList(str), Collections.emptyList()));
         Assert.assertEquals(QueryParser.parse(str = "select {{1}}"),
                 new ParsedQuery(Arrays.asList("select ", ""),
                         Arrays.asList(new ExecutableBlock(1, "", new Properties(), "1", true))));
