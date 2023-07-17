@@ -32,6 +32,10 @@ public final class Stream {
     }
 
     public static long pipe(InputStream from, OutputStream to, byte[] buffer, boolean closeOutput) throws IOException {
+        if (from == null) {
+            return 0L;
+        }
+
         long count = 0L;
         if (buffer == null || buffer.length == 0) {
             buffer = new byte[Constants.DEFAULT_BUFFER_SIZE];
@@ -64,6 +68,10 @@ public final class Stream {
     }
 
     public static long pipe(Readable from, Writer to, char[] buffer, boolean closeOutput) throws IOException {
+        if (from == null) {
+            return 0L;
+        }
+
         long count = 0L;
         if (buffer == null || buffer.length == 0) {
             buffer = new char[Constants.DEFAULT_BUFFER_SIZE / 2];

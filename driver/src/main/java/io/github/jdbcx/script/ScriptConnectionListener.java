@@ -26,11 +26,15 @@ import java.util.Properties;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.ConnectionListener;
+import io.github.jdbcx.Logger;
+import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Scripting;
 import io.github.jdbcx.SqlExceptionUtils;
 
 final class ScriptConnectionListener implements ConnectionListener {
+    private static final Logger log = LoggerFactory.getLogger(ScriptConnectionListener.class);
+
     static final Option OPTION_VAR_CONNECT = Option
             .of(new String[] { "var.connection", "Variable name of current java.sql.Connection instance", "conn" });
     static final Option OPTION_VAR_HELPER = Option
@@ -68,6 +72,7 @@ final class ScriptConnectionListener implements ConnectionListener {
             }
         } catch (Exception e) {
             if (script.ignoreError()) {
+                log.debug("Failed to execute script", e);
                 return query;
             } else if (script.warnOnError()) {
                 throw SqlExceptionUtils.clientWarning(e);

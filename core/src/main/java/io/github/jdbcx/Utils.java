@@ -100,6 +100,10 @@ public final class Utils {
     }
 
     public static String readAllAsString(InputStream input) throws IOException {
+        if (input == null) {
+            return Constants.EMPTY_STRING;
+        }
+
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE);
                 InputStream in = input) {
             byte[] bytes = new byte[Constants.DEFAULT_BUFFER_SIZE];

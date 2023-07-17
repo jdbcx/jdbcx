@@ -149,7 +149,7 @@ public final class ScriptHelper {
             conn.setUseCaches(false);
             conn.setAllowUserInteraction(false);
             conn.setDoInput(true);
-            if (request != null && conn instanceof HttpURLConnection) {
+            if (conn instanceof HttpURLConnection) {
                 HttpURLConnection httpConn = (HttpURLConnection) conn;
                 if (httpConn instanceof HttpsURLConnection) {
                     HttpsURLConnection secureConn = (HttpsURLConnection) httpConn;
@@ -185,16 +185,22 @@ public final class ScriptHelper {
                     httpConn.setRequestProperty("Authorization", "Basic "
                             .concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
                 }
-                httpConn.setRequestMethod("POST");
-                httpConn.setInstanceFollowRedirects(true);
-                httpConn.setDoOutput(true);
 
-                try (OutputStream out = httpConn.getOutputStream()) {
-                    Utils.writeAll(out, request);
+                if (request != null) {
+                    httpConn.setRequestMethod("POST");
+                    httpConn.setInstanceFollowRedirects(true);
+                    httpConn.setDoOutput(true);
+
+                    try (OutputStream out = httpConn.getOutputStream()) {
+                        Utils.writeAll(out, request);
+                    }
                 }
 
                 if (httpConn.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(Utils.readAllAsString(httpConn.getErrorStream()));
+                    String errorMsg = Utils.readAllAsString(httpConn.getErrorStream());
+                    throw new IOException(
+                            Checker.isNullOrEmpty(errorMsg) ? Utils.format("Response %d", httpConn.getResponseCode())
+                                    : errorMsg);
                 }
             }
             return Utils.readAllAsString(conn.getInputStream());
