@@ -1,3 +1,8 @@
+# CodeQL
+codeql*.lock.yml
+qlpack.yml
+*.ql
+
 # Compiled class file
 *.class
 
@@ -24,6 +29,7 @@ hs_err_pid*
 replay_pid*
 
 # Generated
+.DS_Store
 .flattened-pom.xml
 .vscode
 dependency-reduced-pom.xml

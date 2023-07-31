@@ -6,9 +6,24 @@
 
 JDBCX enhances the JDBC driver by supporting additional data formats, compression algorithms, object mapping, type conversion, and query languages beyond SQL. It simplifies complex federated queries with dynamic query embedding and remote bridge server connectivity for multiple data sources.
 
+![image](https://user-images.githubusercontent.com/4270380/257034477-a5e1fe1a-bb1c-4478-addc-43fbdf4e4d07.png)
+
 ## Quick Start
 
-Getting started with JDBCX is a breeze. Just download it from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to activate the extension.
+Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.jar` from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to activate the extension.
+
+```sql
+-- define two custom variables(with prefix) for substitution later
+{% var(prefix=my.): value1=1, value2=2 %}                       -- {% ... %} block renders no output
+-- issue query 'select 1 one, 2 two, 3 three' on current database server (after substitution)
+select
+    -- execute 'select 1' on database 'dev-db' defined in ~/.jdbcx/connections/dev-db.properties
+    {{ jdbc(id=dev-db): select ${my.value1} }} one,             -- variable ${my.value1} is relaced by its value
+    -- execute command line 'echo 2' on remote server 'my.test.server' via ssh
+    {{ shell: ssh me@my.test.server echo '${my.value2}' }} two, -- variable ${my.value2} is relaced by its value
+    -- execute JavaScript expression '1 + 2'
+    {{ javascript: ${my.value1} + ${my.value2} }} three         -- variables are relaced by their values
+```
 
 ### Docker
 
@@ -49,16 +64,16 @@ wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
 
 # SQL
 java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
-    'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'
+    'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'
 
 # Scripting
 java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
-    'jdbcx:script:derby:memory:x;create=True' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+    'jdbcx:script:derby:memory:x;create=true' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
 
 # PRQL
 cargo install prqlc
 java -Djdbcx.custom.classpath=. -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx.jar \
-    'jdbcx:prql:derby:memory:x;create=True' 'from `SYS.SYSTABLES`'
+    'jdbcx:prql:derby:memory:x;create=true' 'from `SYS.SYSTABLES`'
 
 # Together on a database in cloud
 wget https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar
@@ -85,6 +100,16 @@ Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165),
 
 2. `Database` -> `New Database Connection` -> select `JDBCX` and click `Next` -> specify `URL` and switch to `Driver Properties` tab to make changes as needed
    ![image](https://user-images.githubusercontent.com/4270380/251389733-52d8318c-f00a-4f37-8635-72388c91130d.png)
+
+## Known Issues
+
+| # | Issue | Workaround |
+| - | ----- | ---------- |
+| 1 | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
+| 2 | Scripting does not work on DBeaver | use JDK instead of JRE |
+| 3 | Requires additional JDBC driver to work | - |
+| 4 | Connection pooling is not supported | - |
+| 5 | Multi-ResultSet is not fully supported | - |
 
 ## Performance
 

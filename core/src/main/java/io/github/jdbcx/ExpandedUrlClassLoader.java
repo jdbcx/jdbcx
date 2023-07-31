@@ -28,7 +28,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is an enhanced version of the {@link URLClassLoader} that provides
@@ -161,18 +163,34 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
     private final Class<?> caller;
     private final String originalUrls;
 
-    public ExpandedUrlClassLoader(Class<?> callerClass, String urls) {
+    private final Map<String, Class<?>> loadedClasses;
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        Class<?> clazz = loadedClasses.get(name);
+        if (clazz == null) {
+            clazz = super.findClass(name);
+            loadedClasses.put(name, clazz);
+        }
+        return clazz;
+    }
+
+    public ExpandedUrlClassLoader(Class<?> callerClass, String... urls) {
         super(expandURLs(urls), getSuitableClassLoader(callerClass));
 
         this.caller = callerClass;
-        this.originalUrls = urls;
+        this.originalUrls = String.join(",", urls);
+
+        loadedClasses = new ConcurrentHashMap<>();
     }
 
-    public ExpandedUrlClassLoader(ClassLoader parent, String urls) {
+    public ExpandedUrlClassLoader(ClassLoader parent, String... urls) {
         super(expandURLs(urls), parent == null ? ExpandedUrlClassLoader.class.getClassLoader() : parent);
 
         this.caller = parent == null ? ExpandedUrlClassLoader.class : parent.getClass();
-        this.originalUrls = urls;
+        this.originalUrls = String.join(",", urls);
+
+        loadedClasses = new ConcurrentHashMap<>();
     }
 
     public String getOriginalUrls() {
@@ -181,7 +199,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
     @Override
     public String toString() {
-        return new StringBuilder(super.toString()).append("(caller=").append(caller).append(",url=")
+        return new StringBuilder(super.toString()).append("(caller=").append(caller).append(",urls=")
                 .append(originalUrls).append(')').toString();
     }
 }

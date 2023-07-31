@@ -84,7 +84,7 @@ public class CheckerTest {
         Assert.assertEquals(Checker.nonNull(obj = new Object(), "value"), obj);
         Assert.assertEquals(Checker.nonNull(obj = 1, "value"), obj);
 
-        Assert.assertThrows(IllegalArgumentException.class, () -> Checker.nonNull(null, null));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Checker.nonNull(null, (String) null));
     }
 
     @Test(groups = { "unit" })

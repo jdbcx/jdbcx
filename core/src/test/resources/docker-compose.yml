@@ -1,0 +1,18 @@
+#
+# This docker-compose file defines a shared test environment utilized by all modules.
+# Any changes made to this file should be propagated to class BaseIntegrationTest.
+#
+
+# https://hub.docker.com/r/clickhouse/clickhouse-server/
+clickhouse:
+  image: clickhouse/clickhouse-server:22.8
+# https://hub.docker.com/r/datafuselabs/databend
+databend:
+  image: datafuselabs/databend:v1.2.40-nightly
+  links:
+    - clickhouse
+# https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
+toxiproxy:
+  image: ghcr.io/shopify/toxiproxy:2.5.0
+  links:
+    - clickhouse

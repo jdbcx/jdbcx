@@ -266,6 +266,10 @@ public final class Checker {
         return value;
     }
 
+    public static final <T> T nonNull(T value, Class<?> clazz) {
+        return nonNull(value, clazz != null ? clazz.getSimpleName() : DEFAULT_NAME);
+    }
+
     /**
      * Checks if the given object is NOT {@code null} and throws a customized
      * {@link IllegalArgumentException} if it is.

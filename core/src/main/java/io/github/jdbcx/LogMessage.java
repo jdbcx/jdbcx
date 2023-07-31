@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx;
 
+import java.util.Arrays;
+import java.util.IllegalFormatException;
 import java.util.Locale;
 
 /**
@@ -40,7 +42,11 @@ public final class LogMessage {
                 t = (Throwable) lastArg;
             }
 
-            message = String.format(Locale.ROOT, message, arguments);
+            try {
+                message = String.format(Locale.ROOT, message, arguments);
+            } catch (IllegalFormatException e) {
+                message = new StringBuilder(message).append(':').append(Arrays.toString(arguments)).toString();
+            }
         }
 
         return new LogMessage(message, t);

@@ -15,6 +15,11 @@
  */
 package io.github.jdbcx;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -47,12 +52,27 @@ public final class Constants {
     public static final int DEFAULT_BUFFER_SIZE = 2048;
     public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
+    public static final int MIN_CORE_THREADS = 4;
+
     public static final boolean IS_UNIX;
     public static final boolean IS_WINDOWS;
 
+    public static final String CONF_DIR;
     public static final String CURRENT_DIR;
     public static final String HOME_DIR;
+    public static final String TMP_DIR;
+
     public static final String FILE_ENCODING;
+
+    private static final InputStream EMPTY_INPUT = new ByteArrayInputStream(EMPTY_BYTE_ARRAY);
+
+    public static final InputStream nullInputStream() {
+        return EMPTY_INPUT;
+    }
+
+    public static final Reader nullReader() {
+        return new StringReader(Constants.EMPTY_STRING);
+    }
 
     static {
         final String osName = System.getProperty("os.name", "");
@@ -66,6 +86,8 @@ public final class Constants {
 
         CURRENT_DIR = System.getProperty("user.dir");
         HOME_DIR = System.getProperty("user.home");
+        TMP_DIR = System.getProperty("java.io.tmpdir");
+        CONF_DIR = new StringBuilder(Constants.HOME_DIR).append(File.separatorChar).append(".jdbcx").toString();
 
         FILE_ENCODING = System.getProperty("file.encoding", DEFAULT_CHARSET.name());
     }

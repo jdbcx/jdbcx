@@ -60,7 +60,8 @@ jobs:
         # https://whichjdk.com/
         # https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#selecting-a-java-distribution
         dist: ["corretto", "liberica", "microsoft", "temurin", "zulu"]
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        # skip "macos-latest" and "windows-latest" due to poor support of docker
+        os: ["ubuntu-latest"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
