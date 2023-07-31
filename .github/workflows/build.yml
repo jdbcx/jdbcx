@@ -60,21 +60,13 @@ jobs:
         # https://whichjdk.com/
         # https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#selecting-a-java-distribution
         dist: ["corretto", "liberica", "microsoft", "temurin", "zulu"]
-        os: ["macos-latest", "ubuntu-latest", "windows-latest"]
+        # skip "macos-latest" and "windows-latest" due to poor support of docker
+        os: ["ubuntu-latest"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
     steps:
-      - name: Setup Docker
-        uses: crazy-max/ghaction-setup-docker@v1
-      - name: Post setup for macOS
-        # https://github.com/actions/runner-images/issues/17#issuecomment-1537238473
-        if: runner.os == 'macos'
-        run: |
-          brew install docker
-          colima start
-          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
       - name: Check out repository
         uses: actions/checkout@v3
       - name: Check out PR
