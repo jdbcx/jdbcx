@@ -41,7 +41,7 @@ public final class IterableArray implements Iterable<Row> {
             try {
                 return Row.of(array[index++]);
             } catch (IndexOutOfBoundsException e) {
-                throw new NoSuchElementException(e);
+                throw new NoSuchElementException(e.getMessage());
             }
         }
     }
