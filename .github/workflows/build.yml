@@ -66,6 +66,15 @@ jobs:
     timeout-minutes: 10
     name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
     steps:
+      - name: Setup Docker
+        uses: crazy-max/ghaction-setup-docker@v1
+      - name: Post setup for macOS
+        # https://github.com/actions/runner-images/issues/17#issuecomment-1537238473
+        if: runner.os == 'macos'
+        run: |
+          brew install docker
+          colima start
+          sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
       - name: Check out repository
         uses: actions/checkout@v3
       - name: Check out PR
