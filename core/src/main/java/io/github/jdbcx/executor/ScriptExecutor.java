@@ -39,10 +39,10 @@ import io.github.jdbcx.Utils;
 public class ScriptExecutor extends AbstractExecutor {
     private static final Logger log = LoggerFactory.getLogger(ScriptExecutor.class);
 
-    public static final String DEFAULT_SCRIPT_LANGUAGE = "javascript";
+    public static final String DEFAULT_SCRIPT_LANGUAGE = "rhino";
 
     public static final Option OPTION_LANGUAGE = Option
-            .of(new String[] { "language", "Scripting language", DEFAULT_SCRIPT_LANGUAGE });
+            .of(new String[] { "language", "Scripting language or engine name", DEFAULT_SCRIPT_LANGUAGE });
     public static final Option OPTION_BINDING_ERROR = Option
             .of(new String[] { "binding.error",
                     "Approach to handle binding error, either throw an exception or simply ignore the error",
@@ -70,12 +70,15 @@ public class ScriptExecutor extends AbstractExecutor {
 
         this.ignoreBindingError = !OPTION_BINDING_ERROR.getDefaultValue().equals(OPTION_BINDING_ERROR.getValue(props));
 
+        Set<String> engines = new LinkedHashSet<>();
         Set<String> langs = new LinkedHashSet<>();
         for (ScriptEngineFactory factory : this.manager.getEngineFactories()) {
+            engines.add(factory.getEngineName());
             langs.add(factory.getLanguageName());
         }
         for (ScriptEngineFactory factory : ServiceLoader.load(ScriptEngineFactory.class,
                 ScriptExecutor.class.getClassLoader())) {
+            engines.add(factory.getEngineName());
             langs.add(factory.getLanguageName());
         }
 
@@ -83,15 +86,16 @@ public class ScriptExecutor extends AbstractExecutor {
             if (langs.isEmpty()) {
                 throw new IllegalArgumentException(
                         Utils.format("No script language detected in classpath(loader=%s).", loader));
-            } else if (!langs.contains(defaultLanguage)) {
+            } else if (!engines.contains(defaultLanguage) && !langs.contains(defaultLanguage)) {
                 throw new IllegalArgumentException(Utils.format(
-                        "Scripting language \"%s\" is not supported. Available options are %s.",
-                        defaultLanguage, langs));
+                        "Scripting language or engine \"%s\" is not supported. Available options are languages %s, or engine names %s.",
+                        defaultLanguage, langs, engines));
             }
             this.defaultLanguage = defaultLanguage;
         } else {
-            this.defaultLanguage = langs.isEmpty() || langs.contains(defaultLanguage) ? Constants.EMPTY_STRING
-                    : defaultLanguage;
+            this.defaultLanguage = langs.contains(defaultLanguage) || engines.contains(defaultLanguage)
+                    ? defaultLanguage
+                    : Constants.EMPTY_STRING;
         }
 
         this.supportedLanguages = Collections.unmodifiableSet(langs);
