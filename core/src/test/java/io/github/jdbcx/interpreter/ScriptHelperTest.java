@@ -29,11 +29,12 @@ public class ScriptHelperTest extends BaseIntegrationTest {
 
     @Test(groups = { "unit" })
     public void testRead() throws IOException {
+        String classFile = "target/classes/" + helper.getClass().getName().replace('.', '/') + ".class";
         Assert.assertEquals(helper.read(null), "");
         Assert.assertThrows(FileNotFoundException.class, () -> helper.read("non-existing-file"));
         Assert.assertTrue(helper.read("").length() > 0); // list files in current directory
-        Assert.assertTrue(helper.read("target/test-classes/simplelogger.properties").length() > 0);
-        Assert.assertTrue(helper.read("file:target/test-classes/simplelogger.properties").length() > 0);
+        Assert.assertTrue(helper.read(classFile).length() > 0);
+        Assert.assertTrue(helper.read("file:" + classFile).length() > 0);
     }
 
     @Test(groups = { "integration" })

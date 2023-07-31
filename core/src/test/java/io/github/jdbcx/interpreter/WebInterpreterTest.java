@@ -80,7 +80,8 @@ public class WebInterpreterTest extends BaseIntegrationTest {
         WebInterpreter.OPTION_REQUEST_TEMPLATE_FILE.setValue(config, "target/test-classes/non-existent.file");
         Assert.assertThrows(IllegalArgumentException.class, () -> new WebInterpreter(context, config));
 
-        WebInterpreter.OPTION_REQUEST_TEMPLATE_FILE.setValue(config, "target/test-classes/simplelogger.properties");
+        String classFile = "target/classes/" + WebInterpreter.class.getName().replace('.', '/') + ".class";
+        WebInterpreter.OPTION_REQUEST_TEMPLATE_FILE.setValue(config, classFile);
         Assert.assertEquals(interpreter = new WebInterpreter(context, config), interpreter);
         Assert.assertEquals(interpreter.getDefaultUrl(), "my url is this");
         Assert.assertEquals(interpreter.getDefaultRequestHeaders(), headers);
