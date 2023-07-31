@@ -31,6 +31,25 @@ import java.util.Properties;
 public final class Option implements Serializable {
     private static final long serialVersionUID = -2250888694424064713L;
 
+    public static final String PROPERTY_JDBCX;
+    public static final String PROPERTY_PREFIX;
+
+    static {
+        final Option prefixOption = Option.of(new String[] { "jdbcx.prefix", "JDBCX prefix", "jdbcx" });
+
+        PROPERTY_JDBCX = prefixOption.getEffectiveDefaultValue(null).toLowerCase(Locale.ROOT);
+        PROPERTY_PREFIX = PROPERTY_JDBCX + ".";
+
+        if (Option.PROPERTY_JDBCX.isEmpty() || "jdbc".equals(Option.PROPERTY_JDBCX)) {
+            throw new IllegalStateException(
+                    Utils.format("The JDBCX prefix cannot be empty or \"jdbc\". "
+                            + "Please modify it to a different value using either "
+                            + "the system property \"%s\" or the environment variable \"%s\".",
+                            prefixOption.getSystemProperty(null),
+                            prefixOption.getEnvironmentVariable(null)));
+        }
+    }
+
     /**
      * One of suggested choices for error handling, which simply ignores the error.
      */
@@ -45,6 +64,11 @@ public final class Option implements Serializable {
      * warning.
      */
     public static final String ERROR_HANDLING_WARN = "warn";
+    /**
+     * One of suggested choices for error handling, which returns the error as
+     * result.
+     */
+    public static final String ERROR_HANDLING_RETURN = "return";
 
     // most common options
     /**
@@ -56,27 +80,91 @@ public final class Option implements Serializable {
      * Custom classpath for {@link ExpandedUrlClassLoader} to load classes.
      */
     public static final Option CUSTOM_CLASSPATH = Option.of(new String[] { "custom.classpath", "Custom classpath" });
+
     /**
-     * Whether to use dry-run mode.
-     */
-    public static final Option DRY_RUN = Option
-            .of(new String[] { "dryrun", "Whether to use dry-run mode, where query will be returned as result", "false",
-                    "true" });
-    /**
-     * The approach to handle execution error.
+     * The error handling approach to use when an execution fails.
      */
     public static final Option EXEC_ERROR = Option
-            .of(new String[] { "exec.error", "The approach to handle execution error", ERROR_HANDLING_IGNORE,
-                    ERROR_HANDLING_THROW, ERROR_HANDLING_WARN });
+            .of(new String[] { "exec.error", "The error handling approach to use when an execution fails.",
+                    ERROR_HANDLING_WARN, ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN, ERROR_HANDLING_THROW });
     /**
-     * Parallelism level.
+     * The execution mode, either normal or dry-run.
      */
-    public static final Option PARALLEL = Option.of(new String[] { "parallel",
-            "Maximum number of threads for each extension for execution, 0 to enforce sequential execution", "0" });
+    public static final Option EXEC_MODE = Option
+            .of(new String[] { "exec.mode", "The execution mode, either normal or dry-run.", "normal", "dry-run" });
+    /**
+     * The maximum number of threads that can be used for query execution. 0
+     * enforces sequential execution.
+     */
+    public static final Option EXEC_PARALLELISM = Option.of(new String[] { "exec.parallelism",
+            "The maximum number of threads that can be used for query execution. 0 enforces sequential execution.",
+            "0" });
+    /**
+     * The priority for executing the query.
+     */
+    public static final Option EXEC_PRIORITY = Option
+            .of(new String[] { "exec.priority",
+                    "The priority for executing the query. Higher values indicate higher priority.", "5" });
+    /**
+     * The execution timeout in milliseconds.
+     */
+    public static final Option EXEC_TIMEOUT = Option.of("exec.timeout",
+            "The execution timeout in milliseconds. A negative value or 0 disables the timeout.", "0");
+
+    public static final Option INPUT_FILE = Option
+            .of(new String[] { "input.file",
+                    "The input file to read the query from. This is only used when no query content is provided." });
+    public static final Option OUTPUT_FILE = Option
+            .of(new String[] { "output.file",
+                    "The file to write query results to. If the file already exists, it will be overwritten without warning." });
+    public static final Option INPUT_CHARSET = Option.of("input.charset", "Charset used for command line input",
+            Constants.DEFAULT_CHARSET.name());
+    public static final Option OUTPUT_CHARSET = Option.of("output.charset",
+            "Charset used for command line output", Constants.DEFAULT_CHARSET.name());
     /**
      * Proxy to use.
      */
     public static final Option PROXY = Option.of(new String[] { "proxy", "Proxy server to use, empty means no proxy" });
+
+    public static final Option RESULT_FORMAT = Option
+            .of(new String[] { "result.format", "Data format of the query result" });
+    public static final Option RESULT_ID = Option.of(new String[] { "result.id", "Result identity" });
+    public static final Option RESULT_JSON_PATH = Option
+            .of(new String[] { "result.json.path",
+                    "The JSON path to extract a value from the JSON query results. The extracted value will be converted to a string and escaped." });
+    public static final Option RESULT_STRING_ESCAPE = Option
+            .of(new String[] { "result.string.escape",
+                    "Whether single quotes or specified characters will be escaped in string results.", "false",
+                    "true" });
+    public static final Option RESULT_STRING_ESCAPE_CHAR = Option
+            .of(new String[] { "result.string.escape.char", "The character that will be used for escaping.", "\\" });
+    public static final Option RESULT_STRING_ESCAPE_TARGET = Option
+            .of(new String[] { "result.string.escape.target",
+                    "The target character that will be escaped in string query results.", "'" });
+    public static final Option RESULT_STRING_REPLACE = Option
+            .of(new String[] { "result.string.replace", "Whether to substitute variables in the query result.", "false",
+                    "true" });
+    public static final Option RESULT_STRING_TRIM = Option
+            .of(new String[] { "result.string.trim", "Whether trim the query result.", "false", "true" });
+    public static final Option RESULT_STRING_SPLIT = Option
+            .of(new String[] { "result.string.split", "Whether split the query result.", "false", "true" });
+    public static final Option RESULT_STRING_SPLIT_CHAR = Option
+            .of(new String[] { "result.string.split", "The character(s) that will be used to split the query result.",
+                    "\n" });
+    public static final Option RESULT_STRING_SPLIT_BLANK = Option
+            .of(new String[] { "result.string.line.blank", "Determines how to process blank line in the query result.",
+                    ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN });
+    public static final Option RESULT_OUTPUT = Option
+            .of(new String[] { "result.output", "Result output", ERROR_HANDLING_RETURN, ERROR_HANDLING_IGNORE });
+    public static final Option RESULT_TABLE = Option
+            .of(new String[] { "result.table",
+                    "The name of the database table to save the query results to. The table will be automatically created if it does not already exist." });
+    /**
+     * The result type, either string, json or stream.
+     */
+    public static final Option RESULT_TYPE = Option
+            .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
+                    "stream" });
 
     public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert", "SSL certificate" });
     public static final Option SSL_CERT_TYPE = Option
@@ -299,6 +387,15 @@ public final class Option implements Serializable {
     }
 
     /**
+     * Gets name with prefix of {@link #PROPERTY_PREFIX}.
+     *
+     * @return non-null name with prefix
+     */
+    public String getJdbcxName() {
+        return PROPERTY_PREFIX.concat(name);
+    }
+
+    /**
      * Gets description of the option.
      *
      * @return non-null description of the option
@@ -324,7 +421,7 @@ public final class Option implements Serializable {
      *         {@link #getDefaultValue()}
      */
     public String getValue(Properties props) {
-        return getValue(props, null);
+        return getValue(null, props, null, true);
     }
 
     /**
@@ -336,12 +433,36 @@ public final class Option implements Serializable {
      * @return non-null value
      */
     public String getValue(Properties props, String defaultValue) {
-        if (props == null || props.isEmpty()) {
+        return getValue(null, props, defaultValue, true);
+    }
+
+    /**
+     * Gets value using {@link #PROPERTY_PREFIX}. Same as
+     * {@code getValue(PROPERTY_PREFIX, props, null, true)}.
+     * 
+     * @param props properties
+     * @return non-null value
+     */
+    public String getJdbcxValue(Properties props) {
+        return getValue(PROPERTY_PREFIX, props, null, true);
+    }
+
+    /**
+     * Gets value from the given {@link Properties}.
+     *
+     * @param prefix       optional prefix, usually same as {@link #PROPERTY_PREFIX}
+     * @param props        properties
+     * @param defaultValue optional default value
+     * @param validate     whether to ensure the value is a valid choice
+     * @return non-null value
+     */
+    public String getValue(String prefix, Properties props, String defaultValue, boolean validate) {
+        if (props == null) {
             return defaultValue != null ? defaultValue : this.defaultValue;
         }
 
-        String value = props.getProperty(name);
-        if (value == null || (!choices.isEmpty() && !choices.contains(value))) {
+        String value = props.getProperty(getSystemProperty(prefix));
+        if (value == null || (validate && !choices.isEmpty() && !choices.contains(value))) {
             value = defaultValue != null ? defaultValue : this.defaultValue;
         }
         return value;
@@ -355,7 +476,7 @@ public final class Option implements Serializable {
      * @return the overrided value, null means it did not exist
      */
     public String setValue(Properties props) {
-        return setValue(props, null);
+        return setValue(null, props, null, true);
     }
 
     /**
@@ -367,13 +488,22 @@ public final class Option implements Serializable {
      * @return the overrided value, null means it did not exist
      */
     public String setValue(Properties props, String value) {
+        return setValue(null, props, value, true);
+    }
+
+    public String setJdbcxValue(Properties props, String value) {
+        return setValue(PROPERTY_PREFIX, props, value, true);
+    }
+
+    public String setValue(String prefix, Properties props, String value, boolean validate) {
         if (props == null) {
             return null;
         } else if (value == null || (!choices.isEmpty() && !choices.contains(value))) {
             value = defaultValue;
         }
 
-        return (String) props.setProperty(name, value);
+        return (String) (Checker.isNullOrEmpty(prefix) ? props.setProperty(name, value)
+                : props.setProperty(prefix.toLowerCase(Locale.ROOT).concat(name), value));
     }
 
     /**

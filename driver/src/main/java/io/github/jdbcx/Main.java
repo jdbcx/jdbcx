@@ -28,6 +28,8 @@ import java.sql.Statement;
 import java.util.Locale;
 import java.util.Objects;
 
+import io.github.jdbcx.executor.Stream;
+
 public final class Main {
     private static void println() {
         System.out.println(); // NOSONAR
@@ -69,7 +71,7 @@ public final class Main {
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
-        println("  -  %s 'jdbcx:derby:memory:x;create=True' 'select * from SYS.SYSTABLES'",
+        println("  -  %s 'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
@@ -79,7 +81,7 @@ public final class Main {
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
             return 0L;
         } else if (fileOrQuery.charAt(0) == '@') {
-            fileOrQuery = Utils.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
+            fileOrQuery = Stream.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
         try (Connection conn = DriverManager.getConnection(url, System.getProperties());

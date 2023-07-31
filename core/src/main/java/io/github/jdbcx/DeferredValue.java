@@ -102,6 +102,11 @@ public final class DeferredValue<T> implements Supplier<T> {
         return new DeferredValue<>((Supplier<T>) NULL_SUPPLIER, Optional.ofNullable(value));
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T> DeferredValue<T> of(Optional<T> value) { // NOSONAR
+        return new DeferredValue<>((Supplier<T>) NULL_SUPPLIER, Checker.nonNull(value, "Value"));
+    }
+
     private final Supplier<T> supplier;
     private final AtomicReference<Optional<T>> value;
 
