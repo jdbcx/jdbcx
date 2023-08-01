@@ -53,14 +53,13 @@ jobs:
       - name: Build and install libraries
         run: mvn --batch-mode --show-version --strict-checksums --threads 2 -Dmaven.wagon.rto=30000 -Dj8 install
 
-  test-jdk17:
+  test-jdk17-linux:
     needs: compile
     strategy:
       matrix:
         # https://whichjdk.com/
         # https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#selecting-a-java-distribution
         dist: ["corretto", "liberica", "microsoft", "temurin", "zulu"]
-        # skip "macos-latest" and "windows-latest" due to poor support of docker
         os: ["ubuntu-latest"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
@@ -100,6 +99,60 @@ jobs:
           EOF
       - name: Test libraries
         run: mvn --batch-mode --show-version --strict-checksums install
+      - name: Upload test results
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: result ${{ github.job }}
+          path: |
+            **/target/failsafe-reports
+            **/target/surefire-reports
+
+  test-jdk17-osx-win:
+    needs: compile
+    strategy:
+      matrix:
+        dist: ["corretto", "liberica", "microsoft", "temurin", "zulu"]
+        os: ["macos-latest", "windows-latest"]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: Check out PR
+        run: |
+          git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
+            origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
+        if: github.event.inputs.pr != ''
+      - name: Install JDK 17 and Maven
+        uses: actions/setup-java@v3
+        with:
+          distribution: ${{ matrix.dist }}
+          java-version: 17
+          cache: "maven"
+      - name: Setup Toolchain
+        shell: bash
+        run: |
+          mkdir -p $HOME/.m2 \
+          && cat << EOF > $HOME/.m2/toolchains.xml
+          <?xml version="1.0" encoding="UTF8"?>
+          <toolchains>
+            <toolchain>
+              <type>jdk</type>
+              <provides>
+                <version>17</version>
+              </provides>
+              <configuration>
+                <jdkHome>${{ env.JAVA_HOME }}</jdkHome>
+              </configuration>
+            </toolchain>
+          </toolchains>
+          EOF
+      - name: Test libraries
+        # skip integration due to poor support of docker
+        run: mvn --batch-mode --show-version --strict-checksums -DskipITs install
       - name: Upload test results
         uses: actions/upload-artifact@v2
         if: failure()
