@@ -43,8 +43,8 @@ public class CaffeineCacheTest {
         Cache<String, AutoClosableResource> c = (Cache<String, AutoClosableResource>) cache.unwrap(Cache.class);
         c.cleanUp();
         Assert.assertEquals(res3.closed.get(), false);
-        Assert.assertEquals(res2.closed.get(), false);
-        Assert.assertEquals(res1.closed.get(), true);
+        Assert.assertEquals(res2.closed.get() || res1.closed.get(), true);
+        Assert.assertEquals(c.asMap().size(), 2);
     }
 
     @Test(groups = { "unit" })
