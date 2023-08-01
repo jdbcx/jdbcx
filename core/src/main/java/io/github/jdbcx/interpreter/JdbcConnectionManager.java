@@ -25,16 +25,19 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.ExpandedUrlClassLoader;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public abstract class JdbcConnectionManager {
     public static final Option OPTION_CACHE = Option
             .of(new String[] { "cache",
                     "Whether to load configuration into cache and use background thread to monitor changes" });
-    public static final Option OPTION_ID = Option
-            .of(new String[] { "id", "ID for looking up JDBC connection" });
+    public static final Option OPTION_ID = Option.of(new String[] { "id", "ID for looking up JDBC connection" });
+    public static final Option OPTION_ALIAS = Option.of(new String[] { "alias", "Comma separated aliases" });
     public static final Option OPTION_URL = Option.of(new String[] { "url", "JDBC connection URL" });
     public static final Option OPTION_DRIVER = Option.of(new String[] { "driver", "JDBC driver class name" });
     public static final Option OPTION_CLASSPATH = Option.of(new String[] { "classpath", "Comma separated classpath" });
+    public static final Option OPTION_MANAGED = Option
+            .of(new String[] { "manage", "Whether all the connections are managed", "false", "true" });
 
     private static final JdbcConnectionManager instance = Utils.getService(JdbcConnectionManager.class);
 
@@ -51,14 +54,14 @@ public abstract class JdbcConnectionManager {
         }
 
         final String driver = OPTION_DRIVER.getJdbcxValue(props);
-        final ClassLoader loader = new ExpandedUrlClassLoader(getClass(), classpath.split(","));
+        final ClassLoader loader = ExpandedUrlClassLoader.of(getClass(), classpath.split(","));
         if (Checker.isNullOrEmpty(driver)) {
             for (Driver d : Utils.load(Driver.class, loader)) {
                 if (d.acceptsURL(url)) {
                     return d.connect(url, props);
                 }
             }
-            throw new SQLException(
+            throw SqlExceptionUtils.clientError(
                     Utils.format("No suitable driver found in classpath [%s]. Please specify \"%s\" and try again.",
                             classpath, OPTION_DRIVER.getJdbcxName()));
         } else {
@@ -66,7 +69,7 @@ public abstract class JdbcConnectionManager {
                 Driver d = (Driver) loader.loadClass(driver).getConstructor().newInstance();
                 return d.connect(url, props);
             } catch (Exception e) {
-                throw new SQLException(e);
+                throw SqlExceptionUtils.clientError(e);
             }
         }
     }

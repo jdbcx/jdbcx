@@ -36,7 +36,8 @@ public interface Cache<K, V> {
      * @param <V>           type of the value
      * @param capacity      capacity of the cache, a negative number or zero is
      *                      considered as {@link #DEFAULT_CACHE_SIZE} for the cache
-     * @param expireSeconds seconds the cache entry will expire since last access
+     * @param expireSeconds seconds the cache entry will expire since last access,
+     *                      zero or negative number means never expire
      * @param loadFunc      non-null load function
      * @return in-memory cache
      */

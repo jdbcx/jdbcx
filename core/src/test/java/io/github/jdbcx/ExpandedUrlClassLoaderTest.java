@@ -33,7 +33,8 @@ public class ExpandedUrlClassLoaderTest {
         Assert.assertThrows(ClassNotFoundException.class, () -> loader.loadClass(classToLoad));
 
         // load class from remote URL
-        try (ExpandedUrlClassLoader customLoader = new ExpandedUrlClassLoader(loader, remoteFile)) {
+        try (ExpandedUrlClassLoader customLoader = (ExpandedUrlClassLoader) ExpandedUrlClassLoader.of(loader,
+                remoteFile)) {
             Assert.assertNotNull(customLoader.loadClass(classToLoad));
         }
         Assert.assertThrows(ClassNotFoundException.class, () -> loader.loadClass(classToLoad));
@@ -43,13 +44,13 @@ public class ExpandedUrlClassLoaderTest {
             Files.copy(in, localFile, StandardCopyOption.REPLACE_EXISTING);
         }
         // load class from specific file in local file system
-        try (ExpandedUrlClassLoader customLoader = new ExpandedUrlClassLoader(loader,
+        try (ExpandedUrlClassLoader customLoader = (ExpandedUrlClassLoader) ExpandedUrlClassLoader.of(loader,
                 localFile.toFile().getAbsolutePath())) {
             Assert.assertNotNull(customLoader.loadClass(classToLoad));
         }
         // load class from local directory
         Assert.assertThrows(ClassNotFoundException.class, () -> loader.loadClass(classToLoad));
-        try (ExpandedUrlClassLoader customLoader = new ExpandedUrlClassLoader(loader,
+        try (ExpandedUrlClassLoader customLoader = (ExpandedUrlClassLoader) ExpandedUrlClassLoader.of(loader,
                 localFile.getParent().toFile().getAbsolutePath())) {
             Assert.assertNotNull(customLoader.loadClass(classToLoad));
         }

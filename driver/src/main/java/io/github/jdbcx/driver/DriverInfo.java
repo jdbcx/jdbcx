@@ -88,7 +88,7 @@ final class DriverInfo {
 
     static ClassLoader getCustomClassLoader(String customClassPath) {
         return Checker.isNullOrEmpty(customClassPath) ? DriverInfo.class.getClassLoader()
-                : new ExpandedUrlClassLoader(DriverInfo.class, customClassPath);
+                : ExpandedUrlClassLoader.of(DriverInfo.class, customClassPath);
     }
 
     static DriverExtension getDriverExtension(String url, Map<String, DriverExtension> extensions) {

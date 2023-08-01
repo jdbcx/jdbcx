@@ -262,7 +262,7 @@ public class WrappedConnection implements Connection {
                     String val = Utils.applyVariables(entry.getValue().toString(), p);
                     p.setProperty(key, val);
                 }
-                JdbcActivityListener cl = ext.createListener(context, conn, p);
+                JdbcActivityListener cl = ext.createListener(context, conn, p); // NOSONAR
                 if (block.hasOutput()) {
                     try {
                         parts[block.getIndex()] = normalize(convertTo(

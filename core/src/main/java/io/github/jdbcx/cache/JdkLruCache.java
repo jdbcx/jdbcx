@@ -18,7 +18,6 @@ package io.github.jdbcx.cache;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 
 import io.github.jdbcx.Cache;
@@ -42,7 +41,19 @@ public class JdkLruCache<K, V> implements Cache<K, V> {
 
         @Override
         protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-            return size() > capacity;
+            if (size() > capacity) {
+                V value = eldest != null ? eldest.getValue() : null;
+                if (value instanceof AutoCloseable) {
+                    try {
+                        ((AutoCloseable) value).close();
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+                return true;
+            }
+
+            return false;
         }
     }
 

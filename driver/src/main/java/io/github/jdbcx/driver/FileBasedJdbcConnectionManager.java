@@ -18,7 +18,6 @@ package io.github.jdbcx.driver;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.FileSystems;
@@ -45,6 +44,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 import io.github.jdbcx.interpreter.JdbcConnectionManager;
 
 public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
@@ -57,26 +57,32 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
     private final AtomicReference<Thread> monitor;
     private final Map<String, Properties> config;
 
-    private final AtomicBoolean cache;
     private final AtomicReference<Path> path;
+    private final AtomicBoolean managed;
 
     public FileBasedJdbcConnectionManager() {
         monitor = new AtomicReference<>();
         config = new ConcurrentHashMap<>();
 
-        cache = new AtomicBoolean(false);
         path = new AtomicReference<>(Utils.getPath(OPTION_DIRECTORY.getDefaultValue(), true));
+        managed = new AtomicBoolean(false);
     }
 
     void load() {
-        if (!cache.get()) {
+        if (!managed.get()) {
             config.clear();
             return;
         }
-
         Set<String> ids = new HashSet<>();
         try {
-            for (File file : path.get().toFile().listFiles()) {
+            File[] files = path.get().toFile().listFiles();
+            if (files == null) {
+                config.clear();
+                log.debug("Emptyed all connections");
+                return;
+            }
+
+            for (File file : files) {
                 if (file.isFile() && file.canRead()) {
                     String fileName = file.getName();
                     if (fileName.endsWith(FILE_EXTENSION)) {
@@ -95,10 +101,30 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
                 }
             }
 
+            // now aliases
+            for (Properties props : config.values()) {
+                for (String alias : OPTION_ALIAS.getJdbcxValue(props).split(",")) {
+                    if (!Checker.isNullOrBlank(alias)) {
+                        String newId = alias.trim();
+                        Properties p = config.get(newId);
+                        String legacyId = Constants.EMPTY_STRING;
+                        if (p != null && config.containsKey(legacyId = OPTION_ID.getJdbcxValue(p))
+                                && legacyId.equals(newId)) {
+                            log.warn("Skip alias [%s] as it's been taken", newId);
+                        } else { // either new entry or an alias, which is safe to override
+                            ids.add(newId);
+                            config.put(newId, props);
+                            log.debug("Added alias [%s]", newId);
+                        }
+                    }
+                }
+            }
+
             for (Iterator<Entry<String, Properties>> it = config.entrySet().iterator(); it.hasNext();) {
                 Entry<String, Properties> entry = it.next();
                 if (!ids.contains(entry.getKey())) {
                     it.remove();
+                    log.debug("Removed connection [%s]", entry.getKey());
                 }
             }
         } catch (Exception e) {
@@ -107,10 +133,9 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
     }
 
     void monitor() {
-        if (!cache.get()) {
+        if (!managed.get()) {
             return;
         }
-
         try {
             WatchService watcher = FileSystems.getDefault().newWatchService();
             path.get().register(watcher, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY,
@@ -138,42 +163,52 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
     @Override
     public Connection getConnection(String id) throws SQLException {
         Properties props;
-        if (cache.get()) {
+        if (managed.get()) {
             props = config.get(id);
         } else {
             props = new Properties();
             Path p = path.get().resolve(id + FILE_EXTENSION);
             log.debug("Loading connection [%s] from [%s]...", id, p);
-            try (InputStream in = new FileInputStream(p.toFile())) {
-                props.load(in);
+            try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
+                props.load(reader);
             } catch (IOException e) {
-                throw new SQLException(e);
+                throw SqlExceptionUtils.clientError(e);
             }
         }
         if (props == null) {
-            throw new SQLException(Utils.format("Could not find connection [%s]", id));
+            throw SqlExceptionUtils.clientError(Utils.format("Could not find connection [%s]", id));
         }
         final String cid = OPTION_ID.getJdbcxValue(props);
         final String url = OPTION_URL.getJdbcxValue(props);
 
         if (!cid.equals(id)) {
-            throw new SQLException(Utils.format(
+            throw SqlExceptionUtils.clientError(Utils.format(
                     "Inconsistent connection ID - it's [%s] in configuration file, but [%s] in request", cid, id));
         } else if (Checker.isNullOrBlank(url)) {
-            throw new SQLException("No connection URL found");
+            throw SqlExceptionUtils.clientError("No connection URL found");
         }
 
         log.debug("Connecting to [%s]...", id);
         return getConnection(url, new Properties(props));
     }
 
+    @Override
     public void reload(Properties props) {
+        final Path currentPath = path.get();
+        final Path newPath = Utils.getPath(OPTION_DIRECTORY.getJdbcxValue(props), true);
+        if (newPath.equals(currentPath) && (managed.get() || !managed.compareAndSet(false, true))) {
+            return;
+        }
+
         final Thread thread = monitor.get();
         if (thread != null) {
             thread.interrupt();
         }
 
-        path.set(Utils.getPath(OPTION_DIRECTORY.getJdbcxValue(props), true));
+        if (!path.compareAndSet(currentPath, newPath)) {
+            log.warn("Failed to change connection configuration path from [%s] to [%s], could be a problem",
+                    currentPath, newPath);
+        }
 
         load();
 

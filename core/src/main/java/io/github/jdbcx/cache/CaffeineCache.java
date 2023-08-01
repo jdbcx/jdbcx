@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.RemovalListener;
 
 import io.github.jdbcx.Cache;
 import io.github.jdbcx.Checker;
@@ -29,7 +31,7 @@ import io.github.jdbcx.Checker;
  * to note that it does not strictly adhere to the LRU (Least Recently Used)
  * cache eviction policy.
  */
-public class CaffeineCache<K, V> implements Cache<K, V> {
+public class CaffeineCache<K, V> implements Cache<K, V>, RemovalListener<K, V> {
     private final com.github.benmanes.caffeine.cache.Cache<K, V> cache;
     private final Function<K, V> loadFunc;
 
@@ -48,10 +50,25 @@ public class CaffeineCache<K, V> implements Cache<K, V> {
         return new CaffeineCache<>(capacity, expireSeconds, loadFunc);
     }
 
+    @SuppressWarnings("unchecked")
     protected CaffeineCache(int capacity, long expireSeconds, Function<K, V> loadFunc) {
-        this.cache = Caffeine.newBuilder().maximumSize(capacity).expireAfterAccess(expireSeconds, TimeUnit.SECONDS)
-                .build();
+        Caffeine<K, V> builder = (Caffeine<K, V>) Caffeine.newBuilder().maximumSize(capacity);
+        if (expireSeconds > 0) {
+            builder.expireAfterAccess(expireSeconds, TimeUnit.SECONDS);
+        }
+        this.cache = builder.evictionListener(this).build();
         this.loadFunc = Objects.requireNonNull(loadFunc, "Non-null load function is required");
+    }
+
+    @Override
+    public void onRemoval(K key, V value, RemovalCause cause) {
+        if (value instanceof AutoCloseable) {
+            try {
+                ((AutoCloseable) value).close();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
     }
 
     @Override

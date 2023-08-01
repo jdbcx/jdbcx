@@ -39,7 +39,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
             .of(new String[] { "properties", "Comma separated connection properties" });
 
     public static final List<Option> OPTIONS = Collections
-            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
+            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, JdbcConnectionManager.OPTION_MANAGED,
                     Option.EXEC_TIMEOUT.update().defaultValue("30000").build(), JdbcConnectionManager.OPTION_ID,
                     JdbcConnectionManager.OPTION_URL, OPTION_PROPERTIES));
 

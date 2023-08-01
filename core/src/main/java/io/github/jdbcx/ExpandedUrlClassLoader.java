@@ -16,6 +16,7 @@
 package io.github.jdbcx;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,11 +39,66 @@ import java.util.concurrent.ConcurrentHashMap;
  * support for loading classes from local directories.
  */
 public final class ExpandedUrlClassLoader extends URLClassLoader {
+    static final class Fingerprint {
+        private final ClassLoader parent;
+        private final String[] urls;
+
+        Fingerprint(ClassLoader parent, String[] urls) {
+            this.parent = parent;
+            this.urls = urls;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = prime + ((parent == null) ? 0 : parent.hashCode());
+            result = prime * result + Arrays.hashCode(urls);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+
+            Fingerprint other = (Fingerprint) obj;
+            return Objects.equals(parent, other.parent) && Arrays.equals(urls, other.urls);
+        }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(ExpandedUrlClassLoader.class);
 
+    private static final Cache<Fingerprint, ClassLoader> cache = Cache.create(50, 0,
+            ExpandedUrlClassLoader::getClassLoader);
+
+    static final String CLASS_PATH_DELIMITER = "||";
     static final String PROTOCOL_FILE = "file";
     static final String FILE_URL_PREFIX = PROTOCOL_FILE + ":///";
     static final String DRIVER_EXTENSION = ".jar";
+
+    static ClassLoader getClassLoader(Fingerprint fingerprint) {
+        return new ExpandedUrlClassLoader(fingerprint.parent, fingerprint.urls);
+    }
+
+    public static final ClassLoader of(ClassLoader parent, String... urls) {
+        if (urls == null || urls.length == 0) {
+            return parent != null ? parent : ExpandedUrlClassLoader.class.getClassLoader();
+        }
+
+        return cache
+                .get(new Fingerprint(parent != null ? parent : ExpandedUrlClassLoader.class.getClassLoader(), urls));
+    }
+
+    public static final ClassLoader of(Class<?> callerClass, String... urls) {
+        if (urls == null || urls.length == 0) {
+            return getSuitableClassLoader(callerClass);
+        }
+
+        return cache.get(new Fingerprint(getSuitableClassLoader(callerClass), urls));
+    }
 
     protected static URL[] expandURLs(String... urls) { // NOSONAR
         if (urls == null || urls.length == 0) {
@@ -160,14 +217,12 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
         return loader;
     }
 
-    private final Class<?> caller;
     private final String originalUrls;
-
     private final Map<String, Class<?>> loadedClasses;
 
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
-        Class<?> clazz = loadedClasses.get(name);
+        Class<?> clazz = loadedClasses.get(name); // NOSONAR
         if (clazz == null) {
             clazz = super.findClass(name);
             loadedClasses.put(name, clazz);
@@ -175,21 +230,10 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
         return clazz;
     }
 
-    public ExpandedUrlClassLoader(Class<?> callerClass, String... urls) {
-        super(expandURLs(urls), getSuitableClassLoader(callerClass));
+    protected ExpandedUrlClassLoader(ClassLoader parent, String... urls) {
+        super(expandURLs(urls), parent);
 
-        this.caller = callerClass;
         this.originalUrls = String.join(",", urls);
-
-        loadedClasses = new ConcurrentHashMap<>();
-    }
-
-    public ExpandedUrlClassLoader(ClassLoader parent, String... urls) {
-        super(expandURLs(urls), parent == null ? ExpandedUrlClassLoader.class.getClassLoader() : parent);
-
-        this.caller = parent == null ? ExpandedUrlClassLoader.class : parent.getClass();
-        this.originalUrls = String.join(",", urls);
-
         loadedClasses = new ConcurrentHashMap<>();
     }
 
@@ -198,8 +242,13 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
     }
 
     @Override
+    public void close() throws IOException {
+        this.loadedClasses.clear();
+        super.close();
+    }
+
+    @Override
     public String toString() {
-        return new StringBuilder(super.toString()).append("(caller=").append(caller).append(",urls=")
-                .append(originalUrls).append(')').toString();
+        return new StringBuilder(super.toString()).append("(urls=").append(originalUrls).append(')').toString();
     }
 }

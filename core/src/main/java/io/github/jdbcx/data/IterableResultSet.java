@@ -21,6 +21,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
@@ -60,6 +61,8 @@ public final class IterableResultSet implements Iterable<Row> {
         private final ResultSet rs;
         private final Row cursor;
 
+        private int state; // 0 - before first; 1 - has next; 2 - eos
+
         ResultSetIterator(ResultSet rs) {
             this.rs = rs;
 
@@ -77,12 +80,16 @@ public final class IterableResultSet implements Iterable<Row> {
             } catch (SQLException e) {
                 throw new IllegalArgumentException(e);
             }
+
+            this.state = 0;
         }
 
         @Override
         public boolean hasNext() {
             try {
-                return rs.next();
+                final boolean b = rs.next();
+                state = b ? 1 : 2;
+                return b;
             } catch (SQLException e) {
                 throw new IllegalStateException(e);
             }
@@ -90,6 +97,9 @@ public final class IterableResultSet implements Iterable<Row> {
 
         @Override
         public Row next() {
+            if (state == 2 || (state == 0 && !hasNext())) {
+                throw new NoSuchElementException();
+            }
             return cursor;
         }
     }
