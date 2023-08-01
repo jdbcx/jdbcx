@@ -53,10 +53,10 @@ public class CaffeineCache<K, V> implements Cache<K, V>, RemovalListener<K, V> {
     @SuppressWarnings("unchecked")
     protected CaffeineCache(int capacity, long expireSeconds, Function<K, V> loadFunc) {
         Caffeine<K, V> builder = (Caffeine<K, V>) Caffeine.newBuilder().maximumSize(capacity);
-        if (expireSeconds > 0) {
+        if (expireSeconds > 0L) {
             builder.expireAfterAccess(expireSeconds, TimeUnit.SECONDS);
         }
-        this.cache = builder.evictionListener(this).build();
+        this.cache = builder.removalListener(this).build();
         this.loadFunc = Objects.requireNonNull(loadFunc, "Non-null load function is required");
     }
 
