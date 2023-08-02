@@ -93,8 +93,12 @@ public final class SqlExceptionUtils {
     }
 
     public static SQLException handle(Exception e) {
-        return e != null ? new SQLException(e.getMessage(), toSqlState(e), 0, e.getCause())
-                : unknownError();
+        if (e instanceof SQLException) {
+            return (SQLException) e;
+        } else if (e != null) {
+            return new SQLException(e.getMessage(), toSqlState(e), 0, e.getCause() != null ? e.getCause() : e);
+        }
+        return unknownError();
     }
 
     public static SQLException handle(Throwable e, Throwable... more) {

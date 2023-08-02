@@ -67,7 +67,8 @@ public class JdbcInterpreter extends AbstractInterpreter {
         } else {
             Map<String, String> map = Utils.toKeyValuePairs(
                     Utils.applyVariables(OPTION_PROPERTIES.getValue(props, defaultConnectionProps), props));
-            Properties newProps = new Properties(props);
+            Properties newProps = new Properties(); // new Properties(props);
+            newProps.putAll(props);
             newProps.putAll(map);
             return manager.getConnection(str, newProps);
         }
@@ -82,6 +83,10 @@ public class JdbcInterpreter extends AbstractInterpreter {
         this.defaultConnectionId = JdbcConnectionManager.OPTION_ID.getValue(config);
         this.defaultConnectionUrl = JdbcConnectionManager.OPTION_URL.getValue(config);
         this.defaultConnectionProps = OPTION_PROPERTIES.getValue(config);
+
+        if (Boolean.parseBoolean(JdbcConnectionManager.OPTION_MANAGED.getValue(config))) {
+            JdbcConnectionManager.getInstance().reload(config);
+        }
 
         this.executor = new JdbcExecutor(config);
     }

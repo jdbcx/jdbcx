@@ -189,7 +189,9 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
         }
 
         log.debug("Connecting to [%s]...", id);
-        return getConnection(url, new Properties(props));
+        Properties newProps = new Properties();
+        newProps.putAll(props);
+        return getConnection(url, newProps); // getConnection(url, new Properties(props));
     }
 
     @Override

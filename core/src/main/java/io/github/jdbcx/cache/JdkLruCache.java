@@ -67,16 +67,13 @@ public class JdkLruCache<K, V> implements Cache<K, V> {
      * @return cache
      */
     public static <K, V> Cache<K, V> create(int capacity, Function<K, V> loadFunc) {
-        return new JdkLruCache<>(new LruCacheMap<>(capacity), loadFunc);
+        return new JdkLruCache<>(new LruCacheMap<>(capacity), Checker.nonNull(loadFunc, Function.class));
     }
 
     private final Map<K, V> cache;
     private final Function<K, V> loadFunc;
 
     protected JdkLruCache(Map<K, V> cache, Function<K, V> loadFunc) {
-        if (cache == null || loadFunc == null) {
-            throw new IllegalArgumentException("Non-null cache and load function are required");
-        }
         this.cache = Collections.synchronizedMap(cache);
         this.loadFunc = loadFunc;
     }

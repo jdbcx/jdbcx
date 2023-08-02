@@ -44,7 +44,7 @@ public class ShellDriverExtensionTest extends BaseIntegrationTest {
 
             String query = "{% vars: v1=~/tests/prqlc8, v2=~/tests/prqlc9 %}\n"
                     + "select  '{{ shell(result.string.trim=true, result.string.replace=true): ${v1} -V }}' v1,\n"
-                    + "'{{ shell(result.string.trim=true, result.string.replace=true): ${v2} -V }}' v2\n"
+                    + "'{{ shell(result.string.trim=true, result.string.replace=true): ${v2} -v }}' v2,\n"
                     + "'{{ prql(cli.path=${v1}): from t }}' v1_result,\n"
                     + "'{{ prql(cli.path=${v2}): from t }}' v2_result";
             try (ResultSet rs = stmt.executeQuery(query)) {
@@ -53,6 +53,10 @@ public class ShellDriverExtensionTest extends BaseIntegrationTest {
                 Assert.assertNull(warning.getNextException(), "Should not have next exception");
                 Assert.assertNull(warning.getNextWarning(), "Should not have next warning");
             }
+
+            // empty query
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery(
+                    "{% var: ch-server=node1, test-client=node2 %}\n{% shell: bash -c 'echo ${ch-server}' %}"));
         }
     }
 

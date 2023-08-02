@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.cache;
 
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -57,7 +56,7 @@ public class CaffeineCache<K, V> implements Cache<K, V>, RemovalListener<K, V> {
             builder.expireAfterAccess(expireSeconds, TimeUnit.SECONDS);
         }
         this.cache = builder.removalListener(this).build();
-        this.loadFunc = Objects.requireNonNull(loadFunc, "Non-null load function is required");
+        this.loadFunc = Checker.nonNull(loadFunc, Function.class);
     }
 
     @Override

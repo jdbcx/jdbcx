@@ -119,7 +119,7 @@ public class WrappedStatement implements Statement {
                     log.debug("Failed to close result set due to %s", ex.getMessage());
                 }
             }
-            throw e;
+            throw SqlExceptionUtils.handle(e);
         }
     }
 
@@ -161,7 +161,7 @@ public class WrappedStatement implements Statement {
                     log.debug("Failed to close result set due to %s", ex.getMessage());
                 }
             }
-            throw e;
+            throw SqlExceptionUtils.handle(e);
         }
     }
 
@@ -213,7 +213,7 @@ public class WrappedStatement implements Statement {
                     log.debug("Failed to close result set due to %s", ex.getMessage());
                 }
             }
-            throw e;
+            throw SqlExceptionUtils.handle(e);
         }
     }
 

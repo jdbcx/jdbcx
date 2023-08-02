@@ -100,7 +100,7 @@ public final class QueryBuilder {
                     results[i] = Result.of(block.getContent());
                 }
             } else {
-                cl.onQuery(block.getContent());
+                cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
                 results[i] = Result.of(Constants.EMPTY_STRING);
             }
         }
