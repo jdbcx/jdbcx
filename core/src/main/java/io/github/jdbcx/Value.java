@@ -16,8 +16,13 @@
 package io.github.jdbcx;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
 
 public interface Value extends Serializable {
     boolean isNull();
@@ -33,6 +38,62 @@ public interface Value extends Serializable {
         return asString(charset).getBytes(charset);
     }
 
+    default boolean asBoolean() {
+        return isNull() && Boolean.parseBoolean(asString());
+    }
+
+    default byte asByte() {
+        return isNull() ? (byte) 0 : Byte.parseByte(asString());
+    }
+
+    default short asShort() {
+        return isNull() ? (short) 0 : Short.parseShort(asString());
+    }
+
+    default int asInt() {
+        return isNull() ? 0 : Integer.parseInt(asString());
+    }
+
+    default long asLong() {
+        return isNull() ? 0L : Long.parseLong(asString());
+    }
+
+    default float asFloat() {
+        return isNull() ? 0F : Float.parseFloat(asString());
+    }
+
+    default double asDouble() {
+        return isNull() ? 0D : Double.parseDouble(asString());
+    }
+
+    default BigInteger asBigInteger() {
+        return isNull() ? null : new BigInteger(asString());
+    }
+
+    default BigDecimal asBigDecimal() {
+        return isNull() ? null : new BigDecimal(asString());
+    }
+
+    default BigDecimal asBigDecimal(int scale) {
+        return isNull() ? null : new BigDecimal(asBigInteger(), scale);
+    }
+
+    default <T> T asObject(Class<T> clazz) {
+        return clazz.cast(asObject());
+    }
+
+    default Date asSqlDate() {
+        return new Date(asLong());
+    }
+
+    default Time asSqlTime() {
+        return new Time(asLong());
+    }
+
+    default Timestamp asSqlTimestamp() {
+        return new Timestamp(asLong());
+    }
+
     default String asString() {
         return asString(Constants.DEFAULT_CHARSET);
     }
@@ -44,6 +105,8 @@ public interface Value extends Serializable {
     default String asUnicodeString() {
         return asString(StandardCharsets.UTF_8);
     }
+
+    Object asObject();
 
     String asString(Charset charset);
 }

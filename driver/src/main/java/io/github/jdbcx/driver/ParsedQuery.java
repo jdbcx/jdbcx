@@ -19,13 +19,41 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.jdbcx.Checker;
+
 public final class ParsedQuery {
     private final List<String> parts;
     private final List<ExecutableBlock> blocks;
 
+    private final boolean directQuery;
+
     ParsedQuery(List<String> parts, List<ExecutableBlock> blocks) {
+        if (parts == null || blocks == null) {
+            throw new IllegalArgumentException("Non-null static parts and executable blocks are required");
+        }
+
         this.parts = Collections.unmodifiableList(new ArrayList<>(parts));
         this.blocks = Collections.unmodifiableList(new ArrayList<>(blocks));
+
+        boolean found = false;
+        for (String p : parts) {
+            if (!Checker.isNullOrBlank(p)) {
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            this.directQuery = false;
+        } else {
+            int count = 0;
+            for (ExecutableBlock b : blocks) {
+                if (b.hasOutput()) {
+                    count++;
+                }
+            }
+            this.directQuery = count < 2;
+        }
     }
 
     public List<String> getStaticParts() {
@@ -34,6 +62,10 @@ public final class ParsedQuery {
 
     public List<ExecutableBlock> getExecutableBlocks() {
         return blocks;
+    }
+
+    public boolean isDirectQuery() {
+        return directQuery;
     }
 
     @Override

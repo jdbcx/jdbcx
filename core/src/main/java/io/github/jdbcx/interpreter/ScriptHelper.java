@@ -90,7 +90,7 @@ public final class ScriptHelper {
     }
 
     public String shell(Object... more) throws IOException {
-        return cli(Constants.IS_WINDOWS ? "cmd /c" : "sh -c", more);
+        return cli(Constants.IS_WINDOWS ? "cmd /c" : "/bin/sh -c", more);
     }
 
     public String read(Object obj) throws IOException {

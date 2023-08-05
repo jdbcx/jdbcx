@@ -103,6 +103,20 @@ public class WrappedConnection implements Connection {
         return result;
     }
 
+    static final <T> T convertTo(Result<?> result, Class<T> clazz) throws SQLException {
+        try {
+            return result.get(clazz);
+        } catch (CompletionException e) {
+            if (e.getCause() == null) {
+                throw SqlExceptionUtils.clientWarning(e);
+            } else {
+                throw SqlExceptionUtils.clientError(e);
+            }
+        } catch (Exception e) { // unexpected error
+            throw SqlExceptionUtils.clientError(e);
+        }
+    }
+
     protected final Connection conn;
     protected final JdbcDialect dialect;
     protected final String url;
@@ -161,20 +175,6 @@ public class WrappedConnection implements Connection {
         this.warning = new AtomicReference<>();
     }
 
-    protected <T> T convertTo(Result<?> result, Class<T> clazz) throws SQLException {
-        try {
-            return result.get(clazz);
-        } catch (CompletionException e) {
-            if (e.getCause() == null) {
-                throw SqlExceptionUtils.clientWarning(e);
-            } else {
-                throw SqlExceptionUtils.clientError(e);
-            }
-        } catch (Exception e) { // unexpected error
-            throw SqlExceptionUtils.clientError(e);
-        }
-    }
-
     protected DriverExtension getExtension(String name) {
         DriverExtension ext = Checker.isNullOrEmpty(name) ? defaultExtension
                 : extensions.get(name);
@@ -190,21 +190,18 @@ public class WrappedConnection implements Connection {
                 ext == defaultExtension ? props : DriverExtension.extractProperties(ext, originalProps));
     }
 
-    protected List<String> handleResults(String query) throws SQLException {
-        return handleResults(query, null);
-    }
-
-    protected List<String> handleResults(String query, AtomicReference<SQLWarning> ref) throws SQLException {
-        if (ref == null) {
-            ref = warning;
-        }
-        ref.set(null);
+    protected List<String> handleResults(String query, WrappedStatement stmt) throws SQLException {
+        stmt.warning.set(null);
 
         SQLWarning w = null;
         try (QueryContext context = createContext()) {
             final ParsedQuery pq = QueryParser.parse(query, context.getCustomVariables());
-            final QueryBuilder builder = new QueryBuilder(context, pq, this, ref, w);
+            final QueryBuilder builder = new QueryBuilder(context, pq, stmt);
             List<String> queries = builder.build();
+            if (queries.isEmpty()) {
+                return Collections.emptyList();
+            }
+
             w = builder.getLastWarning();
 
             final JdbcActivityListener listener = createListener(context);
@@ -222,7 +219,7 @@ public class WrappedConnection implements Connection {
             }
             return Collections.unmodifiableList(results);
         } catch (SQLWarning e) {
-            ref.set(SqlExceptionUtils.consolidate(w, e));
+            stmt.warning.set(SqlExceptionUtils.consolidate(w, e));
             return Collections.singletonList(query);
         } catch (Throwable t) { // NOSONAR
             throw SqlExceptionUtils.clientError(t);
@@ -300,17 +297,17 @@ public class WrappedConnection implements Connection {
     }
 
     @Override
-    public Statement createStatement() throws SQLException {
+    public WrappedStatement createStatement() throws SQLException {
         return new WrappedStatement(this, conn.createStatement()); // NOSONAR
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query) throws SQLException {
+    public WrappedPreparedStatement prepareStatement(String query) throws SQLException {
         return new WrappedPreparedStatement(this, query, conn.prepareStatement(handleString(query))); // NOSONAR
     }
 
     @Override
-    public CallableStatement prepareCall(String query) throws SQLException {
+    public WrappedCallableStatement prepareCall(String query) throws SQLException {
         return new WrappedCallableStatement(this, query, conn.prepareCall(handleString(query))); // NOSONAR
     }
 

@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.driver;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
@@ -24,7 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
@@ -37,24 +37,25 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public final class QueryBuilder {
     private final QueryContext context;
+
+    private final boolean directQuery;
     private final String[] parts;
     private final ExecutableBlock[] blocks;
 
-    private final WrappedConnection conn;
-    private final AtomicReference<SQLWarning> ref;
+    private final WrappedStatement stmt;
 
     private SQLWarning lastWarning;
 
-    QueryBuilder(QueryContext context, ParsedQuery pq, WrappedConnection conn, AtomicReference<SQLWarning> ref,
-            SQLWarning lastWarning) {
+    QueryBuilder(QueryContext context, ParsedQuery pq, WrappedStatement stmt) {
         this.context = context;
+
+        this.directQuery = pq.isDirectQuery();
         this.parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
         this.blocks = pq.getExecutableBlocks().toArray(new ExecutableBlock[0]);
 
-        this.conn = conn;
-        this.ref = ref;
+        this.stmt = stmt;
 
-        this.lastWarning = lastWarning;
+        this.lastWarning = null;
     }
 
     public SQLWarning getLastWarning() {
@@ -79,6 +80,7 @@ public final class QueryBuilder {
         final Result<?>[] results = new Result[len];
         final Properties[] properties = new Properties[len];
 
+        final WrappedConnection conn = stmt.getConnection();
         for (int i = 0; i < len; i++) {
             ExecutableBlock block = blocks[i];
             DriverExtension ext = conn.getExtension(block.getExtensionName());
@@ -94,9 +96,15 @@ public final class QueryBuilder {
             JdbcActivityListener cl = ext.createListener(context, conn, p);
             if (block.hasOutput()) {
                 try {
-                    results[i] = cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
+                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
+                    if (directQuery && ext.supportsDirectQuery()) {
+                        stmt.currentResultSet.set(WrappedConnection.convertTo(r, ResultSet.class));
+                        return Collections.emptyList();
+                    } else {
+                        results[i] = r;
+                    }
                 } catch (SQLWarning e) {
-                    ref.set(lastWarning = SqlExceptionUtils.consolidate(lastWarning, e));
+                    stmt.warning.set(lastWarning = SqlExceptionUtils.consolidate(lastWarning, e));
                     results[i] = Result.of(block.getContent());
                 }
             } else {
