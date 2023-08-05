@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.driver;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -39,10 +38,10 @@ public class WrappedStatement implements Statement {
 
     private final Statement stmt;
 
-    private final AtomicReference<ResultSet> currentGeneratedKeys;
-    private final AtomicReference<ResultSet> currentResultSet;
-    private final AtomicReference<Integer> currentUpdateCount;
-    private final AtomicReference<SQLWarning> warning;
+    protected final AtomicReference<ResultSet> currentGeneratedKeys;
+    protected final AtomicReference<ResultSet> currentResultSet;
+    protected final AtomicReference<Integer> currentUpdateCount;
+    protected final AtomicReference<SQLWarning> warning;
 
     protected WrappedStatement(WrappedConnection conn, Statement stmt) {
         this.conn = conn;
@@ -75,7 +74,11 @@ public class WrappedStatement implements Statement {
     protected boolean execute(String query, ExecuteCallback callback) throws SQLException {
         resetCurrentResults();
 
-        final List<String> queries = conn.handleResults(query, warning);
+        final List<String> queries = conn.handleResults(query, this);
+        if (queries.isEmpty()) {
+            return currentResultSet.get() != null;
+        }
+
         boolean result = false;
         int affectedRows = 0;
         ResultSet[] rs = null;
@@ -126,7 +129,11 @@ public class WrappedStatement implements Statement {
     protected int executeUpdate(String query, ExecuteCallback callback) throws SQLException {
         resetCurrentResults();
 
-        final List<String> queries = conn.handleResults(query, warning);
+        final List<String> queries = conn.handleResults(query, this);
+        if (queries.isEmpty()) {
+            return 0;
+        }
+
         int affectedRows = 0;
         ResultSet rs = null;
         try {
@@ -165,10 +172,6 @@ public class WrappedStatement implements Statement {
         }
     }
 
-    protected String handle(String query) throws SQLException {
-        return conn.handleString(query, warning);
-    }
-
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         return stmt.getClass() == iface ? iface.cast(iface) : stmt.unwrap(iface);
@@ -183,7 +186,11 @@ public class WrappedStatement implements Statement {
     public ResultSet executeQuery(String query) throws SQLException {
         resetCurrentResults();
 
-        final List<String> queries = conn.handleResults(query, warning);
+        final List<String> queries = conn.handleResults(query, this);
+        if (queries.isEmpty()) {
+            return currentResultSet.get();
+        }
+
         final int size = queries.size();
         ResultSet rs = null;
         try {
@@ -349,7 +356,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public void addBatch(String query) throws SQLException {
-        final String newQuery = handle(query);
+        final String newQuery = conn.handleString(query, warning);
         try {
             stmt.addBatch(newQuery);
         } catch (Exception e) {
@@ -371,7 +378,7 @@ public class WrappedStatement implements Statement {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public WrappedConnection getConnection() throws SQLException {
         return conn;
     }
 

@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx.data;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 
 import io.github.jdbcx.Constants;
@@ -45,7 +47,57 @@ public final class LongValue implements Value {
     }
 
     @Override
+    public boolean asBoolean() {
+        return value != 0L;
+    }
+
+    @Override
+    public byte asByte() {
+        return (byte) value;
+    }
+
+    @Override
+    public short asShort() {
+        return (short) value;
+    }
+
+    @Override
+    public int asInt() {
+        return (int) value;
+    }
+
+    @Override
+    public long asLong() {
+        return value;
+    }
+
+    @Override
+    public float asFloat() {
+        return value;
+    }
+
+    @Override
+    public double asDouble() {
+        return value;
+    }
+
+    @Override
+    public BigInteger asBigInteger() {
+        return isNull() ? null : BigInteger.valueOf(value);
+    }
+
+    @Override
+    public BigDecimal asBigDecimal() {
+        return isNull() ? null : BigDecimal.valueOf(value);
+    }
+
+    @Override
     public String asString(Charset charset) {
         return isNull ? Constants.EMPTY_STRING : String.valueOf(value);
+    }
+
+    @Override
+    public Object asObject() {
+        return isNull ? null : value;
     }
 }

@@ -35,6 +35,10 @@ public final class ExecutableBlock {
     private final boolean output;
 
     ExecutableBlock(int index, String extension, Properties props, String content, boolean output) {
+        if (extension == null || props == null || content == null) {
+            throw new IllegalArgumentException("Non-null extension name, properties, and content are required!");
+        }
+
         this.index = index;
         this.extension = extension;
         this.props = props;

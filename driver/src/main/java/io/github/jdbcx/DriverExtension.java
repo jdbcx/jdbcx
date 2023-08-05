@@ -158,4 +158,8 @@ public interface DriverExtension {
     default List<Option> getDefaultOptions() {
         return Collections.emptyList();
     }
+
+    default boolean supportsDirectQuery() {
+        return true;
+    }
 }

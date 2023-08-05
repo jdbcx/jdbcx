@@ -28,7 +28,7 @@ import io.github.jdbcx.executor.CommandLineExecutor;
 
 public class ShellInterpreter extends AbstractInterpreter {
     static final Option OPTION_PATH = CommandLineExecutor.OPTION_CLI_PATH.update()
-            .defaultValue(Constants.IS_WINDOWS ? "cmd /c" : "sh -c").build();
+            .defaultValue(Constants.IS_WINDOWS ? "cmd /c" : "/bin/sh -c").build();
     static final Option OPTION_TIMEOUT = Option.EXEC_TIMEOUT.update().defaultValue("30000")
             .build();
 

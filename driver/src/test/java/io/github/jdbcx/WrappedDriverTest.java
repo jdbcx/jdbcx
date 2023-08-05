@@ -253,4 +253,38 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             }
         }
     }
+
+    @Test(groups = { "integration" })
+    public void testDirectQuery() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String address = getClickHouseServer();
+        try (Connection conn = d.connect("jdbcx:derby:memory:x;create=true", props);
+                Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt
+                    .executeQuery("{{sql(url='jdbc:ch://" + address + "'): select * from numbers(7)}}")) {
+                int counter = 0;
+                while (rs.next()) {
+                    Assert.assertEquals(rs.getInt(1), counter++);
+                }
+                Assert.assertEquals(counter, 7);
+            }
+
+            try (ResultSet rs = stmt.executeQuery(" {% vars: ch-server=" + address + " %}\r\n"
+                    + "{{sql(url='jdbc:ch://${ch-server}'): select * from numbers(7)}} {% shell: echo 1 %}")) {
+                int counter = 0;
+                while (rs.next()) {
+                    Assert.assertEquals(rs.getInt(1), counter++);
+                }
+                Assert.assertEquals(counter, 7);
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{{shell: curl -s 'http://" + address + "?query=select+7'}}")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertEquals(rs.getInt(1), 7);
+                Assert.assertFalse(rs.next(), "Should have only one row");
+            }
+        }
+    }
 }

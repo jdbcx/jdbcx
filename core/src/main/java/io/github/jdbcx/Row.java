@@ -80,17 +80,26 @@ public interface Row extends Serializable {
 
     Field field(int index);
 
-    Value value(int index);
-
-    default Value get(String name) {
+    default int index(String fieldName) {
+        int idx = -1;
         for (int i = 0; i < size(); i++) {
             Field f = field(i);
-            if (f.name().equalsIgnoreCase(name)) {
-                return value(i);
+            if (f.name().equalsIgnoreCase(fieldName)) {
+                idx = i;
+                break;
             }
         }
+        return idx;
+    }
 
-        throw new IllegalArgumentException(Utils.format("No field named \"%s\"", name));
+    Value value(int index);
+
+    default Value value(String fieldName) {
+        int idx = index(fieldName);
+        if (idx == -1) {
+            throw new IllegalArgumentException(Utils.format("No field named \"%s\"", fieldName));
+        }
+        return value(idx);
     }
 
     int size();

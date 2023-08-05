@@ -58,4 +58,9 @@ public final class StringValue implements Value {
         }
         return Constants.EMPTY_STRING;
     }
+
+    @Override
+    public Object asObject() {
+        return asString();
+    }
 }

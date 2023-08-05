@@ -47,4 +47,9 @@ public class PrqlDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public boolean supportsDirectQuery() {
+        return false;
+    }
 }

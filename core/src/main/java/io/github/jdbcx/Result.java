@@ -32,6 +32,7 @@ import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableWrapper;
 import io.github.jdbcx.executor.Stream;
+import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public final class Result<T> {
     private static final ErrorHandler defaultErrorHandler = new ErrorHandler(Constants.EMPTY_STRING);
@@ -130,6 +131,8 @@ public final class Result<T> {
             throw new IllegalArgumentException("Non-null class is required");
         } else if (clazz.isAssignableFrom(valueType)) {
             return clazz.cast(rawValue);
+        } else if (ResultSet.class.equals(clazz)) {
+            return (R) new ReadOnlyResultSet(null, rows());
         } else if (String.class.equals(clazz)) {
             String str;
             if (InputStream.class.isAssignableFrom(valueType)) {
@@ -159,6 +162,7 @@ public final class Result<T> {
             }
             return (R) str;
         }
+
         throw new UnsupportedOperationException(
                 Utils.format("Cannot convert value from [%s] to [%s]", valueType, clazz));
     }

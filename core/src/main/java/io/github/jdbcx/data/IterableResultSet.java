@@ -55,6 +55,11 @@ public final class IterableResultSet implements Iterable<Row> {
                 throw new IllegalStateException(e);
             }
         }
+
+        @Override
+        public Object asObject() {
+            return rs;
+        }
     }
 
     static final class ResultSetIterator implements Iterator<Row> {
