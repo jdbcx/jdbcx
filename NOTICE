@@ -45,6 +45,9 @@ This project includes:
   JMESPath GSON under BSD 3-Clause
   jquery under MIT License
   JUnit under Eclipse Public License 1.0
+  MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
+  PostgreSQL JDBC Driver under BSD-2-Clause
+  Protocol Buffers [Core] under BSD-3-Clause
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0
   SLF4J API Module under MIT License

@@ -67,7 +67,7 @@
     </distributionManagement>
 
     <properties>
-        <revision>0.2.0-SNAPSHOT</revision>
+        <revision>0.3.0-SNAPSHOT</revision>
         <project.current.year>2023</project.current.year>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -102,12 +102,14 @@
         <jmespath.version>0.5.1</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
         <msgpack.version>0.9.3</msgpack.version>
+        <mysql.version>8.1.0</mysql.version>
+        <postgresql.version>42.6.0</postgresql.version>
         <rhino.version>1.7.14</rhino.version>
-        <roaring-bitmap.version>0.9.45</roaring-bitmap.version>
+        <roaring-bitmap.version>0.9.47</roaring-bitmap.version>
         <slf4j.version>2.0.7</slf4j.version>
         <snappy.version>1.1.10.1</snappy.version>
         <xz.version>1.9</xz.version>
-        <zstd-jni.version>1.5.5-4</zstd-jni.version>
+        <zstd-jni.version>1.5.5-5</zstd-jni.version>
         <testcontainers.version>1.18.3</testcontainers.version>
         <!-- stay 7.5 for JDK 8 support -->
         <testng.version>7.5.1</testng.version>
@@ -190,6 +192,11 @@
                 <version>${graphql.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.mysql</groupId>
+                <artifactId>mysql-connector-j</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.derby</groupId>
                 <artifactId>derby</artifactId>
                 <version>${derby.version}</version>
@@ -218,6 +225,11 @@
                 <groupId>org.mozilla</groupId>
                 <artifactId>rhino-engine</artifactId>
                 <version>${rhino.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
