@@ -48,4 +48,14 @@ public class ShellDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for shell scripting.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ shell: echo Yes }}";
+    }
 }

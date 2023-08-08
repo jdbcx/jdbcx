@@ -72,9 +72,7 @@ public class WebInterpreter extends AbstractInterpreter {
 
     private final WebExecutor executor;
 
-    public WebInterpreter(QueryContext context, Properties config) {
-        super(context);
-
+    static final Map<String, String> getHeaders(Properties config) {
         Map<String, String> headers = new HashMap<>(Utils
                 .toKeyValuePairs(Utils.applyVariables(OPTION_REQUEST_HEADERS.getValue(config), config)));
         String secret = OPTION_AUTH_BEARER_TOKEN.getValue(config);
@@ -89,7 +87,13 @@ public class WebInterpreter extends AbstractInterpreter {
                                 .getBytes(Constants.DEFAULT_CHARSET))));
             }
         }
-        this.defaultHeaders = Collections.unmodifiableMap(headers);
+        return headers;
+    }
+
+    public WebInterpreter(QueryContext context, Properties config) {
+        super(context);
+
+        this.defaultHeaders = Collections.unmodifiableMap(getHeaders(config));
         String template = OPTION_REQUEST_TEMPLATE.getValue(config);
         if (Checker.isNullOrEmpty(template)) {
             String file = Utils.normalizePath(OPTION_REQUEST_TEMPLATE_FILE.getValue(config)).trim();
@@ -125,7 +129,10 @@ public class WebInterpreter extends AbstractInterpreter {
             final URL url = new URL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), props));
             Map<?, ?> headers = (Map<?, ?>) getContext().get(KEY_HEADERS);
             if (headers == null || headers.isEmpty()) {
-                headers = getDefaultRequestHeaders();
+                headers = getHeaders(props);
+                if (headers.isEmpty()) {
+                    headers = getDefaultRequestHeaders();
+                }
             }
             String request = query;
             if (Checker.isNullOrBlank(request)) {
@@ -135,7 +142,8 @@ public class WebInterpreter extends AbstractInterpreter {
                     request = Utils.applyVariables(defaultTemplate, props);
                 }
             }
-            return Result.of(executor.post(url, request, props, headers));
+            return Result.of(executor.post(url, request, props, headers),
+                    Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));
         } catch (IOException e) {
             return handleError(e, query, props);
         }

@@ -36,15 +36,18 @@ public class PromptDriverExtension implements DriverExtension {
             String provider = OPTION_PROVIDER.getValue(config);
             if ("openai".equalsIgnoreCase(provider)) {
                 Properties props = new Properties(config);
-                WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, "${base.url}/${openai.api}"); // chat/completions
                 WebInterpreter.OPTION_BASE_URL.setValue(props, "https://api.openai.com/v1");
+                WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, "${base.url}/${openai.api}"); // chat/completions
+                props.setProperty("openai.api", "chat/completions");
                 WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props,
                         "Content-Type=application/json,Authorization=Bearer ${openai.api.key},OpenAI-Organization=${openai.org.key}");
                 config = props;
             } else if ("google".equalsIgnoreCase(provider)) {
                 Properties props = new Properties(config);
-                WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, "${base.url}/models/${google.model}:${google.api}"); // chat/completions
                 WebInterpreter.OPTION_BASE_URL.setValue(props, "https://generativelanguage.googleapis.com/v1beta2");
+                WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, "${base.url}/models/${google.model}:${google.api}"); // chat/completions
+                props.setProperty("google.api", "generateMessage");
+                props.setProperty("google.model", "chat-bison-001");
                 WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props,
                         "Content-Type=application/json,x-goog-api-key=${google.api.key}");
                 config = props;
@@ -53,7 +56,7 @@ public class PromptDriverExtension implements DriverExtension {
         }
 
         ActivityListener(QueryContext context, Properties config) {
-            super(new WebInterpreter(context, update(config)), config);
+            super(new WebInterpreter(context, config), update(config));
         }
     }
 
@@ -78,5 +81,18 @@ public class PromptDriverExtension implements DriverExtension {
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Extension for prompt engineering. "
+                + "Please make sure you either have a local GPT environment, "
+                + "or you have API access to either OpenAI or Google MakerSuite.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ prompt(provider=google,google.api=generateMessage,google.model=chat-bison-001): "
+                + "{\"prompt\":{\"messages\":[{\"content\":\"Hi there!\"}]},\"temperature\":0.1} }}";
     }
 }

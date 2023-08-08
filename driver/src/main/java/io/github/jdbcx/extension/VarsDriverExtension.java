@@ -41,4 +41,14 @@ public class VarsDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for declaring variables.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{% var(prefix=my.): v1=1, v2=2 %}";
+    }
 }

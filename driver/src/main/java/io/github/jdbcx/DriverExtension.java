@@ -29,7 +29,7 @@ import io.github.jdbcx.driver.DefaultDriverExtension;
 // driver extension:
 // query extension:
 // result extension
-public interface DriverExtension {
+public interface DriverExtension extends Comparable<DriverExtension> {
     static String getName(DriverExtension extension) {
         if (extension == null) {
             return Constants.EMPTY_STRING;
@@ -159,7 +159,24 @@ public interface DriverExtension {
         return Collections.emptyList();
     }
 
+    default String getDescription() {
+        return Constants.EMPTY_STRING;
+    }
+
+    default String getUsage() {
+        return Constants.EMPTY_STRING;
+    }
+
     default boolean supportsDirectQuery() {
         return true;
+    }
+
+    default int compareTo(DriverExtension o) {
+        if (o == null) {
+            return 1;
+        } else if (this == o || this.getClass() == o.getClass()) {
+            return 0;
+        }
+        return getName(this).compareTo(getName(o));
     }
 }
