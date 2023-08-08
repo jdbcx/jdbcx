@@ -32,6 +32,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 
 import java.util.Map.Entry;
+import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -48,7 +49,7 @@ public final class ScriptHelper {
         return instance;
     }
 
-    public String cli(Object obj, Object... more) throws IOException {
+    public String cli(Object obj, Object... more) throws IOException, TimeoutException {
         if (obj == null) {
             return Constants.EMPTY_STRING;
         }
@@ -89,7 +90,7 @@ public final class ScriptHelper {
         return Utils.format(obj.toString(), args);
     }
 
-    public String shell(Object... more) throws IOException {
+    public String shell(Object... more) throws IOException, TimeoutException {
         return cli(Constants.IS_WINDOWS ? "cmd /c" : "/bin/sh -c", more);
     }
 

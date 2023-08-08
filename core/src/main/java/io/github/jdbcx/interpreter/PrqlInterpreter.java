@@ -33,13 +33,14 @@ public class PrqlInterpreter extends AbstractInterpreter {
     static final String DEFAULT_COMMAND = "prqlc";
     static final boolean DEFAULT_FALLBACK = true;
 
+    static final Option OPTION_TIMEOUT = Option.EXEC_TIMEOUT.update().defaultValue("10000")
+            .build();
     static final Option OPTION_COMPILE_TARGET = Option.of(new String[] { "compile.target",
             "PRQL compile target without \"sql.\" prefix, empty string is same as \"any\"" });
 
     public static final List<Option> OPTIONS = Collections
-            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, OPTION_COMPILE_TARGET,
+            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, OPTION_COMPILE_TARGET, OPTION_TIMEOUT,
                     CommandLineExecutor.OPTION_CLI_PATH.update().defaultValue(DEFAULT_COMMAND).build(),
-                    Option.EXEC_TIMEOUT.update().defaultValue("5000").build(),
                     CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
                     Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
 
@@ -49,6 +50,8 @@ public class PrqlInterpreter extends AbstractInterpreter {
     public PrqlInterpreter(QueryContext context, Properties config) {
         super(context);
 
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
+
         String target = OPTION_COMPILE_TARGET.getValue(config).toLowerCase(Locale.ROOT);
         this.defaultCompileTarget = Checker.isNullOrEmpty(target) || "any".equals(target) ? Constants.EMPTY_STRING
                 : target;
@@ -57,6 +60,8 @@ public class PrqlInterpreter extends AbstractInterpreter {
 
     @Override
     public Result<?> interpret(String query, Properties props) {
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
+
         try {
             final String compileTarget = OPTION_COMPILE_TARGET.getValue(props, defaultCompileTarget);
             final String[] args = Checker.isNullOrEmpty(compileTarget) ? new String[] { "compile" }

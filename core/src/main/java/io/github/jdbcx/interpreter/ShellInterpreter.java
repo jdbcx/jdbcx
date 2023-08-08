@@ -41,13 +41,15 @@ public class ShellInterpreter extends AbstractInterpreter {
     public ShellInterpreter(QueryContext context, Properties config) {
         super(context);
 
-        OPTION_TIMEOUT.setValue(config);
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
 
         this.executor = new CommandLineExecutor(OPTION_PATH.getValue(config), false, config);
     }
 
     @Override
     public Result<?> interpret(String query, Properties props) {
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
+
         try {
             return Result.of(executor.execute(props, null, query),
                     Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));

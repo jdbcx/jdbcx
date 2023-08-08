@@ -16,12 +16,15 @@
 package io.github.jdbcx;
 
 import java.sql.Connection;
+import java.sql.Driver;
 import java.sql.DriverManager;
+import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -200,6 +203,24 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testGetDriverProperties() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String address = "ch://" + getClickHouseServer();
+        Driver driver = DriverManager.getDriver("jdbcx:" + address);
+
+        boolean found = false;
+        for (DriverPropertyInfo info : driver.getPropertyInfo("jdbc:" + address, props)) {
+            if (!info.name.startsWith("jdbcx.")) {
+                found = true;
+                break;
+            }
+        }
+        Assert.assertTrue(found, "Should have driver-specific properties");
+    }
+
+    @Test(groups = { "integration" })
     public void testMultiLanguageQuery() throws Exception {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
@@ -284,6 +305,45 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 Assert.assertTrue(rs.next(), "Should have at least one row");
                 Assert.assertEquals(rs.getInt(1), 7);
                 Assert.assertFalse(rs.next(), "Should have only one row");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testExecTimeout() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String address = getClickHouseServer();
+        try (Connection conn = d.connect("jdbcx:ch://" + address, props); Statement stmt = conn.createStatement()) {
+            // final String query = "{{shell(exec.timeout=1000, exec.parallelism=%d): sleep
+            // 3 && echo Yes }}";
+            final String query = "{{script(exec.timeout=1000, exec.parallelism=%d): java.lang.Thread.sleep(3000); 1; }}";
+            try (ResultSet rs = stmt.executeQuery(Utils.format(query, 0))) {
+                while (rs.next()) {
+                    // do nothing
+                }
+                Assert.fail("Should never success");
+            } catch (SQLException e) {
+                Assert.assertEquals(e.getCause().getClass(), TimeoutException.class);
+            }
+
+            try (ResultSet rs = stmt.executeQuery(Utils.format(query, 1))) {
+                while (rs.next()) {
+                    // do nothing
+                }
+                Assert.fail("Should never success");
+            } catch (SQLException e) {
+                Assert.assertEquals(e.getCause().getClass(), TimeoutException.class);
+            }
+
+            try (ResultSet rs = stmt.executeQuery(Utils.format(query, 2))) {
+                while (rs.next()) {
+                    // do nothing
+                }
+                Assert.fail("Should never success");
+            } catch (SQLException e) {
+                Assert.assertEquals(e.getCause().getClass(), TimeoutException.class);
             }
         }
     }

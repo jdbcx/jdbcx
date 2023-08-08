@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.sql.ResultSet;
@@ -24,8 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import javax.script.ScriptException;
+import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -35,19 +35,24 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.executor.ScriptExecutor;
 
 public class ScriptInterpreter extends AbstractInterpreter {
+    static final Option OPTION_TIMEOUT = Option.EXEC_TIMEOUT.update().defaultValue("15000")
+            .build();
+
     public static final String KEY_VARS = "vars";
 
     public static final Option OPTION_VAR_HELPER = Option
             .of(new String[] { "var.helper", "Variable name of the helper object", "helper" });
 
     public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
-            ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR, OPTION_VAR_HELPER));
+            OPTION_TIMEOUT, ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR, OPTION_VAR_HELPER));
 
     private final ScriptExecutor executor;
 
     @SuppressWarnings("unchecked")
     public ScriptInterpreter(QueryContext context, Properties config, ClassLoader loader) {
         super(context);
+
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
 
         String varHelper = OPTION_VAR_HELPER.getValue(config);
 
@@ -61,8 +66,10 @@ public class ScriptInterpreter extends AbstractInterpreter {
 
     @Override
     public Result<?> interpret(String query, Properties props) {
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
+
         try {
-            final Object result = executor.execute(query, null);
+            final Object result = executor.execute(query, props, null);
             if (result instanceof InputStream) {
                 return process(query, (InputStream) result, props);
             } else if (result instanceof Reader) {
@@ -76,7 +83,7 @@ public class ScriptInterpreter extends AbstractInterpreter {
             } else {
                 return Result.of(result != null ? result.toString() : Constants.EMPTY_STRING);
             }
-        } catch (ScriptException e) {
+        } catch (IOException | TimeoutException e) {
             return handleError(e, query, props);
         }
     }

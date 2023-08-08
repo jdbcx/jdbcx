@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.nio.channels.InterruptedByTimeoutException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
+import io.github.jdbcx.Utils;
 
 final class CustomPipedInputStream extends PipedInputStream {
     private static final Logger log = LoggerFactory.getLogger(CustomPipedInputStream.class);
@@ -47,6 +47,25 @@ final class CustomPipedInputStream extends PipedInputStream {
             throw new IllegalStateException("Piped input stream is occupied");
         }
         return this;
+    }
+
+    @Override
+    public int read() throws IOException { // NOSONAR
+        final CompletableFuture<?> future = timeout > 0L ? ref.get() : null;
+        if (future != null) {
+            try {
+                future.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                close();
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException(e.getMessage());
+            } catch (ExecutionException | TimeoutException e) {
+                close();
+                throw new IOException(Utils.format("Failed to get result in %d ms"), e);
+            }
+        }
+
+        return super.read();
     }
 
     @Override
@@ -92,7 +111,10 @@ final class CustomPipedInputStream extends PipedInputStream {
                     throw new IOException(cause);
                 }
             } catch (TimeoutException e) {
-                throw new InterruptedByTimeoutException();
+                if (e.getMessage() == null) {
+                    e = new TimeoutException(Utils.format("Timed out after waiting for %d ms", timeout));
+                }
+                throw new IOException(e);
             }
         }
     }

@@ -49,7 +49,7 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
             if (e.getCause() == null) {
                 throw SqlExceptionUtils.clientWarning(e);
             } else {
-                throw SqlExceptionUtils.clientError(e);
+                throw SqlExceptionUtils.clientError(e.getCause());
             }
         } catch (Exception e) { // unexpected error
             throw SqlExceptionUtils.clientError(e);
