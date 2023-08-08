@@ -16,8 +16,6 @@
 package io.github.jdbcx;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 import io.github.jdbcx.data.DefaultRow;
 import io.github.jdbcx.data.LongValue;
@@ -58,20 +56,11 @@ public interface Row extends Serializable {
         return new DefaultRow(array);
     }
 
-    static Row of(Value... values) {
-        if (values == null || values.length == 0) {
+    static Row of(Field[] fields, Value... values) {
+        if (fields == null || fields.length == 0) {
             return EMPTY;
         }
-
-        final int len = values.length;
-        List<Value> list = new ArrayList<>(len);
-        for (int i = 0; i < len; i++) {
-            Value val = values[i];
-            if (val != null) {
-                list.add(val);
-            }
-        }
-        return new DefaultRow(list.toArray(new Value[0]));
+        return new DefaultRow(fields, values);
     }
 
     // static Row merge(Row... rows) {
