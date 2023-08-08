@@ -47,4 +47,15 @@ public class SqlDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for JDBC connections. Please make sure you've put required drivers in classpath. "
+                + "It is recommended to define connections in ~/.jdbcx/connections folder for ease of use and security reason.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ sql(id=my-db1-in-dc1): select 1 }}";
+    }
 }

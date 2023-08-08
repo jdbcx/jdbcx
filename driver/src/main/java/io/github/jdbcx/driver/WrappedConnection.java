@@ -149,7 +149,7 @@ public class WrappedConnection implements Connection {
     }
 
     protected WrappedConnection(Connection conn) {
-        DriverInfo info = new DriverInfo();
+        DriverInfo info = HelpDriverExtension.ActivityListener.defaultDriverInfo;
         this.defaultExtension = info.extension;
         this.extensions = info.getExtensions();
 

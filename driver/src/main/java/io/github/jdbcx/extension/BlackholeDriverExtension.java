@@ -18,4 +18,13 @@ package io.github.jdbcx.extension;
 import io.github.jdbcx.DriverExtension;
 
 public class BlackholeDriverExtension implements DriverExtension {
+    @Override
+    public String getDescription() {
+        return "Extension for testing purpose, do NOT use!";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ blackhole }}";
+    }
 }

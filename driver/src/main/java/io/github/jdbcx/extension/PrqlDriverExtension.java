@@ -52,4 +52,14 @@ public class PrqlDriverExtension implements DriverExtension {
     public boolean supportsDirectQuery() {
         return false;
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for PRQL. Please make sure you have prqlc, the PRQL compiler CLI, installed.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ prql(cli.path=/path/to/prqlc): from table1 }}";
+    }
 }

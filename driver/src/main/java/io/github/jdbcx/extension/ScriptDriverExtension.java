@@ -83,4 +83,14 @@ public class ScriptDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, conn, getConfig(props), loader);
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for all supported JVM scripting languages. Please make sure you've put required libraries in classpath.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ script(language=javascript): 1+1 }}";
+    }
 }

@@ -41,4 +41,17 @@ public class CodeQLDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for CodeQL(https://codeql.github.com/). "
+                + "Please make sure you have CodeQL CLI installed, and follow instructions at "
+                + "https://docs.github.com/en/code-security/codeql-cli/codeql-cli-manual/database-create "
+                + "to create one or more databases for query.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ codeql(cli.path=/path/to/codeql, database=my-db, format=json): import java }}";
+    }
 }

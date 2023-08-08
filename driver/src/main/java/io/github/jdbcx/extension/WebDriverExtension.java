@@ -48,4 +48,14 @@ public class WebDriverExtension implements DriverExtension {
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(context, getConfig(props));
     }
+
+    @Override
+    public String getDescription() {
+        return "Extension for accessing resources via http/https.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ web(base.url='https://explorer@play.clickhouse.com'): select 5 }}";
+    }
 }
