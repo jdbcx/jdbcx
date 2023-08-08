@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.data;
 
-import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
@@ -23,23 +22,22 @@ import io.github.jdbcx.Value;
 public final class DefaultRow implements Row {
     private static final Field[] DEFAULT_FIELDS = new Field[] { Field.of("results") };
 
-    public static final DefaultRow EMPTY = new DefaultRow(new Field[0], new Value[0]);
+    public static final DefaultRow EMPTY = new DefaultRow(new Field[0]);
 
     private final Field[] fields;
     private final Value[] values;
+    private final int size;
 
-    public DefaultRow(Value value) {
-        this.fields = DEFAULT_FIELDS;
-        this.values = new Value[] { Checker.nonNull(value, Value.class) };
-    }
-
-    public DefaultRow(Value[] values) {
-        int len = Checker.nonNull(values, Value[].class).length;
-        if (len == 1) {
+    public DefaultRow(Value... values) {
+        int len = 0;
+        if (values == null) {
+            this.fields = EMPTY.fields;
+            values = EMPTY.values;
+        } else if ((len = values.length) == 1) {
             this.fields = DEFAULT_FIELDS;
         } else {
             this.fields = new Field[len];
-            StringBuilder builder = new StringBuilder("col");
+            StringBuilder builder = new StringBuilder("field");
             int position = builder.length();
             for (int i = 0; i < len; i++) {
                 this.fields[i] = Field.of(builder.append(i + 1).toString());
@@ -47,16 +45,14 @@ public final class DefaultRow implements Row {
             }
         }
         this.values = values;
+        this.size = len;
     }
 
-    DefaultRow(Field field, Value value) {
-        this.fields = new Field[] { field };
-        this.values = new Value[] { value };
-    }
+    public DefaultRow(Field[] fields, Value... values) {
+        this.fields = fields != null ? fields : new Field[0];
+        this.values = values != null ? values : new Value[0];
 
-    DefaultRow(Field[] fields, Value[] values) {
-        this.fields = fields;
-        this.values = values;
+        this.size = Math.min(this.fields.length, this.values.length);
     }
 
     @Override
@@ -71,6 +67,6 @@ public final class DefaultRow implements Row {
 
     @Override
     public int size() {
-        return values.length;
+        return size;
     }
 }
