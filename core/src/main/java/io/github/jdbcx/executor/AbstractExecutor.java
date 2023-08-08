@@ -15,24 +15,99 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Executor;
+import io.github.jdbcx.Logger;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Utils;
 
 abstract class AbstractExecutor implements Executor {
+    static final long checkTimeout(Logger log, long startTimeMs, long timeoutMs) throws TimeoutException {
+        if (startTimeMs <= 0L) {
+            return timeoutMs;
+        }
+
+        long elapsed = System.currentTimeMillis() - startTimeMs;
+        log.debug("current timeout is %d ms, elapsed %d since %d", timeoutMs, elapsed, startTimeMs);
+
+        if (elapsed >= timeoutMs) {
+            throw new TimeoutException(Utils.format("Timed out after waiting for %d ms", elapsed));
+        }
+        return timeoutMs - elapsed;
+    }
+
+    static final Object waitForTask(Logger log, CompletableFuture<?> future, long startTime, long timeoutMs)
+            throws IOException, TimeoutException {
+        if (future == null) {
+            return null;
+        }
+
+        log.debug("Waiting %d ms for task [%s] to complete", timeoutMs, future);
+        try {
+            // respect timeout setting, even if future.isDone()
+            return timeoutMs <= 0L ? future.get()
+                    : future.get(checkTimeout(log, startTime, timeoutMs), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException(e.getMessage());
+        } catch (CancellationException e) {
+            throw new InterruptedIOException(e.getMessage());
+        } catch (ExecutionException e) {
+            Throwable t = e.getCause();
+            if (t instanceof TimeoutException) {
+                throw (TimeoutException) t;
+            } else {
+                throw new IOException(t);
+            }
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            if (e.getMessage() != null) {
+                throw e;
+            } else {
+                throw new TimeoutException(Utils.format("Timed out after waiting for more than %d ms", timeoutMs));
+            }
+        }
+    }
+
+    static final IOException handleTimeout(Logger log, int timeout, CompletableFuture<?>... tasks) {
+        log.error("Execution timed out after waiting for %d ms", timeout);
+        if (tasks != null) {
+            for (CompletableFuture<?> future : tasks) {
+                if (future.isDone()) {
+                    try {
+                        log.debug("Task completed with result [%s]", future.get());
+                    } catch (Throwable e) { // NOSONAR
+                        log.debug("Task completed with exception", e);
+                    }
+                } else {
+                    log.debug("Request to cancel the running task...");
+                    future.cancel(true);
+                }
+            }
+        }
+        return new InterruptedIOException(
+                Utils.format("The execution was interrupted by a timeout after waiting for %d ms.", timeout));
+    }
+
     static final ExecutorService newThreadPool(Object owner, int maxThreads, int maxRequests) {
         return newThreadPool(owner, maxThreads, 0, maxRequests, 0L, true);
     }
@@ -66,8 +141,8 @@ abstract class AbstractExecutor implements Executor {
         return pool;
     }
 
-    protected static final ExecutorService executor;
-    protected static final ScheduledExecutorService scheduler;
+    private static final ExecutorService executor;
+    private static final ScheduledExecutorService scheduler;
 
     static {
         int coreThreads = 2 * Runtime.getRuntime().availableProcessors() + 1;
@@ -89,8 +164,8 @@ abstract class AbstractExecutor implements Executor {
         this.defaultTimeout = Integer.parseInt(Option.EXEC_TIMEOUT.getValue(props));
     }
 
-    public final CompletableFuture<Void> runAsync(Runnable runnable) {
-        if (defaultParallelism <= 0) {
+    protected final CompletableFuture<Void> run(Runnable runnable, int parallelism) {
+        if (parallelism <= 0) {
             try {
                 runnable.run();
                 return CompletableFuture.completedFuture(null);
@@ -101,14 +176,53 @@ abstract class AbstractExecutor implements Executor {
                 return future;
             }
         }
+
+        return runAsync(runnable);
+    }
+
+    protected final CompletableFuture<Void> runAsync(Runnable runnable) {
         return CompletableFuture.runAsync(runnable, executor);
     }
 
-    public final <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
-        if (defaultParallelism <= 0) {
-            return CompletableFuture.completedFuture(supplier.get());
+    protected final <T> CompletableFuture<T> supply(Supplier<T> supplier, Properties props) {
+        int parallelism = Integer.parseInt(Option.EXEC_PARALLELISM.getValue(props));
+        return supply(supplier, parallelism);
+    }
+
+    protected final <T> CompletableFuture<T> supply(Supplier<T> supplier, int parallelism) {
+        if (parallelism <= 0) {
+            try {
+                return CompletableFuture.completedFuture(supplier.get());
+            } catch (CompletionException e) {
+                // CompletableFuture.failedFuture(e) requires JDK 9+
+                CompletableFuture<T> future = new CompletableFuture<>();
+                future.completeExceptionally(e.getCause());
+                return future;
+            }
         }
+        return supplyAsync(supplier);
+    }
+
+    protected final <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
         return CompletableFuture.supplyAsync(supplier, executor);
+    }
+
+    /**
+     * Schedules the {@code task} to run only when {@code current} run has been
+     * completed/cancelled or does not exist.
+     *
+     * @param current  current task, which could be null or in running status
+     * @param task     scheduled task to run
+     * @param interval interval between each run
+     * @return future object representing the scheduled task, could be null when no
+     *         scheduler available
+     */
+    protected final ScheduledFuture<?> schedule(ScheduledFuture<?> current, Runnable task, long interval) {
+        if (scheduler == null || task == null || (current != null && !current.isDone() && !current.isCancelled())) {
+            return null;
+        }
+        return interval < 1L ? scheduler.schedule(task, 0L, TimeUnit.MILLISECONDS)
+                : scheduler.scheduleAtFixedRate(task, 0L, interval, TimeUnit.MILLISECONDS);
     }
 
     public final int getDefaultTimeout() {

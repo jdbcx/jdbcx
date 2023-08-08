@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -91,7 +92,7 @@ public class CommandLineExecutorTest {
     }
 
     @Test(dataProvider = "echoCommand", groups = "unit")
-    public void testExecute(String echoCommand) throws IOException {
+    public void testExecute(String echoCommand) throws IOException, TimeoutException {
         Assert.assertTrue(
                 Stream.readAllAsString(
                         new CommandLineExecutor(echoCommand, true, newProperties(null, null, 0, null, null, null))
@@ -110,7 +111,7 @@ public class CommandLineExecutorTest {
     }
 
     @Test
-    public void testWslCli() throws IOException {
+    public void testWslCli() throws IOException, TimeoutException {
         if (!Constants.IS_WINDOWS) {
             throw new SkipException("Skip this is for windows only");
         }
@@ -125,7 +126,7 @@ public class CommandLineExecutorTest {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
             CommandLineExecutor prqlc = new CommandLineExecutor("wsl -- /home/zhicwu/.cargo/bin/prqlc", true,
                     newProperties(null, null, 0, null, null, null, "-V"));
-            prqlc.execute(3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
+            prqlc.execute(0, 3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
             String sql = new String(out.toByteArray());
             sql = sql.replaceAll("[\\s\\t\\r\\n]*", "");
             sql = sql.substring(0, sql.indexOf("--"));

@@ -29,6 +29,7 @@ import java.io.Writer;
 import java.nio.Buffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.Constants;
 
@@ -67,6 +68,23 @@ public final class Stream {
             }
         }
         return count;
+    }
+
+    public static long pipeAsync(InputStream from, OutputStream to) throws CompletionException {
+        return pipeAsync(from, to, null, false);
+    }
+
+    public static long pipeAsync(InputStream from, OutputStream to, boolean closeOutput) throws CompletionException {
+        return pipeAsync(from, to, null, closeOutput);
+    }
+
+    public static long pipeAsync(InputStream from, OutputStream to, byte[] buffer, boolean closeOutput)
+            throws CompletionException {
+        try {
+            return pipe(from, to, buffer, closeOutput);
+        } catch (IOException e) {
+            throw new CompletionException(e);
+        }
     }
 
     public static long pipe(Readable from, Writer to) throws IOException {
@@ -113,6 +131,23 @@ public final class Stream {
             }
         }
         return count;
+    }
+
+    public static long pipeAsync(Readable from, Writer to) throws CompletionException {
+        return pipeAsync(from, to, null, false);
+    }
+
+    public static long pipeAsync(Readable from, Writer to, boolean closeOutput) throws CompletionException {
+        return pipeAsync(from, to, null, closeOutput);
+    }
+
+    public static long pipeAsync(Readable from, Writer to, char[] buffer, boolean closeOutput)
+            throws CompletionException {
+        try {
+            return pipe(from, to, buffer, closeOutput);
+        } catch (IOException e) {
+            throw new CompletionException(e);
+        }
     }
 
     public static String readAllAsString(InputStream input) throws IOException {

@@ -15,12 +15,16 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeoutException;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
@@ -119,11 +123,15 @@ public class ScriptExecutor extends AbstractExecutor {
         return supportedLanguages.toArray(new String[0]);
     }
 
-    public Object execute(String query, Map<String, Object> vars) throws ScriptException {
+    public Object execute(String query, Properties props, Map<String, Object> vars)
+            throws IOException, TimeoutException {
         if (Checker.isNullOrBlank(query)) {
             return Constants.EMPTY_STRING;
         }
 
+        final int timeout = Integer.parseInt(Option.EXEC_TIMEOUT.getValue(props));
+        final long startTime = timeout <= 0 ? 0L : System.currentTimeMillis();
+        final long timeoutMs = timeout;
         ScriptEngine engine = manager.getEngineByName(defaultLanguage);
         if (vars != null && !vars.isEmpty()) {
             // not all languages support bindings
@@ -139,6 +147,15 @@ public class ScriptExecutor extends AbstractExecutor {
                 }
             }
         }
-        return engine.eval(query);
+
+        CompletableFuture<?> future = supply(() -> {
+            try {
+                return engine.eval(query);
+            } catch (ScriptException e) {
+                throw new CompletionException(e);
+            }
+        }, props);
+
+        return waitForTask(log, future, startTime, timeoutMs);
     }
 }

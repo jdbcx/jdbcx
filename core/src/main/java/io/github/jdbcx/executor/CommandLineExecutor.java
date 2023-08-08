@@ -38,8 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -248,7 +250,8 @@ public class CommandLineExecutor extends AbstractExecutor {
     }
 
     @SuppressWarnings("resource")
-    public InputStream execute(Properties props, InputStream input, String... args) throws IOException {
+    public InputStream execute(Properties props, InputStream input, String... args)
+            throws IOException, TimeoutException {
         final int parallelism = getParallelism(props);
         final int timeout = getTimeout(props);
         final Path workDir = getWorkDirectory(props);
@@ -257,7 +260,7 @@ public class CommandLineExecutor extends AbstractExecutor {
 
         if (parallelism <= 0) {
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                int exitCode = execute(timeout, workDir, input, inputCharset, out, outputCharset, args);
+                int exitCode = execute(parallelism, timeout, workDir, input, inputCharset, out, outputCharset, args);
                 if (exitCode != 0) {
                     throw new IllegalStateException(new String(out.toByteArray(), outputCharset));
                 }
@@ -266,22 +269,110 @@ public class CommandLineExecutor extends AbstractExecutor {
         }
 
         final PipedOutputStream out = new PipedOutputStream();
-        return new CustomPipedInputStream(out, Constants.DEFAULT_BUFFER_SIZE, defaultTimeout).attach(runAsync(
-                () -> {
-                    try {
-                        int exitCode = execute(timeout, workDir, input, inputCharset, out, outputCharset, args);
+        return new CustomPipedInputStream(out, Constants.DEFAULT_BUFFER_SIZE, timeout)
+                .attach(runAsync(() -> {
+                    try (OutputStream o = out) {
+                        int exitCode = execute(parallelism, timeout, workDir, input, inputCharset, o, outputCharset,
+                                args);
                         if (exitCode != 0) {
-                            throw new IllegalStateException(Utils.format("Comamnd exited with code %d", exitCode));
+                            throw new IllegalStateException(
+                                    Utils.format("Comamnd exited with code %d", exitCode));
                         }
-                    } catch (IOException e) {
+                    } catch (TimeoutException | IOException e) {
                         throw new CompletionException(e);
                     }
                 }));
     }
 
+    protected CompletableFuture<?> handleProcessOutput(int parallelism, OutputStream processOutput, Object input,
+            Charset inputCharset) throws IOException {
+        CompletableFuture<?> future = null;
+        if (input instanceof InputStream) {
+            if (parallelism > 0) {
+                future = runAsync(() -> Stream.pipeAsync((InputStream) input, processOutput, true));
+            } else {
+                Stream.pipe((InputStream) input, processOutput, true);
+            }
+        } else if (input instanceof Reader) {
+            if (parallelism > 0) {
+                future = runAsync(
+                        () -> Stream.pipeAsync((Reader) input, new OutputStreamWriter(processOutput, inputCharset),
+                                true));
+            } else {
+                Stream.pipe((Reader) input, new OutputStreamWriter(processOutput, inputCharset), true);
+            }
+        } else if (input instanceof byte[]) {
+            try (OutputStream out = processOutput) {
+                processOutput.write((byte[]) input);
+            }
+        } else if (input instanceof ByteBuffer) {
+            try (OutputStream out = processOutput) {
+                ByteBuffer buf = (ByteBuffer) input;
+                int remaining = buf.remaining();
+                if (remaining > 0) {
+                    byte[] b = new byte[remaining];
+                    buf.get(b);
+                    processOutput.write(b);
+                }
+            }
+        } else if (input != null) { // treat as string
+            try (OutputStream out = processOutput) {
+                processOutput.write(input.toString().getBytes(inputCharset));
+            }
+        }
+        return future;
+    }
+
+    protected CompletableFuture<?> handleProcessInput(int parallelism, InputStream processInput, Object output,
+            Charset outputCharset)
+            throws IOException {
+        CompletableFuture<?> future = null;
+        if (output instanceof OutputStream) {
+            if (parallelism > 0) {
+                future = runAsync(() -> Stream.pipeAsync(processInput, (OutputStream) output));
+            } else {
+                Stream.pipe(processInput, (OutputStream) output);
+            }
+        } else if (output instanceof Writer) {
+            if (parallelism > 0) {
+                future = runAsync(
+                        () -> Stream.pipeAsync(new InputStreamReader(processInput, outputCharset), (Writer) output));
+            } else {
+                Stream.pipe(new InputStreamReader(processInput, outputCharset), (Writer) output);
+            }
+        } else if (output instanceof byte[]) {
+            try (InputStream in = processInput) {
+                byte[] bytes = (byte[]) output;
+                if (bytes.length > 0) {
+                    int len = in.read(bytes);
+                    if (len < bytes.length) {
+                        log.warn("Only %d bytes were read into the byte array, which has a capacity of %d.", len,
+                                bytes.length);
+                    }
+                }
+            }
+        } else if (output instanceof ByteBuffer) {
+            try (InputStream in = processInput) {
+                ByteBuffer buf = (ByteBuffer) output;
+                int remaining = buf.remaining();
+                if (remaining > 0) {
+                    byte[] bytes = new byte[remaining];
+                    int len = in.read(bytes);
+                    buf.put(bytes, 0, len);
+                }
+            }
+        } else if (output != null) {
+            try (InputStream in = processInput) {
+                log.warn("Unsupported output object: [%s]", output);
+            }
+        }
+        return future;
+    }
+
     /**
      * Executes the command with specified arguments.
      *
+     * @param parallelism   parallelism
      * @param timeout       timeout in milliseoncds, a negative number or zero
      *                      disables timeout
      * @param workDir       optional work directory, {@code null} is same as
@@ -299,16 +390,20 @@ public class CommandLineExecutor extends AbstractExecutor {
      *                      {@link #getDefaultOutputCharset()}
      * @param args          optional arguments of the command
      * @return exit code, {@code 0} means success
-     * @throws IOException when failed to execute the command
+     * @throws IOException      when failed to execute the command
+     * @throws TimeoutException when execution timed out
      */
-    public int execute(int timeout, Path workDir, Object input, Charset inputCharset, Object output,
-            Charset outputCharset, String... args) throws IOException {
+    public int execute(int parallelism, int timeout, Path workDir, Object input, Charset inputCharset, Object output,
+            Charset outputCharset, String... args) throws IOException, TimeoutException {
         if (inputCharset == null) {
             inputCharset = getDefaultInputCharset();
         }
         if (outputCharset == null) {
             outputCharset = getDefaultOutputCharset();
         }
+
+        final long startTime = timeout <= 0 ? 0L : System.currentTimeMillis();
+        final long timeoutMs = timeout;
 
         List<String> commands = new ArrayList<>(command.size() + args.length);
         commands.addAll(command);
@@ -331,65 +426,37 @@ public class CommandLineExecutor extends AbstractExecutor {
             builder.redirectOutput((File) output);
         }
 
+        List<CompletableFuture<?>> tasks = new ArrayList<>(2);
+        CompletableFuture<?> future = null;
         Process p = null;
         try {
             p = builder.start();
-            try (OutputStream out = p.getOutputStream()) {
-                if (input instanceof InputStream) {
-                    Stream.pipe((InputStream) input, out);
-                } else if (input instanceof Reader) {
-                    Stream.pipe((Reader) input, new OutputStreamWriter(out, inputCharset));
-                } else if (input instanceof byte[]) {
-                    p.getOutputStream().write((byte[]) input);
-                } else if (input instanceof ByteBuffer) {
-                    ByteBuffer buf = (ByteBuffer) input;
-                    int remaining = buf.remaining();
-                    if (remaining > 0) {
-                        byte[] b = new byte[remaining];
-                        buf.get(b);
-                        p.getOutputStream().write(b);
-                    }
-                } else if (!fileInput && input != null) { // treat as string
-                    p.getOutputStream().write(input.toString().getBytes(inputCharset));
-                }
+
+            // timeout is better handled when parallelism=1
+            future = handleProcessOutput(parallelism--, p.getOutputStream(), fileInput ? null : input, inputCharset);
+            tasks.add(future);
+            if (parallelism <= 0) {
+                tasks.remove(future);
+                waitForTask(log, future, startTime, timeoutMs);
             }
 
-            try (InputStream in = p.getInputStream()) {
-                if (output instanceof OutputStream) {
-                    Stream.pipe(in, (OutputStream) output);
-                } else if (output instanceof Writer) {
-                    Stream.pipe(new InputStreamReader(in, outputCharset), (Writer) output);
-                } else if (output instanceof byte[]) {
-                    byte[] bytes = (byte[]) output;
-                    if (bytes.length > 0) {
-                        int len = in.read(bytes);
-                        if (len < bytes.length) {
-                            log.warn("Only %d bytes were read into the byte array, which has a capacity of %d.", len,
-                                    bytes.length);
-                        }
-                    }
-                } else if (output instanceof ByteBuffer) {
-                    ByteBuffer buf = (ByteBuffer) output;
-                    int remaining = buf.remaining();
-                    if (remaining > 0) {
-                        byte[] bytes = new byte[remaining];
-                        int len = in.read(bytes);
-                        buf.put(bytes, 0, len);
-                    }
-                } else if (!fileOutput && output != null) {
-                    log.warn("Unsupported output object: [%s]", output);
-                }
+            future = handleProcessInput(parallelism--, p.getInputStream(), fileOutput ? null : output, outputCharset);
+            tasks.add(future);
+            if (parallelism <= 0) {
+                tasks.remove(future);
+                waitForTask(log, future, startTime, timeoutMs);
             }
+
+            final long remain = checkTimeout(log, startTime, timeoutMs);
 
             InputStream stdErr = p.getErrorStream();
             int exitValue;
             if (timeout <= 0) {
                 exitValue = p.waitFor();
-            } else if (p.waitFor(timeout, TimeUnit.MILLISECONDS)) {
+            } else if (p.waitFor(remain, TimeUnit.MILLISECONDS)) {
                 exitValue = p.exitValue();
             } else {
-                throw new InterruptedIOException(
-                        Utils.format("The execution was interrupted by a timeout after waiting for %d ms.", timeout));
+                throw handleTimeout(log, timeout, tasks.toArray(new CompletableFuture[0]));
             }
 
             if (stdErr != null) {

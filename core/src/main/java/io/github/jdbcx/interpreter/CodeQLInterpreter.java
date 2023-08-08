@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -57,11 +58,13 @@ public class CodeQLInterpreter extends AbstractInterpreter {
     static final Option OPTION_DECODE_ARGS = Option
             .of(new String[] { "decode.args", "Additional command line options for decode" });
 
+    static final Option OPTION_TIMEOUT = Option.EXEC_TIMEOUT.update().defaultValue("60000")
+            .build();
+
     public static final List<Option> OPTIONS = Collections
             .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, OPTION_DATABASE, OPTION_SEARCH_PATH, OPTION_FORMAT,
-                    OPTION_DECODE_ARGS, OPTION_QUERY_ARGS,
+                    OPTION_DECODE_ARGS, OPTION_QUERY_ARGS, OPTION_TIMEOUT,
                     CommandLineExecutor.OPTION_CLI_PATH.update().defaultValue(DEFAULT_COMMAND).build(),
-                    Option.EXEC_TIMEOUT.update().defaultValue("10000").build(),
                     CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
                     CommandLineExecutor.OPTION_WORK_DIRECTORY, Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
 
@@ -88,7 +91,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
     }
 
     private Result<?> localQueryRun(String queryFile, String bqrsFile, String database, String searchPath,
-            String queryArgs, Properties props) throws IOException {
+            String queryArgs, Properties props) throws IOException, TimeoutException {
         final List<String> args = new LinkedList<>();
         args.add("query");
         args.add("run");
@@ -123,7 +126,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
     }
 
     private Result<?> localBqrsDecode(String bqrsFile, String format, String decodeArgs, Properties props)
-            throws IOException {
+            throws IOException, TimeoutException {
         final List<String> args = new LinkedList<>();
         args.add("bqrs");
         args.add("decode");
@@ -147,6 +150,8 @@ public class CodeQLInterpreter extends AbstractInterpreter {
     public CodeQLInterpreter(QueryContext context, Properties config) {
         super(context);
 
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
+
         this.defaultDatabase = OPTION_DATABASE.getValue(config);
         this.defaultSearchPath = OPTION_SEARCH_PATH.getValue(config);
         this.defaultQueryArgs = OPTION_QUERY_ARGS.getValue(config);
@@ -158,6 +163,8 @@ public class CodeQLInterpreter extends AbstractInterpreter {
     @SuppressWarnings("resource")
     @Override
     public Result<?> interpret(String query, Properties props) {
+        OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
+
         File queryFile = null;
         try {
             final Path workDir = executor.getWorkDirectory(props);

@@ -15,11 +15,11 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-
-import javax.script.ScriptException;
+import java.util.concurrent.TimeoutException;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -35,24 +35,25 @@ public class ScriptExecutorTest {
                 () -> new ScriptExecutor("lua", new Properties(), new HashMap<>()));
 
         Assert.assertEquals(new ScriptExecutor("javascript", null, null).getDefaultLanguage(), "javascript");
-        Assert.assertEquals(new ScriptExecutor("Groovy", new Properties(), new HashMap<>()).getDefaultLanguage(), "Groovy");
+        Assert.assertEquals(new ScriptExecutor("Groovy", new Properties(), new HashMap<>()).getDefaultLanguage(),
+                "Groovy");
     }
 
     @Test(groups = { "unit" })
-    public void testExecute() throws ScriptException {
+    public void testExecute() throws IOException, TimeoutException {
         Properties props = new Properties();
         Map<String, Object> vars = new HashMap<>();
         Map<String, Object> tmp = new HashMap<>();
-        Assert.assertEquals(new ScriptExecutor("javascript", props, vars).execute(null, tmp), "");
+        Assert.assertEquals(new ScriptExecutor("javascript", props, vars).execute(null, props, tmp), "");
         // Assert.assertEquals(new Scripting("javascript", props, vars).execute("1+1",
         // tmp), 2L);
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute(null, tmp), "");
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("1+1", tmp), 2);
+        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute(null, props, tmp), "");
+        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("1+1", props, tmp), 2);
 
         vars.put("a", 5);
         tmp.put("b", 6L);
         // Assert.assertEquals(new Scripting("javascript", props, vars).execute("a+b",
         // tmp), 11L);
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("a+b", tmp), 11L);
+        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("a+b", props, tmp), 11L);
     }
 }

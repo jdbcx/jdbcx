@@ -77,11 +77,21 @@ public final class SqlExceptionUtils {
     }
 
     public static SQLException clientError(Throwable e) {
-        return e != null ? new SQLException(e.getMessage(), SQL_STATE_CLIENT_ERROR, e) : unknownError();
+        if (e instanceof SQLException) {
+            return (SQLException) e;
+        } else if (e != null) {
+            return new SQLException(e.getMessage(), SQL_STATE_CLIENT_ERROR, e.getCause() != null ? e.getCause() : e);
+        }
+        return unknownError();
     }
 
     public static SQLWarning clientWarning(Throwable e) {
-        return e != null ? new SQLWarning(e.getMessage(), SQL_STATE_CLIENT_ERROR, e) : unknownWarning();
+        if (e instanceof SQLWarning) {
+            return (SQLWarning) e;
+        } else if (e != null) {
+            return new SQLWarning(e.getMessage(), SQL_STATE_CLIENT_ERROR, e.getCause() != null ? e.getCause() : e);
+        }
+        return unknownWarning();
     }
 
     public static SQLException clientError(String message, Throwable e) {

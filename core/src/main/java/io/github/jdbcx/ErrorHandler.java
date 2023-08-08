@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeoutException;
 
 public final class ErrorHandler {
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
@@ -50,7 +51,7 @@ public final class ErrorHandler {
                 return error.getMessage();
             } else if (Option.ERROR_HANDLING_IGNORE.equals(errorHandling)) {
                 log.debug("Failed to interpret. Will ignore.", error);
-            } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling)) {
+            } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling) && !(error instanceof TimeoutException)) {
                 log.debug("Failed to interpret. Will raise a warning.", error);
                 throw new CompletionException(error.getMessage(), null);
             } else {

@@ -25,10 +25,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class CustomPipedInputStreamTest {
-    public static CompletableFuture<Void> runAsync(Runnable runnable) {
-        return CompletableFuture.runAsync(runnable, AbstractExecutor.executor);
-    }
-
     @Test(groups = { "unit" })
     public void testPipe() throws IOException {
         final PipedOutputStream output = new PipedOutputStream();
@@ -39,7 +35,7 @@ public class CustomPipedInputStreamTest {
         int index = 0;
         int len = 0;
         try (CustomPipedInputStream in = new CustomPipedInputStream(output, 1023, 0)) {
-            in.attach(runAsync(
+            in.attach(CompletableFuture.runAsync(
                     () -> {
                         try (OutputStream out = output) {
                             Thread.sleep(3000L);
@@ -70,7 +66,7 @@ public class CustomPipedInputStreamTest {
     public void testPipeWithErrorOnRead() throws IOException {
         final PipedOutputStream output = new PipedOutputStream();
         final long magic = System.currentTimeMillis() % 99999 + 1;
-        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 1024, 0).attach(runAsync(
+        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 1024, 0).attach(CompletableFuture.runAsync(
                 () -> {
                     try (OutputStream out = output) {
                         for (int i = 0; i < magic; i++) {
@@ -97,7 +93,7 @@ public class CustomPipedInputStreamTest {
         final PipedOutputStream output = new PipedOutputStream();
         final long magic = System.currentTimeMillis() % 99999 + 1;
         Throwable error = null;
-        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 1024, 0).attach(runAsync(
+        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 1024, 0).attach(CompletableFuture.runAsync(
                 () -> {
                     try (OutputStream out = output) {
                         for (int i = 0; i < magic; i++) {
@@ -127,7 +123,7 @@ public class CustomPipedInputStreamTest {
     @Test(groups = { "unit" })
     public void testSmallPipe() throws IOException {
         final PipedOutputStream output = new PipedOutputStream();
-        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 2, 0).attach(runAsync(
+        try (CustomPipedInputStream in = new CustomPipedInputStream(output, 2, 0).attach(CompletableFuture.runAsync(
                 () -> {
                     try (OutputStream out = output) {
                         output.write(new byte[] { 1, 2, 3 });
