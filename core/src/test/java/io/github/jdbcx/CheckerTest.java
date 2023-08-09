@@ -59,6 +59,9 @@ public class CheckerTest {
         Assert.assertTrue(Checker.isNullOrEmpty(new StringBuffer()));
         Assert.assertTrue(Checker.isNullOrBlank(""));
         Assert.assertTrue(Checker.isNullOrBlank(" \t\r\n  "));
+
+        Assert.assertTrue(Checker.isNullOrBlank(" \t-- test\r\n  ", true));
+        Assert.assertTrue(Checker.isNullOrBlank(" /*\t--/* /*t*/*/est\r*/\n  ", true));
     }
 
     @Test(groups = { "unit" })

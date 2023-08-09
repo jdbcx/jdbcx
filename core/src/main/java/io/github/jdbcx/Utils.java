@@ -692,6 +692,85 @@ public final class Utils {
     }
 
     /**
+     * Finds the index of the specified characters within the provided
+     * {@link CharSequence}.
+     *
+     * @param args       CharSequence to scan
+     * @param startIndex start index
+     * @param len        length of the CharSequence
+     * @param chars      characters to find
+     * @return index of the specified characters; -1 indicates not found
+     */
+    public static int indexOf(CharSequence args, int startIndex, int len, char... chars) {
+        if (chars != null) {
+            int m = chars.length;
+            for (int i = startIndex; i < len; i++) {
+                boolean matched = true;
+                for (int j = 0; j < m; j++) {
+                    if (args.charAt(i + j) != chars[j]) {
+                        matched = false;
+                        break;
+                    }
+                }
+                if (matched) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Skips over single line SQL comment.
+     *
+     * @param args       non-null CharSequence to scan
+     * @param startIndex start index, optionally start of the single line comment
+     * @param len        end index, usually length of the given CharSequence
+     * @return index of start of next line, right after {@code \n}
+     */
+    public static int skipSingleLineComment(CharSequence args, int startIndex, int len) {
+        for (int i = startIndex; i < len; i++) {
+            if (args.charAt(i) == '\n') {
+                return i + 1;
+            }
+        }
+        return len;
+    }
+
+    /**
+     * Skips over a multi-line SQL comment that may or may not contain nested
+     * comments.
+     *
+     * @param args       non-null CharSequence to scan
+     * @param startIndex start index of the multi-line comment
+     * @param len        end index, usually length of the given CharSequence
+     * @return index next to end of the outter most multi-line comment
+     * @throws IllegalArgumentException when multi-line comment is unclosed
+     */
+    public static int skipMultiLineComment(CharSequence args, int startIndex, int len) {
+        int commentLevel = 0;
+
+        for (int i = startIndex; i < len; i++) {
+            char ch = args.charAt(i);
+            boolean hasNext = i < len - 1;
+            if (ch == '/' && hasNext && args.charAt(i + 1) == '*') {
+                i++;
+                commentLevel++;
+            } else if (ch == '*' && hasNext && args.charAt(i + 1) == '/') {
+                i++;
+                if (--commentLevel == 0) {
+                    return i + 1;
+                }
+            }
+            if (commentLevel <= 0) {
+                break;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
      * Waits until the flag turns to {@code true} or timed out.
      *
      * @param flag    non-null boolean flag to check
