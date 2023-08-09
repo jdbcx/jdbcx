@@ -57,7 +57,7 @@ public class ParsedQueryTest {
                         Arrays.asList(new ExecutableBlock(1, "", new Properties(), "", false))).isDirectQuery(),
                 true);
         Assert.assertEquals(
-                new ParsedQuery(Arrays.asList("   ", "", "\r\n\t"),
+                new ParsedQuery(Arrays.asList("   ", "", "\r\n\t", "--", "/*/**/*/", " /*-- test */"),
                         Arrays.asList(new ExecutableBlock(1, "", new Properties(), "", true))).isDirectQuery(),
                 true);
     }

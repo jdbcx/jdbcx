@@ -212,23 +212,47 @@ public final class Checker {
     }
 
     /**
-     * Checks if the given string is null, empty string or a string only contains
-     * white spaces.
+     * Checks if the given string is null, an empty string or a string only contains
+     * white spaces. Same as calling {@code isNullOrBlank(value, false)}.
      *
      * @param value the string to check
-     * @return true if the string is null, empty or blank； false otherwise
+     * @return true if the string is null, empty or blank; false otherwise
      */
     public static boolean isNullOrBlank(CharSequence value) {
-        if (isNullOrEmpty(value)) {
-            return true;
-        }
+        return isNullOrBlank(value, false);
+    }
 
-        for (int i = 0, len = value.length(); i < len; i++) {
-            if (!Character.isWhitespace(value.charAt(i))) {
-                return false;
+    /**
+     * Checks if the given string is null, an empty string, or contains only
+     * whitespace and/or comments, regardless of whether it is single-line or
+     * multi-line, nested or not.
+     *
+     * @param value             the string to check
+     * @param ignoreSqlComments whether SQL comments should be ignored or not
+     * @return true if the string is null, empty or blank; false otherwise
+     */
+    public static boolean isNullOrBlank(CharSequence value, boolean ignoreSqlComments) {
+        if (value != null) {
+            if (!ignoreSqlComments) {
+                for (int i = 0, len = value.length(); i < len; i++) {
+                    if (!Character.isWhitespace(value.charAt(i))) {
+                        return false;
+                    }
+                }
+            } else {
+                for (int i = 0, len = value.length(); i < len; i++) {
+                    char ch = value.charAt(i);
+                    boolean hasNext = i + 1 < len;
+                    if (ch == '-' && hasNext && value.charAt(i + 1) == '-') {
+                        i = Utils.skipSingleLineComment(value, i + 2, len) - 1; // NOSONAR
+                    } else if (ch == '/' && hasNext && value.charAt(i + 1) == '*') {
+                        i = Utils.skipMultiLineComment(value, i, len) - 1; // NOSONAR
+                    } else if (!Character.isWhitespace(ch)) {
+                        return false;
+                    }
+                }
             }
         }
-
         return true;
     }
 

@@ -37,7 +37,7 @@ public final class ParsedQuery {
 
         boolean found = false;
         for (String p : parts) {
-            if (!Checker.isNullOrBlank(p)) {
+            if (!Checker.isNullOrBlank(p, true)) {
                 found = true;
                 break;
             }

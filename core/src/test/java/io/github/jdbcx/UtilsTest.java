@@ -118,4 +118,44 @@ public class UtilsTest {
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json , Authorization = Bear 1234 5 "),
                 expected);
     }
+
+    @Test(groups = { "unit" })
+    public void testIndexOf() {
+        String args = "select 1 -- select one\n union all select 2 -- select two--";
+        Assert.assertEquals(Utils.indexOf(args, 0, args.length(), 'x'), args.indexOf('x', 0));
+        Assert.assertEquals(Utils.indexOf(args, 3, args.length(), 'x'), args.indexOf('x', 3));
+        Assert.assertEquals(Utils.indexOf(args, 0, args.length(), 'o', 'n'), args.indexOf("on", 0));
+        Assert.assertEquals(Utils.indexOf(args, 12, args.length(), 'o', 'n'), args.indexOf("on", 12));
+    }
+
+    @Test(groups = { "unit" })
+    public void testSkipSingleLineComment() {
+        String args = "select 1 -- select one\n union all select 2 -- select two--";
+        Assert.assertEquals(Utils.skipSingleLineComment(args, 11, args.length()),
+                args.indexOf('\n') + 1);
+        Assert.assertEquals(Utils.skipSingleLineComment(args, args.indexOf("--", 11), args.length()),
+                args.length());
+    }
+
+    @Test(groups = { "unit" })
+    public void testSkipMultipleLineComment() {
+        Assert.assertEquals(Utils.skipMultiLineComment("", 0, 0), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/", 0, 1), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/*", 0, 2), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/**", 0, 3), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/**/", 0, 4), 4);
+        Assert.assertEquals(Utils.skipMultiLineComment("/*/*/", 0, 5), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/*/**/", 0, 6), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/*/***/", 0, 7), -1);
+        Assert.assertEquals(Utils.skipMultiLineComment("/*/**/*/", 0, 8), 8);
+
+        Assert.assertEquals(Utils.skipMultiLineComment("/*/*/**/*/*/", 0, 12), 12);
+
+        String args = "select 1 /* select 1/*one*/ -- a */, 2";
+        Assert.assertEquals(Utils.skipMultiLineComment(args, 9, args.length()),
+                args.lastIndexOf("*/") + 2);
+        Assert.assertEquals(Utils.skipMultiLineComment(args, 20, args.length()),
+                args.indexOf("*/", 21) + 2);
+        Assert.assertEquals(Utils.skipMultiLineComment(args, args.lastIndexOf("*/") + 1, args.length()), -1);
+    }
 }
