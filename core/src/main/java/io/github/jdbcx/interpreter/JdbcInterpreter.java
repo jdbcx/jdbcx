@@ -96,7 +96,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
         Connection conn = null;
         try {
             conn = getConnection(props);
-            final Object result = executor.execute(query, conn);
+            final Object result = executor.execute(query, conn, props);
             if (result instanceof ResultSet) {
                 return Result.of((ResultSet) result);
             }

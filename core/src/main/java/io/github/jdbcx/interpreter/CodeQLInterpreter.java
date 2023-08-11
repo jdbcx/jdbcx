@@ -66,7 +66,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
                     OPTION_DECODE_ARGS, OPTION_QUERY_ARGS, OPTION_TIMEOUT,
                     CommandLineExecutor.OPTION_CLI_PATH.update().defaultValue(DEFAULT_COMMAND).build(),
                     CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
-                    CommandLineExecutor.OPTION_WORK_DIRECTORY, Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
+                    Option.INPUT_CHARSET, Option.OUTPUT_CHARSET, Option.WORK_DIRECTORY));
 
     private final String defaultDatabase;
     private final String defaultSearchPath;

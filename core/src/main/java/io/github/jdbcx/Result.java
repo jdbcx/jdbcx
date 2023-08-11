@@ -34,7 +34,7 @@ import io.github.jdbcx.data.IterableWrapper;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
-public final class Result<T> {
+public final class Result<T> implements AutoCloseable {
     private static final ErrorHandler defaultErrorHandler = new ErrorHandler(Constants.EMPTY_STRING);
 
     public static Result<Object[]> of(Object[] arr) {
@@ -132,7 +132,7 @@ public final class Result<T> {
         } else if (clazz.isAssignableFrom(valueType)) {
             return clazz.cast(rawValue);
         } else if (ResultSet.class.equals(clazz)) {
-            return (R) new ReadOnlyResultSet(null, rows());
+            return (R) new ReadOnlyResultSet(null, this);
         } else if (String.class.equals(clazz)) {
             String str;
             if (InputStream.class.isAssignableFrom(valueType)) {
@@ -173,6 +173,19 @@ public final class Result<T> {
 
     public Iterable<Row> rows() {
         return rows.get();
+    }
+
+    @Override
+    public void close() {
+        if (AutoCloseable.class.isAssignableFrom(valueType)) {
+            try {
+                ((AutoCloseable) rawValue).close();
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        }
     }
 
     private Result(T rawValue, DeferredValue<Iterable<Row>> rows, ErrorHandler errorHandler) {

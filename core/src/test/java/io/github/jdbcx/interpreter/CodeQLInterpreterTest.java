@@ -38,7 +38,7 @@ public class CodeQLInterpreterTest extends BaseIntegrationTest {
         CodeQLInterpreter i = new CodeQLInterpreter(context, config);
         Properties props = new Properties();
         CodeQLInterpreter.OPTION_DATABASE.setValue(props, "~/Sources/Local/CodeQL/jdbcx");
-        CommandLineExecutor.OPTION_WORK_DIRECTORY.setValue(props, "~/Sources/Github/jdbcx");
+        Option.WORK_DIRECTORY.setValue(props, "~/Sources/Github/jdbcx");
         Assert.assertEquals(i.interpret(query, props).get(String.class), "|  c   |\n+------+\n| Main |\n");
 
         CodeQLInterpreter.OPTION_FORMAT.setValue(props, "");

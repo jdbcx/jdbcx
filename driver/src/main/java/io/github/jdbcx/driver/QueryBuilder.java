@@ -96,6 +96,11 @@ public final class QueryBuilder {
             JdbcActivityListener cl = ext.createListener(context, conn, p);
             if (block.hasOutput()) {
                 try {
+                    if (directQuery && !ext.supportsNoArguments() && block.hasNoArguments()) {
+                        stmt.currentResultSet
+                                .set(WrappedConnection.convertTo(WrappedConnection.describe(ext, p), ResultSet.class));
+                        return Collections.emptyList();
+                    }
                     Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
                     if (directQuery && ext.supportsDirectQuery()) {
                         stmt.currentResultSet.set(WrappedConnection.convertTo(r, ResultSet.class));

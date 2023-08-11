@@ -34,16 +34,19 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
 
 public final class ReadOnlyResultSet extends AbstractResultSet {
     private static final Row LAST_ROW = Row.of("last");
 
+    private final Result<?> result;
     private final Iterator<Row> cursor;
 
     private ResultSetMetaData metaData;
@@ -52,10 +55,16 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     private Row row;
     private Value val;
 
-    public ReadOnlyResultSet(Statement stmt, Iterable<Row> rows) {
+    public ReadOnlyResultSet(Statement stmt, Result<?> result) {
         super(stmt);
 
-        this.cursor = rows.iterator();
+        if (result != null) {
+            this.result = result;
+            this.cursor = result.rows().iterator();
+        } else {
+            this.result = null;
+            this.cursor = Collections.emptyIterator();
+        }
 
         this.count = 0;
         this.row = null;
@@ -98,8 +107,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
                     r = LAST_ROW;
                 }
                 metaData = new SimpleResultSetMetaData(Constants.EMPTY_STRING, Constants.EMPTY_STRING,
-                        Constants.EMPTY_STRING,
-                        r);
+                        Constants.EMPTY_STRING, r);
             } catch (Exception e) {
                 // unwrap the first tier, which is UncheckedIOException in most cases
                 Throwable t = e.getCause();
@@ -119,8 +127,11 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
             if (row == LAST_ROW) {
                 b = false;
             } else if (!cursor.hasNext()) {
-                row = LAST_ROW;
-                b = false;
+                if (b = (count == 0 && row != null)) { // NOSONAR
+                    count++;
+                } else {
+                    row = LAST_ROW;
+                }
             } else {
                 if (count != 0 || row == null) {
                     row = cursor.next();
@@ -139,6 +150,19 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
             throw SqlExceptionUtils.handle(t);
         }
         return b;
+    }
+
+    @Override
+    public void close() throws SQLException {
+        try {
+            if (result != null) {
+                result.close();
+            }
+        } catch (Exception e) {
+            throw SqlExceptionUtils.handle(e);
+        } finally {
+            super.close();
+        }
     }
 
     @Override

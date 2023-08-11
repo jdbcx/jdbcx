@@ -26,13 +26,14 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.Field;
+import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.data.StringValue;
 
 public class ReadOnlyResultSetTest {
     @Test(groups = { "unit" })
     public void testEmptyResults() throws SQLException {
-        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Collections.emptyList());
+        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Result.of(Collections.emptyList()));
         Assert.assertFalse(rs.next(), "Should not have more rows");
         Assert.assertFalse(rs.isBeforeFirst(), "Should not be before the first");
         Assert.assertFalse(rs.isFirst(), "Should not be the first");
@@ -51,7 +52,7 @@ public class ReadOnlyResultSetTest {
                 Row.of(fields, new StringValue("a1"), new StringValue("b1")),
                 Row.of(fields, new StringValue("a2"), new StringValue("b2")),
         });
-        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, rows);
+        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Result.of(rows));
         ResultSetMetaData md = rs.getMetaData();
         Assert.assertEquals(md.getColumnCount(), fields.length);
         Assert.assertEquals(md.getColumnName(1), fields[0].name());
@@ -76,7 +77,7 @@ public class ReadOnlyResultSetTest {
                 Row.of(fields, new StringValue("a1"), new StringValue("b1")),
                 Row.of(fields, new StringValue("a2"), new StringValue("b2")),
         });
-        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, rows);
+        ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Result.of(rows));
         Assert.assertTrue(rs.isBeforeFirst(), "Should be before the first");
         Assert.assertFalse(rs.isFirst(), "Should not be the first");
         Assert.assertFalse(rs.isLast(), "Should not be the last");
@@ -115,5 +116,24 @@ public class ReadOnlyResultSetTest {
         Assert.assertThrows(SQLException.class, () -> rs.getString(1));
         Assert.assertThrows(SQLException.class, () -> rs.getString(2));
         Assert.assertThrows(SQLException.class, () -> rs.getString(3));
+    }
+
+    @Test(groups = { "unit" })
+    public void testSingleResult() throws SQLException {
+        try (ReadOnlyResultSet rs = new ReadOnlyResultSet(null,
+                Result.of(Collections.singletonList(Row.of("secret"))))) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString(1), "secret");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        try (ReadOnlyResultSet rs = new ReadOnlyResultSet(null,
+                Result.of(Collections.singletonList(Row.of("secret"))))) {
+            Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+            Assert.assertEquals(rs.getMetaData().getColumnName(1), "results");
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString(1), "secret");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
     }
 }

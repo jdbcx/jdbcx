@@ -41,7 +41,7 @@ public class CommandLineExecutorTest {
         }
         props.setProperty(Option.EXEC_TIMEOUT.getName(), String.valueOf(timeout));
         if (workDir != null) {
-            props.setProperty(CommandLineExecutor.OPTION_WORK_DIRECTORY.getName(), workDir);
+            props.setProperty(Option.WORK_DIRECTORY.getName(), workDir);
         }
         if (dockerCliPath != null) {
             props.setProperty(CommandLineExecutor.OPTION_DOCKER_PATH.getName(), dockerCliPath);
@@ -126,7 +126,7 @@ public class CommandLineExecutorTest {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
             CommandLineExecutor prqlc = new CommandLineExecutor("wsl -- /home/zhicwu/.cargo/bin/prqlc", true,
                     newProperties(null, null, 0, null, null, null, "-V"));
-            prqlc.execute(0, 3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
+            prqlc.execute(0, true, 3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
             String sql = new String(out.toByteArray());
             sql = sql.replaceAll("[\\s\\t\\r\\n]*", "");
             sql = sql.substring(0, sql.indexOf("--"));

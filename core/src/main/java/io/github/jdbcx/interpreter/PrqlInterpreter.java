@@ -16,6 +16,7 @@
 package io.github.jdbcx.interpreter;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -62,14 +63,16 @@ public class PrqlInterpreter extends AbstractInterpreter {
     public Result<?> interpret(String query, Properties props) {
         OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
 
+        InputStream input = null;
         try {
             final String compileTarget = OPTION_COMPILE_TARGET.getValue(props, defaultCompileTarget);
             final String[] args = Checker.isNullOrEmpty(compileTarget) ? new String[] { "compile" }
                     : new String[] { "compile", "-t", "sql.".concat(compileTarget) };
-            return Result.of(executor.execute(props,
-                    new ByteArrayInputStream(query.getBytes(executor.getInputCharset(props))), args));
+            input = executor.execute(props,
+                    new ByteArrayInputStream(query.getBytes(executor.getInputCharset(props))), args);
+            return Result.of(input);
         } catch (Exception e) {
-            return handleError(e, query, props);
+            return handleError(e, query, props, input);
         }
     }
 }

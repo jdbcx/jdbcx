@@ -56,6 +56,6 @@ public class ShellDriverExtension implements DriverExtension {
 
     @Override
     public String getUsage() {
-        return "{{ shell: echo Yes }}";
+        return "{{ shell(exec.timeout=5000,exec.parallelism=1): echo Yes }}";
     }
 }

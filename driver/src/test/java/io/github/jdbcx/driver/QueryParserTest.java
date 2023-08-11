@@ -181,7 +181,7 @@ public class QueryParserTest {
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "", props), new String[] { "", "" });
         Assert.assertEquals(props, expected);
 
-        Assert.assertEquals(QueryParser.parseExecutableBlock(str = "script", props), new String[] { "", "script" });
+        Assert.assertEquals(QueryParser.parseExecutableBlock(str = "script", props), new String[] { "script", "" });
         Assert.assertEquals(props, expected);
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "select 1", props), new String[] { "", "select 1" });
         Assert.assertEquals(props, expected);
@@ -231,6 +231,12 @@ public class QueryParserTest {
                 new ParsedQuery(Collections.emptyList(), Collections.emptyList()));
         Assert.assertEquals(QueryParser.parse(str = "select 1", props),
                 new ParsedQuery(Arrays.asList(str), Collections.emptyList()));
+
+        Assert.assertEquals(QueryParser.parse("{{web}}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "web", new Properties(), "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ web }}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "web", new Properties(), "", true))));
+
         Assert.assertEquals(
                 QueryParser.parse(
                         str = "helper.format('select now() t, arrayJoin(splitByChar('\\n', '%s')) a\", \"a\\nb\\nc\")",

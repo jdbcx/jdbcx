@@ -17,6 +17,8 @@ package io.github.jdbcx.interpreter;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -125,6 +128,7 @@ public class WebInterpreter extends AbstractInterpreter {
 
     @Override
     public Result<?> interpret(String query, Properties props) {
+        InputStream input = null;
         try {
             final URL url = new URL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), props));
             Map<?, ?> headers = (Map<?, ?>) getContext().get(KEY_HEADERS);
@@ -137,15 +141,21 @@ public class WebInterpreter extends AbstractInterpreter {
             String request = query;
             if (Checker.isNullOrBlank(request)) {
                 if (Checker.isNullOrEmpty(defaultTemplate)) {
-                    return Result.of(executor.get(url, props, headers));
+                    input = executor.get(url, props, headers);
+                    return Result.of(input, Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
+                            .getBytes(Option.OUTPUT_CHARSET.getValue(props)));
                 } else {
                     request = Utils.applyVariables(defaultTemplate, props);
                 }
             }
-            return Result.of(executor.post(url, request, props, headers),
+
+            input = executor.post(url, request, props, headers);
+            return Result.of(input,
                     Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));
+        } catch (SocketTimeoutException e) {
+            return handleError(new TimeoutException(e.getMessage()), query, props, input);
         } catch (IOException e) {
-            return handleError(e, query, props);
+            return handleError(e, query, props, input);
         }
     }
 }

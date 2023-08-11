@@ -16,46 +16,62 @@
 package io.github.jdbcx.extension;
 
 import java.sql.Connection;
-import java.util.Arrays;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
-import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
-import io.github.jdbcx.interpreter.WebInterpreter;
+import io.github.jdbcx.Result;
 
-public class WebDriverExtension implements DriverExtension {
-    static class ActivityListener extends AbstractActivityListener {
-        ActivityListener(QueryContext context, Properties config) {
-            super(new WebInterpreter(context, config), config);
+public final class VersionDriverExtension implements DriverExtension, JdbcActivityListener {
+    private final String version;
+
+    public VersionDriverExtension() {
+        String str = Result.class.getPackage().getImplementationVersion();
+        if (str != null && !str.isEmpty()) {
+            char[] chars = str.toCharArray();
+            for (int i = 0, len = chars.length; i < len; i++) {
+                if (Character.isDigit(chars[i])) {
+                    str = str.substring(i);
+                    break;
+                }
+            }
+            version = str;
+        } else {
+            version = "";
         }
     }
 
     @Override
     public List<String> getAliases() {
-        return Collections.unmodifiableList(Arrays.asList("http", "https", "rest", "graphql", "gql"));
-    }
-
-    @Override
-    public List<Option> getDefaultOptions() {
-        return WebInterpreter.OPTIONS;
+        return Collections.singletonList("ver");
     }
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig(props));
+        return this;
     }
 
     @Override
     public String getDescription() {
-        return "Extension for accessing resources via http/https.";
+        return "Extension to get JDBCX version";
     }
 
     @Override
     public String getUsage() {
-        return "{{ web(base.url='https://explorer@play.clickhouse.com'): select 5 }}";
+        return "{{ version }}";
+    }
+
+    @Override
+    public boolean supportsNoArguments() {
+        return true;
+    }
+
+    @Override
+    public Result<?> onQuery(String query) throws SQLException {
+        return Result.of(version);
     }
 }
