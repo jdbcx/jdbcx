@@ -51,7 +51,9 @@ abstract class AbstractExecutor implements Executor {
         }
 
         for (CompletableFuture<?> future : tasks) {
-            if (future.isDone()) {
+            if (future == null) {
+                // do nothing
+            } else if (future.isDone()) {
                 try {
                     log.debug("Task completed with result [%s]", future.get());
                 } catch (Throwable e) { // NOSONAR

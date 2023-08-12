@@ -212,6 +212,7 @@ public class CommandLineExecutor extends AbstractExecutor {
             return new ByteArrayInputStream(
                     new StringBuilder().append("command.line=").append(command).append('\n')
                             .append("arguments=").append(Arrays.toString(args)).append('\n')
+                            .append("input=").append(input).append('\n')
                             .append("options=").append(props).append('\n')
                             .append(Option.EXEC_PARALLELISM.getName()).append('=').append(parallelism)
                             .append('\n').append(Option.EXEC_TIMEOUT.getName()).append('=').append(timeout).append('\n')
@@ -232,7 +233,7 @@ public class CommandLineExecutor extends AbstractExecutor {
         final PipedOutputStream out = new PipedOutputStream();
         return new CustomPipedInputStream(out, Constants.DEFAULT_BUFFER_SIZE, timeout).attach(runAsync(() -> {
             try (OutputStream o = out) {
-                int exitCode = execute(parallelism - 1, stdErrRedirect, timeout, workDir, input, inputCharset, o,
+                int exitCode = execute(parallelism, stdErrRedirect, timeout, workDir, input, inputCharset, o,
                         outputCharset, args);
                 if (exitCode != 0) {
                     throw new IllegalStateException(Utils.format("Comamnd exited with code %d", exitCode));
@@ -393,36 +394,41 @@ public class CommandLineExecutor extends AbstractExecutor {
         try {
             p = builder.start();
 
-            CompletableFuture<?> future = null;
-            List<CompletableFuture<?>> tasks = new ArrayList<>(2);
-
-            future = writeToProcess(p.getOutputStream(), fileInput ? null : input, inputCharset, parallelism > 0);
-            if (future != null && !future.isDone()) {
-                if (--parallelism > 0) {
-                    tasks.add(future);
-                } else {
-                    waitForTask(log, future, startTime, timeoutMs);
+            final CompletableFuture<?> writeTask = writeToProcess(p.getOutputStream(), fileInput ? null : input,
+                    inputCharset,
+                    parallelism > 0);
+            if (writeTask != null && !writeTask.isDone()) {
+                if (--parallelism <= 0) {
+                    waitForTask(log, writeTask, startTime, timeoutMs);
                     parallelism++;
                 }
             }
 
-            future = readFromProcess(p.getInputStream(), fileOutput ? null : output, outputCharset,
-                    timeout > 0 || parallelism > 0);
-            if (future != null && !future.isDone()) {
-                tasks.add(future);
-                --parallelism;
+            final InputStream stdOut = p.getInputStream();
+            final CompletableFuture<?> readTask;
+            if (parallelism > 0) {
+                readTask = readFromProcess(stdOut, fileOutput ? null : output, outputCharset, true);
+                if (readTask != null && !readTask.isDone()) {
+                    --parallelism;
+                }
+            } else {
+                readTask = null;
             }
 
-            final long remain = checkTimeout(log, startTime, timeoutMs, tasks.toArray(new CompletableFuture[0]));
+            final long remain = checkTimeout(log, startTime, timeoutMs, writeTask, readTask);
 
-            InputStream stdErr = p.getErrorStream();
-            int exitValue;
+            final InputStream stdErr = stdErrRedirect ? null : p.getErrorStream();
+            final int exitValue;
             if (timeout <= 0) {
                 exitValue = p.waitFor();
             } else if (p.waitFor(remain, TimeUnit.MILLISECONDS)) {
                 exitValue = p.exitValue();
             } else {
-                throw handleTimeout(log, timeout, tasks.toArray(new CompletableFuture[0]));
+                throw handleTimeout(log, timeout, writeTask, readTask);
+            }
+
+            if (readTask == null) {
+                readFromProcess(stdOut, fileOutput ? null : output, outputCharset, false);
             }
 
             if (stdErr != null) {
