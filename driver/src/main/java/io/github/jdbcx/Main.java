@@ -23,10 +23,13 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Properties;
 
 import io.github.jdbcx.executor.Stream;
 
@@ -68,6 +71,7 @@ public final class Main {
         println("Properties: -Dkey=value [-Dkey=value]*");
         println("  loopCount\tNumber of times to repeat the same query, defaults to 1");
         println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
+        println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -77,21 +81,65 @@ public final class Main {
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
     }
 
-    static long execute(String url, String fileOrQuery) throws IOException, SQLException {
+    static String getColumnLabel(ResultSetMetaData md, int columnIndex) throws SQLException {
+        String label = md.getColumnLabel(columnIndex);
+        if (label == null || label.isEmpty()) {
+            label = md.getColumnName(columnIndex);
+        }
+        return label;
+    }
+
+    static long execute(String url, Properties props, String fileOrQuery, boolean verbose)
+            throws IOException, SQLException {
+        final long startTime = verbose ? System.nanoTime() : 0L;
+
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
             return 0L;
         } else if (fileOrQuery.charAt(0) == '@') {
             fileOrQuery = Stream.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, System.getProperties());
+        try (Connection conn = DriverManager.getConnection(url, props);
                 Statement stmt = conn.createStatement()) {
             long rows = 0L;
+            String operation = null;
             if (stmt.execute(fileOrQuery)) {
                 // only check the first result set
                 try (ResultSet rs = stmt.getResultSet()) {
-                    while (rs.next()) {
-                        rows++;
+                    if (verbose) {
+                        ResultSetMetaData md = rs.getMetaData();
+                        int len = md.getColumnCount();
+                        StringBuilder builder = new StringBuilder();
+                        for (int i = 1; i <= len; i++) {
+                            builder.append('|').append(' ').append(getColumnLabel(md, i)).append(' ');
+                        }
+                        if (builder.length() > 0) {
+                            builder.append('|');
+                        }
+                        println(builder.toString());
+                        char[] chars = new char[builder.length()];
+                        Arrays.fill(chars, '-');
+                        String line = new String(chars);
+                        println(line);
+
+                        while (rs.next()) {
+                            builder.setLength(0);
+                            for (int i = 1; i <= len; i++) {
+                                builder.append('|').append(' ').append(rs.getObject(i)).append(' ');
+                            }
+                            if (builder.length() > 0) {
+                                builder.append('|');
+                            }
+                            println(builder.toString());
+                            rows++;
+                        }
+                        println(line);
+
+                        operation = "Read";
+                    } else {
+                        while (rs.next()) {
+                            rows++;
+                        }
                     }
                 }
             } else {
@@ -100,6 +148,13 @@ public final class Main {
                 } catch (Exception e) {
                     rows = stmt.getUpdateCount();
                 }
+                operation = "Affected";
+            }
+
+            if (verbose) {
+                long elapsedNanos = System.nanoTime() - startTime;
+                println("\n%s %,d rows in %,.2f ms (%,.2f rows/s)", operation, rows, elapsedNanos / 1_000_000D,
+                        rows * 1_000_000_000D / elapsedNanos);
             }
             return rows;
         }
@@ -113,6 +168,7 @@ public final class Main {
 
         final long loopCount = Long.getLong("loopCount", 1L);
         final long loopInterval = Long.getLong("loopInterval", 0L);
+        final boolean noProperties = Boolean.parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
@@ -120,13 +176,8 @@ public final class Main {
         long count = 0L;
         boolean failed = false;
         do {
-            final long startTime = verbose ? System.nanoTime() : 0L;
-            final long rows = execute(url, fileOrQuery);
-            if (verbose) {
-                long elapsedNanos = System.nanoTime() - startTime;
-                println("\nProcessed %,d rows in %,.2f ms (%,.2f rows/s)", rows, elapsedNanos / 1_000_000D,
-                        rows * 1_000_000_000D / elapsedNanos);
-            }
+            final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), fileOrQuery,
+                    verbose);
             failed = failed || rows < 1L;
             count++;
             if (loopInterval > 0L) {
