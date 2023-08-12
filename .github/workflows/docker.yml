@@ -19,14 +19,22 @@ on:
         description: "DockerHub owner"
         required: false
         default: "jdbcx"
+      pr:
+        description: "Pull request#"
+        required: false
 
 jobs:
   publish:
     name: "Build and Publish Docker Image"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v3
+      - name: Check out PR
+        run: |
+          git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
+            origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
+        if: github.event.inputs.pr != ''
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
