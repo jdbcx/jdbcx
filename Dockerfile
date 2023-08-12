@@ -31,10 +31,8 @@ RUN locale-gen en_US.UTF-8 \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
     && mkdir -p /app/drivers \
     && chown -R jdbcx:jdbcx /app \
-    && wget -nv -P /app \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE \
+    && wget -nv -O /app/drivers/jdbcx-driver-${JDBCX_VERSION}.jar \
+        https://s01.oss.sonatype.org/content/repositories/snapshots/io/github/jdbcx/jdbcx-driver/0.3.0-SNAPSHOT/jdbcx-driver-0.3.0-20230812.160412-8.jar \
     && ln -s /app/jdbcx-driver-${JDBCX_VERSION}.jar /app/jdbcx.jar \
     && wget -nv -O /app/drivers/duckdb.LICENSE https://github.com/duckdb/duckdb/raw/master/LICENSE \
     && wget -nv -O /app/drivers/mysql-connector-j.LICENSE \
