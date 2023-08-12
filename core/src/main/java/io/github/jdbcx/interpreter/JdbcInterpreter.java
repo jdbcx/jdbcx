@@ -47,6 +47,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
     private final String defaultConnectionUrl;
     private final String defaultConnectionProps;
 
+    private final ClassLoader loader;
     private final JdbcExecutor executor;
 
     @SuppressWarnings("unchecked")
@@ -68,16 +69,19 @@ public class JdbcInterpreter extends AbstractInterpreter {
             Map<String, String> map = Utils.toKeyValuePairs(
                     Utils.applyVariables(OPTION_PROPERTIES.getValue(props, defaultConnectionProps), props));
             Properties newProps = new Properties(); // new Properties(props);
-            newProps.putAll(props);
+            String classpath = JdbcConnectionManager.OPTION_CLASSPATH.getValue(props);
+            if (!Checker.isNullOrBlank(classpath)) {
+                JdbcConnectionManager.OPTION_CLASSPATH.setJdbcxValue(newProps, classpath);
+            }
             newProps.putAll(map);
-            return manager.getConnection(str, newProps);
+            return manager.getConnection(str, newProps, loader);
         }
 
         throw new SQLException(Utils.format("Please specify either \"%s\" or \"%s\" to establish connection",
                 JdbcConnectionManager.OPTION_ID.getName(), JdbcConnectionManager.OPTION_URL.getName()));
     }
 
-    public JdbcInterpreter(QueryContext context, Properties config) {
+    public JdbcInterpreter(QueryContext context, Properties config, ClassLoader loader) {
         super(context);
 
         this.defaultConnectionId = JdbcConnectionManager.OPTION_ID.getValue(config);
@@ -88,6 +92,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
             JdbcConnectionManager.getInstance().reload(config);
         }
 
+        this.loader = loader;
         this.executor = new JdbcExecutor(config);
     }
 
