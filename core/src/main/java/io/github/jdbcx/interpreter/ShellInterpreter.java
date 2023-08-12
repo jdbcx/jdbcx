@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -50,11 +51,13 @@ public class ShellInterpreter extends AbstractInterpreter {
     public Result<?> interpret(String query, Properties props) {
         OPTION_TIMEOUT.setDefaultValueIfNotPresent(props);
 
+        InputStream input = null;
         try {
-            return Result.of(executor.execute(props, null, query),
+            input = executor.execute(props, null, query);
+            return Result.of(input,
                     Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));
         } catch (Exception e) {
-            return handleError(e, query, props);
+            return handleError(e, query, props, input);
         }
     }
 }

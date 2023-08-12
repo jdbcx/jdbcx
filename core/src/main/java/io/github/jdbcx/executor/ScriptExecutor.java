@@ -46,10 +46,10 @@ public class ScriptExecutor extends AbstractExecutor {
     public static final String DEFAULT_SCRIPT_LANGUAGE = "rhino";
 
     public static final Option OPTION_LANGUAGE = Option
-            .of(new String[] { "language", "Scripting language or engine name", DEFAULT_SCRIPT_LANGUAGE });
+            .of(new String[] { "language", "Scripting language to use for evaluating the provided script.",
+                    DEFAULT_SCRIPT_LANGUAGE });
     public static final Option OPTION_BINDING_ERROR = Option
-            .of(new String[] { "binding.error",
-                    "Approach to handle binding error, either throw an exception or simply ignore the error",
+            .of(new String[] { "binding.error", "Error handling strategy for bindings during script evaluation.",
                     Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_IGNORE });
 
     private final String defaultLanguage;
@@ -125,11 +125,22 @@ public class ScriptExecutor extends AbstractExecutor {
 
     public Object execute(String query, Properties props, Map<String, Object> vars)
             throws IOException, TimeoutException {
+        if (getDryRun(props)) {
+            return new StringBuilder().append("language=").append(defaultLanguage).append('\n')
+                    .append("script=").append(query).append('\n')
+                    .append("options=").append(props).append('\n')
+                    .append("vars=").append(vars).append('\n')
+                    // .append(Option.EXEC_PARALLELISM.getName()).append('=').append(getParallelism(props)).append('\n')
+                    .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(props))
+                    .toString();
+        }
+
         if (Checker.isNullOrBlank(query)) {
             return Constants.EMPTY_STRING;
         }
 
-        final int timeout = Integer.parseInt(Option.EXEC_TIMEOUT.getValue(props));
+        // final int parallelism = getParallelism(props);
+        final int timeout = getTimeout(props);
         final long startTime = timeout <= 0 ? 0L : System.currentTimeMillis();
         final long timeoutMs = timeout;
         ScriptEngine engine = manager.getEngineByName(defaultLanguage);

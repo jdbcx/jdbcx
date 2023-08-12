@@ -34,6 +34,16 @@ public final class StringValue implements Value {
         this.value = null;
     }
 
+    public StringValue(Object value) {
+        if (value instanceof byte[]) {
+            this.bytes = (byte[]) value;
+            this.value = null;
+        } else {
+            this.bytes = null;
+            this.value = value != null ? value.toString() : null;
+        }
+    }
+
     @Override
     public boolean isNull() {
         return bytes == null && value == null;

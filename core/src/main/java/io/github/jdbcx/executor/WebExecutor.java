@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -150,6 +151,7 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     protected HttpURLConnection openConnection(URL url, Properties config, Map<?, ?> headers) throws IOException {
+        final int execTimeout = getTimeout(config);
         final int connectTimeout = Integer.parseInt(OPTION_CONNECT_TIMEOUT.getValue(config, defaultConnectTimeout));
         final int socketTimeout = Integer.parseInt(OPTION_SOCKET_TIMEOUT.getValue(config, defaultSocketTimeout));
 
@@ -169,10 +171,10 @@ public class WebExecutor extends AbstractExecutor {
         }
 
         if (connectTimeout > 0) {
-            conn.setConnectTimeout(connectTimeout);
+            conn.setConnectTimeout(execTimeout > 0 ? Math.min(connectTimeout, execTimeout) : connectTimeout);
         }
         if (socketTimeout > 0) {
-            conn.setReadTimeout(socketTimeout);
+            conn.setReadTimeout(execTimeout > 0 ? Math.min(socketTimeout, execTimeout) : socketTimeout);
         }
         conn.setAllowUserInteraction(false);
         conn.setInstanceFollowRedirects(true);
@@ -216,6 +218,14 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     public InputStream get(URL url, Properties config, Map<?, ?> headers) throws IOException {
+        if (getDryRun(config)) {
+            return new ByteArrayInputStream(
+                    new StringBuilder().append("url=").append(url).append("\nmethod=GET\n")
+                            .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(config)).append('\n')
+                            .append("options=").append(config).append('\n')
+                            .append("headers=").append(headers).toString().getBytes(getOutputCharset(config)));
+        }
+
         HttpURLConnection conn = null;
         try {
             conn = openConnection(url, config, headers);
@@ -234,6 +244,15 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     public InputStream post(URL url, Object request, Properties config, Map<?, ?> headers) throws IOException {
+        if (getDryRun(config)) {
+            return new ByteArrayInputStream(
+                    new StringBuilder().append("url=").append(url).append("\nmethod=POST\n")
+                            .append("request=").append(request).append('\n')
+                            .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(config)).append('\n')
+                            .append("options=").append(config).append('\n')
+                            .append("headers=").append(headers).toString().getBytes(getOutputCharset(config)));
+        }
+
         HttpURLConnection conn = null;
         try {
             conn = openConnection(url, config, headers);

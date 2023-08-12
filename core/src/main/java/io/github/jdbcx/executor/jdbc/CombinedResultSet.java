@@ -147,17 +147,24 @@ public class CombinedResultSet extends AbstractResultSet {
 
     @Override
     public void close() throws SQLException {
+        SQLException ex = null;
         for (ResultSet rs : results) {
             if (rs != null) {
                 try {
                     rs.close();
                 } catch (Exception e) {
-                    // ignore
+                    if (ex == null) {
+                        ex = SqlExceptionUtils.handle(e);
+                    } else {
+                        ex.setNextException(SqlExceptionUtils.handle(e));
+                    }
                 }
             }
         }
-
         isClosed = true;
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @Override

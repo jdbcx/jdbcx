@@ -7,4 +7,5 @@ io.github.jdbcx.extension.ScriptDriverExtension
 io.github.jdbcx.extension.ShellDriverExtension
 io.github.jdbcx.extension.SqlDriverExtension
 io.github.jdbcx.extension.VarsDriverExtension
+io.github.jdbcx.extension.VersionDriverExtension
 io.github.jdbcx.extension.WebDriverExtension

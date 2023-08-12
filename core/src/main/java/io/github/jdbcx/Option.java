@@ -35,7 +35,8 @@ public final class Option implements Serializable {
     public static final String PROPERTY_PREFIX;
 
     static {
-        final Option prefixOption = Option.of(new String[] { "jdbcx.prefix", "JDBCX prefix", "jdbcx" });
+        final Option prefixOption = Option
+                .of(new String[] { "jdbcx.prefix", "Prefix used by all JDBCX configuration properties.", "jdbcx" });
 
         PROPERTY_JDBCX = prefixOption.getEffectiveDefaultValue(null).toLowerCase(Locale.ROOT);
         PROPERTY_PREFIX = PROPERTY_JDBCX + ".";
@@ -75,66 +76,72 @@ public final class Option implements Serializable {
      * Path to config property file.
      */
     public static final Option CONFIG_PATH = Option
-            .of(new String[] { "config.path", "Path to config file", "~/.jdbcx/config.properties" });
+            .of(new String[] { "config.path", "The path to the configuration file to load at startup.",
+                    "~/.jdbcx/config.properties" });
     /**
      * Custom classpath for {@link ExpandedUrlClassLoader} to load classes.
      */
     public static final Option CUSTOM_CLASSPATH = Option.of(new String[] { "custom.classpath", "Custom classpath" });
 
     /**
+     * Whether to perform a dry run.
+     */
+    public static final Option EXEC_DRYRUN = Option
+            .of(new String[] { "exec.dryrun", "Whether to perform a dry run without actual execution.", "false",
+                    "true" });
+    /**
      * The error handling approach to use when an execution fails.
      */
     public static final Option EXEC_ERROR = Option
-            .of(new String[] { "exec.error", "The error handling approach to use when an execution fails.",
+            .of(new String[] { "exec.error", "The error handling strategy to use when execution fails.",
                     ERROR_HANDLING_WARN, ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN, ERROR_HANDLING_THROW });
-    /**
-     * The execution mode, either normal or dry-run.
-     */
-    public static final Option EXEC_MODE = Option
-            .of(new String[] { "exec.mode", "The execution mode, either normal or dry-run.", "normal", "dry-run" });
     /**
      * The maximum number of threads that can be used for query execution. 0
      * enforces sequential execution.
      */
     public static final Option EXEC_PARALLELISM = Option.of(new String[] { "exec.parallelism",
-            "The maximum number of threads that can be used for query execution. 0 enforces sequential execution.",
+            "The maximum number of threads to use for parallel query execution. 0 enforces sequential, single-threaded execution.",
             "0" });
     /**
      * The priority for executing the query.
      */
     public static final Option EXEC_PRIORITY = Option
             .of(new String[] { "exec.priority",
-                    "The priority for executing the query. Higher values indicate higher priority.", "5" });
+                    "Priority for query execution. Higher integer values indicate higher priority.", "5" });
     /**
      * The execution timeout in milliseconds.
      */
     public static final Option EXEC_TIMEOUT = Option.of("exec.timeout",
-            "The execution timeout in milliseconds. A negative value or 0 disables the timeout.", "0");
+            "Execution timeout in milliseconds. A negative value or 0 disables the timeout.", "0");
+
+    public static final Option WORK_DIRECTORY = Option.of("work.dir",
+            "Path to the working directory. If left empty, the current directory will be used.", "");
 
     public static final Option INPUT_FILE = Option
             .of(new String[] { "input.file",
-                    "The input file to read the query from. This is only used when no query content is provided." });
+                    "Path to an input file containing the query text to execute. This property is only used if no inline query content is provided" });
     public static final Option OUTPUT_FILE = Option
             .of(new String[] { "output.file",
-                    "The file to write query results to. If the file already exists, it will be overwritten without warning." });
-    public static final Option INPUT_CHARSET = Option.of("input.charset", "Charset used for command line input",
-            Constants.DEFAULT_CHARSET.name());
+                    "Path to an output file for writing query results. If the file already exists, it will be overwritten without warning." });
+    public static final Option INPUT_CHARSET = Option.of("input.charset",
+            "Character encoding to use when reading the input stream.", Constants.DEFAULT_CHARSET.name());
     public static final Option OUTPUT_CHARSET = Option.of("output.charset",
-            "Charset used for command line output", Constants.DEFAULT_CHARSET.name());
+            "Character encoding to use when writing the output stream.", Constants.DEFAULT_CHARSET.name());
     /**
      * Proxy to use.
      */
-    public static final Option PROXY = Option.of(new String[] { "proxy", "Proxy server to use, empty means no proxy" });
+    public static final Option PROXY = Option.of(new String[] { "proxy",
+            "Optional proxy server to use for network connections. If empty, no proxy will be used and connections will be made directly." });
 
     public static final Option RESULT_FORMAT = Option
-            .of(new String[] { "result.format", "Data format of the query result" });
-    public static final Option RESULT_ID = Option.of(new String[] { "result.id", "Result identity" });
+            .of(new String[] { "result.format", "Output format to use for query results." });
+    public static final Option RESULT_ID = Option.of(new String[] { "result.id", "Unique ID of the query result." });
     public static final Option RESULT_JSON_PATH = Option
             .of(new String[] { "result.json.path",
                     "The JSON path to extract a value from the JSON query results. The extracted value will be converted to a string and escaped." });
     public static final Option RESULT_STRING_ESCAPE = Option
             .of(new String[] { "result.string.escape",
-                    "Whether single quotes or specified characters will be escaped in string results.", "false",
+                    "Whether to escape single quotes and special characters in string query results.", "false",
                     "true" });
     public static final Option RESULT_STRING_ESCAPE_CHAR = Option
             .of(new String[] { "result.string.escape.char", "The character that will be used for escaping.", "\\" });
@@ -142,20 +149,21 @@ public final class Option implements Serializable {
             .of(new String[] { "result.string.escape.target",
                     "The target character that will be escaped in string query results.", "'" });
     public static final Option RESULT_STRING_REPLACE = Option
-            .of(new String[] { "result.string.replace", "Whether to substitute variables in the query result.", "false",
-                    "true" });
+            .of(new String[] { "result.string.replace", "Whether to perform variable substitution in the query result.",
+                    "false", "true" });
     public static final Option RESULT_STRING_TRIM = Option
-            .of(new String[] { "result.string.trim", "Whether trim the query result.", "false", "true" });
+            .of(new String[] { "result.string.trim", "Whether to trim whitespace from the query result.", "false",
+                    "true" });
     public static final Option RESULT_STRING_SPLIT = Option
-            .of(new String[] { "result.string.split", "Whether split the query result.", "false", "true" });
+            .of(new String[] { "result.string.split", "Whether to split the query result string into a list.", "false",
+                    "true" });
     public static final Option RESULT_STRING_SPLIT_CHAR = Option
-            .of(new String[] { "result.string.split", "The character(s) that will be used to split the query result.",
-                    "\n" });
+            .of(new String[] { "result.string.split",
+                    "The delimiter character(s) to use when splitting the query result.", "\n" });
     public static final Option RESULT_STRING_SPLIT_BLANK = Option
-            .of(new String[] { "result.string.line.blank", "Determines how to process blank line in the query result.",
-                    ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN });
-    public static final Option RESULT_OUTPUT = Option
-            .of(new String[] { "result.output", "Result output", ERROR_HANDLING_RETURN, ERROR_HANDLING_IGNORE });
+            .of(new String[] { "result.string.line.blank",
+                    "Specifies how to handle blank lines in a multi-line query result.", ERROR_HANDLING_IGNORE,
+                    ERROR_HANDLING_RETURN });
     public static final Option RESULT_TABLE = Option
             .of(new String[] { "result.table",
                     "The name of the database table to save the query results to. The table will be automatically created if it does not already exist." });
@@ -166,15 +174,21 @@ public final class Option implements Serializable {
             .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
                     "stream" });
 
-    public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert", "SSL certificate" });
+    public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert",
+            "Path to the client SSL/TLS certificate file to use for authenticated requests." });
     public static final Option SSL_CERT_TYPE = Option
-            .of(new String[] { "ssl.cert.type", "SSL/TLS certificate type", "X.509" });
-    public static final Option SSL_KEY = Option.of(new String[] { "ssl.key", "SSL key passphrase" });
+            .of(new String[] { "ssl.cert.type", "The type of certificate to use for SSL/TLS connections.", "X.509" });
+    public static final Option SSL_KEY = Option
+            .of(new String[] { "ssl.key", "Passphrase to decrypt the private key for the SSL/TLS certificate." });
     public static final Option SSL_KEY_ALGORITHM = Option
-            .of(new String[] { "ssl.key.algorithm", "SSL key algorithm", "RSA" });
-    public static final Option SSL_MODE = Option.of(new String[] { "ssl.mode", "SSL mode", "strict", "none" });
-    public static final Option SSL_PROTOCOL = Option.of(new String[] { "ssl.protocol", "SSL protocol", "TLS" });
-    public static final Option SSL_ROOT_CERT = Option.of(new String[] { "ssl.root.cert", "SSL ROOT certificate" });
+            .of(new String[] { "ssl.key.algorithm",
+                    "Algorithm used to generate the private key for the SSL/TLS certificate.", "RSA" });
+    public static final Option SSL_MODE = Option.of(
+            new String[] { "ssl.mode", "SSL/TLS authentication mode to use for HTTPS connections.", "strict", "none" });
+    public static final Option SSL_PROTOCOL = Option
+            .of(new String[] { "ssl.protocol", "SSL/TLS protocol to use.", "TLS" });
+    public static final Option SSL_ROOT_CERT = Option
+            .of(new String[] { "ssl.root.cert", "Path to the trusted root SSL/TLS certificate file." });
 
     /**
      * The Builder class is used to construct options.

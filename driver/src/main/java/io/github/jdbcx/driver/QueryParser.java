@@ -242,15 +242,31 @@ public final class QueryParser {
             } else if (scope == 0) { // extension
                 if (Character.isJavaIdentifierPart(ch)) {
                 } else if (Character.isWhitespace(ch)) {
-                    extension = block.substring(beginIndex, i);
-                    scope = 1;
+                    int j = i + 1;
+                    for (; j < len; j++) {
+                        char c = block.charAt(j);
+                        if (c == '(' || c == ':') {
+                            i = j - 1;
+                            break;
+                        } else if (!Character.isWhitespace(c)) {
+                            scope = 2;
+                            i = beginIndex - 1;
+                            break;
+                        }
+                    }
+
+                    if (j == len) {
+                        extension = block.substring(beginIndex, i);
+                        script = Constants.EMPTY_STRING;
+                        break;
+                    }
                 } else if (ch == '(') {
-                    extension = block.substring(beginIndex, i);
+                    extension = block.substring(beginIndex, i).trim();
                     i = extractProperties(block, i + 1, len, props);
                     scope = 1;
                     beginIndex = i + 1;
                 } else if (ch == ':') {
-                    extension = block.substring(beginIndex, i);
+                    extension = block.substring(beginIndex, i).trim();
                     scope = 2;
                     beginIndex = i + 1;
                 } else {
@@ -278,7 +294,12 @@ public final class QueryParser {
         }
 
         if (script == null) {
-            script = block.substring(beginIndex);
+            if (scope == 0) {
+                extension = block.substring(beginIndex);
+                script = Constants.EMPTY_STRING;
+            } else {
+                script = block.substring(beginIndex);
+            }
         }
         return new String[] { extension, script };
     }

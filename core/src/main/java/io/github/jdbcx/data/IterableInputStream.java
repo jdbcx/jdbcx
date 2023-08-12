@@ -46,7 +46,10 @@ public final class IterableInputStream implements Iterable<Row> {
 
             position = 0;
             try {
-                return (length = input.read(buffer)) >= 0;
+                if ((length = input.read(buffer)) == -1) {
+                    input.close();
+                }
+                return length >= 0;
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

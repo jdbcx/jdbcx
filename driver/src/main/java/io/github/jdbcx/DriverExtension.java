@@ -171,6 +171,21 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return true;
     }
 
+    default boolean supportsInspection() {
+        return false;
+    }
+
+    /**
+     * Whether this extension supports execution without passing any properties and
+     * content.
+     *
+     * @return true if the extension supports execution without passing any
+     *         properties and content; false otherwise
+     */
+    default boolean supportsNoArguments() {
+        return false;
+    }
+
     default int compareTo(DriverExtension o) {
         if (o == null) {
             return 1;

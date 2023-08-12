@@ -17,6 +17,8 @@ package io.github.jdbcx.driver;
 
 import java.util.Properties;
 
+import io.github.jdbcx.Checker;
+
 /**
  * An executable block represents either a function, which returns a value, or a
  * procedure, which is executed without returning a value.<br>
@@ -60,6 +62,10 @@ public final class ExecutableBlock {
 
     public String getContent() {
         return content;
+    }
+
+    public boolean hasNoArguments() {
+        return props.isEmpty() && Checker.isNullOrBlank(content, true);
     }
 
     public boolean hasOutput() {

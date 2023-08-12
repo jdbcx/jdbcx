@@ -50,27 +50,8 @@ final class CustomPipedInputStream extends PipedInputStream {
     }
 
     @Override
-    public int read() throws IOException { // NOSONAR
-        final CompletableFuture<?> future = timeout > 0L ? ref.get() : null;
-        if (future != null) {
-            try {
-                future.get(timeout, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                close();
-                Thread.currentThread().interrupt();
-                throw new InterruptedIOException(e.getMessage());
-            } catch (ExecutionException | TimeoutException e) {
-                close();
-                throw new IOException(Utils.format("Failed to get result in %d ms"), e);
-            }
-        }
-
-        return super.read();
-    }
-
-    @Override
     public void close() throws IOException {
-        // must to close the input stream first to avoid dead-lock
+        // must close the input stream first to avoid dead-lock
         try {
             super.close();
         } catch (Throwable t) { // NOSONAR

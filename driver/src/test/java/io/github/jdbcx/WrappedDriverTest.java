@@ -16,6 +16,7 @@
 package io.github.jdbcx;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
@@ -306,6 +307,12 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getInt(1), 7);
                 Assert.assertFalse(rs.next(), "Should have only one row");
             }
+
+            try (ResultSet rs = stmt.executeQuery("{{shell: echo yes}}")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertEquals(rs.getString(1), "yes");
+                Assert.assertFalse(rs.next(), "Should have only one row");
+            }
         }
     }
 
@@ -316,9 +323,12 @@ public class WrappedDriverTest extends BaseIntegrationTest {
 
         final String address = getClickHouseServer();
         try (Connection conn = d.connect("jdbcx:ch://" + address, props); Statement stmt = conn.createStatement()) {
-            // final String query = "{{shell(exec.timeout=1000, exec.parallelism=%d): sleep
+            // final String query = "{{ shell(exec.timeout=1000, exec.parallelism=%d): sleep
             // 3 && echo Yes }}";
-            final String query = "{{script(exec.timeout=1000, exec.parallelism=%d): java.lang.Thread.sleep(3000); 1; }}";
+            final String query = "{{ script(exec.timeout=1000, exec.parallelism=%d): java.lang.Thread.sleep(3000); 1; }}";
+            // final String query = "{{
+            // web(exec.dryrun=false,base.url=\"https://www.google.com\", exec.timeout=100,
+            // exec.parallelism=%d) }}";
             try (ResultSet rs = stmt.executeQuery(Utils.format(query, 0))) {
                 while (rs.next()) {
                     // do nothing
@@ -344,6 +354,22 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 Assert.fail("Should never success");
             } catch (SQLException e) {
                 Assert.assertEquals(e.getCause().getClass(), TimeoutException.class);
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testInspection() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String address = getClickHouseServer();
+        try (Connection conn = d.connect("jdbcx:ch://" + address, props)) {
+            DatabaseMetaData metaData = conn.getMetaData();
+            Assert.assertNotNull(metaData);
+
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("{{ java }}"));
             }
         }
     }

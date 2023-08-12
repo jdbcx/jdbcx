@@ -17,6 +17,7 @@ package io.github.jdbcx;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,7 +52,9 @@ public final class ErrorHandler {
                 return error.getMessage();
             } else if (Option.ERROR_HANDLING_IGNORE.equals(errorHandling)) {
                 log.debug("Failed to interpret. Will ignore.", error);
-            } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling) && !(error instanceof TimeoutException)) {
+            } else if (Option.ERROR_HANDLING_WARN.equals(errorHandling)
+                    // should never treat them as warnings...
+                    && !(error instanceof SocketException) && !(error instanceof TimeoutException)) {
                 log.debug("Failed to interpret. Will raise a warning.", error);
                 throw new CompletionException(error.getMessage(), null);
             } else {

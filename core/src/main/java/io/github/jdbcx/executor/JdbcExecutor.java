@@ -19,22 +19,41 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Field;
+import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
+import io.github.jdbcx.data.StringValue;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
+import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public class JdbcExecutor extends AbstractExecutor {
+    private static final Field[] dryRunFields = new Field[] {
+            Field.of("connection"), Field.of("query"), Field.of("timeout"), Field.of("properties")
+    };
+
     public JdbcExecutor(Properties props) {
         super(props);
     }
 
-    public Object execute(String query, Connection conn) throws SQLException {
-        if (Checker.isNullOrBlank(query)) {
+    public Object execute(String query, Connection conn, Properties props) throws SQLException {
+        if (getDryRun(props)) {
+            return new ReadOnlyResultSet(null, Result.of(Arrays
+                    .asList(Row.of(dryRunFields, new StringValue(conn), new StringValue(query)),
+                            new StringValue(getTimeout(props)), new StringValue(props))));
+        } else if (Checker.isNullOrBlank(query)) {
             return new CombinedResultSet();
         }
 
+        // final int parallelism = getParallelism(props);
+        final int timeoutSec = getTimeout(props) / 1000;
         final Statement stmt = conn.createStatement(); // NOSONAR
+        if (timeoutSec > 0) {
+            stmt.setQueryTimeout(timeoutSec);
+        }
         if (stmt.execute(query)) {
             return stmt.getResultSet();
         } else {

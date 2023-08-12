@@ -16,7 +16,6 @@
 package io.github.jdbcx.driver;
 
 import java.sql.Connection;
-import java.sql.JDBCType;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,19 +43,7 @@ public final class HelpDriverExtension implements DriverExtension {
         static final DriverInfo defaultDriverInfo = new DriverInfo();
 
         private static final Field[] summaryFields = new Field[] {
-                Field.of("name", JDBCType.VARCHAR),
-                Field.of("alias", JDBCType.VARCHAR),
-                Field.of("description", JDBCType.VARCHAR),
-                Field.of("usage", JDBCType.VARCHAR),
-        };
-        private static final Field[] detailFields = new Field[] {
-                Field.of("name", JDBCType.VARCHAR),
-                Field.of("value", JDBCType.VARCHAR),
-                Field.of("default_value", JDBCType.VARCHAR),
-                Field.of("description", JDBCType.VARCHAR),
-                Field.of("choices", JDBCType.VARCHAR),
-                Field.of("system_property", JDBCType.VARCHAR),
-                Field.of("environment_variable", JDBCType.VARCHAR),
+                Field.of("name"), Field.of("alias"), Field.of("description"), Field.of("usage"),
         };
 
         private final Properties config;
@@ -72,7 +59,7 @@ public final class HelpDriverExtension implements DriverExtension {
             Map<String, DriverExtension> map = defaultDriverInfo.getExtensions();
             if (Checker.isNullOrBlank(nameOrAlias)) {
                 Set<DriverExtension> exts = new TreeSet<>(map.values());
-
+                exts.remove(DefaultDriverExtension.getInstance());
                 List<Row> rows = new ArrayList<>(exts.size());
                 for (DriverExtension ext : exts) {
                     rows.add(Row.of(summaryFields, new StringValue(DriverExtension.getName(ext)),
@@ -88,18 +75,7 @@ public final class HelpDriverExtension implements DriverExtension {
                 throw new IllegalArgumentException(Utils.format("Name or alias [%s] does not exist", nameOrAlias));
             }
 
-            List<Option> options = ext.getDefaultOptions();
-            List<Row> rows = new ArrayList<>(options.size());
-            for (Option o : options) {
-                rows.add(Row.of(detailFields, new StringValue(o.getName()),
-                        new StringValue(o.getValue(config)),
-                        new StringValue(o.getDefaultValue()),
-                        new StringValue(o.getDescription()),
-                        new StringValue(String.join(",", o.getChoices())),
-                        new StringValue(o.getSystemProperty(Option.PROPERTY_PREFIX)),
-                        new StringValue(o.getEnvironmentVariable(Option.PROPERTY_PREFIX))));
-            }
-            return Result.of(rows);
+            return WrappedConnection.describe(ext, config);
         }
     }
 
@@ -109,7 +85,22 @@ public final class HelpDriverExtension implements DriverExtension {
     }
 
     @Override
+    public String getDescription() {
+        return "Extension for help.";
+    }
+
+    @Override
+    public String getUsage() {
+        return "{{ help(name=shell) }}";
+    }
+
+    @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
         return new ActivityListener(props);
+    }
+
+    @Override
+    public boolean supportsNoArguments() {
+        return true;
     }
 }

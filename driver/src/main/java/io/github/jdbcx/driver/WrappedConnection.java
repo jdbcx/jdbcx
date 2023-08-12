@@ -48,12 +48,15 @@ import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.data.StringValue;
 import io.github.jdbcx.dialect.DefaultDialect;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
@@ -65,6 +68,26 @@ public class WrappedConnection implements Connection {
 
     private static final JdbcDialect defaultDialect = new DefaultDialect();
     private static final Cache<String, JdbcDialect> cache = Cache.create(50, 0, WrappedConnection::getDialect);
+
+    private static final Field[] detailFields = new Field[] {
+            Field.of("name"), Field.of("value"), Field.of("default_value"), Field.of("description"),
+            Field.of("choices"), Field.of("system_property"), Field.of("environment_variable"),
+    };
+
+    static Result<?> describe(DriverExtension ext, Properties props) {
+        List<Option> options = ext.getDefaultOptions();
+        List<Row> rows = new ArrayList<>(options.size());
+        for (Option o : options) {
+            rows.add(Row.of(detailFields, new StringValue(o.getName()),
+                    new StringValue(o.getValue(props)),
+                    new StringValue(o.getDefaultValue()),
+                    new StringValue(o.getDescription()),
+                    new StringValue(String.join(",", o.getChoices())),
+                    new StringValue(o.getSystemProperty(Option.PROPERTY_PREFIX)),
+                    new StringValue(o.getEnvironmentVariable(Option.PROPERTY_PREFIX))));
+        }
+        return Result.of(rows);
+    }
 
     static final JdbcDialect getDialect(String product) {
         return defaultDialect;
@@ -175,12 +198,13 @@ public class WrappedConnection implements Connection {
         this.warning = new AtomicReference<>();
     }
 
-    protected DriverExtension getExtension(String name) {
+    protected DriverExtension getExtension(String name) throws SQLException {
         DriverExtension ext = Checker.isNullOrEmpty(name) ? defaultExtension
                 : extensions.get(name);
         if (ext == null) {
-            ext = defaultExtension;
-            log.warn("Extension \"%s\" is not supported, using default extension [%s] instead", name, ext);
+            throw SqlExceptionUtils
+                    .clientError(Utils.format("The specified extension \"xx\" is unknown and not supported. "
+                            + "To find a list of supported extensions, please use the {{ help }} query.", name));
         }
         return ext;
     }
