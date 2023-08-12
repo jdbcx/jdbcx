@@ -42,8 +42,8 @@ public class JdbcExecutor extends AbstractExecutor {
     public Object execute(String query, Connection conn, Properties props) throws SQLException {
         if (getDryRun(props)) {
             return new ReadOnlyResultSet(null, Result.of(Arrays
-                    .asList(Row.of(dryRunFields, new StringValue(conn), new StringValue(query)),
-                            new StringValue(getTimeout(props)), new StringValue(props))));
+                    .asList(Row.of(dryRunFields, new StringValue(conn), new StringValue(query),
+                            new StringValue(getTimeout(props)), new StringValue(props)))));
         } else if (Checker.isNullOrBlank(query)) {
             return new CombinedResultSet();
         }
