@@ -28,9 +28,16 @@ import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 public class SqlDriverExtension implements DriverExtension {
     static final class ActivityListener extends AbstractActivityListener {
-        ActivityListener(QueryContext context, Properties config) {
-            super(new JdbcInterpreter(context, config), config);
+        ActivityListener(QueryContext context, Properties config, ClassLoader loader) {
+            super(new JdbcInterpreter(context, config, loader), config);
         }
+    }
+
+    private final ClassLoader loader;
+
+    public SqlDriverExtension() {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        this.loader = contextClassLoader != null ? contextClassLoader : getClass().getClassLoader();
     }
 
     @Override
@@ -45,7 +52,7 @@ public class SqlDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig(props));
+        return new ActivityListener(context, getConfig(props), loader);
     }
 
     @Override

@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
@@ -45,12 +46,38 @@ public abstract class JdbcConnectionManager {
         return instance;
     }
 
+    protected static final Driver getDriver(String url, ClassLoader loader) throws SQLException {
+        if (loader == null) {
+            loader = JdbcConnectionManager.class.getClassLoader();
+        }
+
+        Driver d = null;
+        for (Driver newDriver : Utils.load(Driver.class, loader)) {
+            if (newDriver.acceptsURL(url)) {
+                d = newDriver;
+                break;
+            }
+        }
+
+        if (d == null) {
+            d = DriverManager.getDriver(url);
+        }
+        return d;
+    }
+
     public abstract Connection getConnection(String id) throws SQLException;
 
-    public final Connection getConnection(String url, Properties props) throws SQLException {
+    public final Connection getConnection(String url, Properties props, ClassLoader classLoader) throws SQLException {
         final String classpath = OPTION_CLASSPATH.getJdbcxValue(props);
+        final Properties filtered = new Properties();
+        for (Entry<Object, Object> entry : props.entrySet()) {
+            String key = (String) entry.getKey();
+            if (!key.startsWith(Option.PROPERTY_PREFIX)) {
+                filtered.put(key, entry.getValue());
+            }
+        }
         if (Checker.isNullOrBlank(classpath)) {
-            return DriverManager.getConnection(url, props);
+            return getDriver(url, classLoader).connect(url, filtered);
         }
 
         final String driver = OPTION_DRIVER.getJdbcxValue(props);
@@ -58,18 +85,22 @@ public abstract class JdbcConnectionManager {
         if (Checker.isNullOrEmpty(driver)) {
             for (Driver d : Utils.load(Driver.class, loader)) {
                 if (d.acceptsURL(url)) {
-                    return d.connect(url, props);
+                    return d.connect(url, filtered);
                 }
             }
             throw SqlExceptionUtils.clientError(
                     Utils.format("No suitable driver found in classpath [%s]. Please specify \"%s\" and try again.",
                             classpath, OPTION_DRIVER.getJdbcxName()));
         } else {
+            Driver d = null;
             try {
-                Driver d = (Driver) loader.loadClass(driver).getConstructor().newInstance();
-                return d.connect(url, props);
+                d = (Driver) loader.loadClass(driver).getConstructor().newInstance();
+                return d.connect(url, filtered);
             } catch (Exception e) {
-                throw SqlExceptionUtils.clientError(e);
+                throw SqlExceptionUtils.clientError(
+                        d == null ? Utils.format("Failed to load driver [%s] due to: %s", driver, e.getMessage())
+                                : Utils.format("Failed to connect to [%s] due to: %s", url, e.getMessage()),
+                        e);
             }
         }
     }
