@@ -54,7 +54,7 @@ RUN locale-gen en_US.UTF-8 \
 #COPY --from=builder /usr/local/cargo/bin/prqlc /usr/local/bin/prqlc
 COPY --chown=root:root docker/ /
 
-RUN chmod +x /*.sh /usr/local/bin/*
+RUN chmod +x /*.sh
 
 USER jdbcx
 
