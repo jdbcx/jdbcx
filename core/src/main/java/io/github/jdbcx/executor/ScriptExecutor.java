@@ -16,6 +16,7 @@
 package io.github.jdbcx.executor;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -126,13 +127,12 @@ public class ScriptExecutor extends AbstractExecutor {
     public Object execute(String query, Properties props, Map<String, Object> vars)
             throws IOException, TimeoutException {
         if (getDryRun(props)) {
-            return new StringBuilder().append("language=").append(defaultLanguage).append('\n')
-                    .append("script=").append(query).append('\n')
-                    .append("options=").append(props).append('\n')
-                    .append("vars=").append(vars).append('\n')
-                    // .append(Option.EXEC_PARALLELISM.getName()).append('=').append(getParallelism(props)).append('\n')
-                    .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(props))
-                    .toString();
+            return Collections.unmodifiableList(Arrays.asList(
+                    "language=".concat(defaultLanguage),
+                    "script=".concat(query),
+                    "options=".concat(String.valueOf(props)),
+                    "vars=".concat(String.valueOf(vars)),
+                    Option.EXEC_TIMEOUT.getName().concat("=").concat(String.valueOf(getTimeout(props)))));
         }
 
         if (Checker.isNullOrBlank(query)) {
