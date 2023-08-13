@@ -99,8 +99,7 @@ public final class Main {
             fileOrQuery = Stream.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, props);
-                Statement stmt = conn.createStatement()) {
+        try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
             long rows = 0L;
             String operation = null;
             if (stmt.execute(fileOrQuery)) {

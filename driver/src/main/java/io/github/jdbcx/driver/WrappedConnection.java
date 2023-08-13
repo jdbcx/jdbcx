@@ -148,12 +148,13 @@ public class WrappedConnection implements Connection {
     protected final DriverExtension defaultExtension;
     protected final Map<String, DriverExtension> extensions;
 
+    private final Properties normalizedProps;
     private final Properties originalProps;
     private final AtomicReference<SQLWarning> warning;
 
     final Connection createConnection() {
         try {
-            return DriverManager.getConnection(url, originalProps);
+            return DriverManager.getConnection(url, normalizedProps);
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -181,7 +182,8 @@ public class WrappedConnection implements Connection {
         this.url = Constants.EMPTY_STRING;
         this.props = info.extensionProps;
 
-        this.originalProps = info.normalizedInfo;
+        this.normalizedProps = info.normalizedInfo;
+        this.originalProps = info.mergedInfo;
         this.warning = new AtomicReference<>();
     }
 
@@ -194,7 +196,8 @@ public class WrappedConnection implements Connection {
         this.url = info.actualUrl;
         this.props = info.extensionProps;
 
-        this.originalProps = info.normalizedInfo;
+        this.normalizedProps = info.normalizedInfo;
+        this.originalProps = info.mergedInfo;
         this.warning = new AtomicReference<>();
     }
 
