@@ -43,7 +43,7 @@ It is recommended to create a [property file](https://en.wikipedia.org/wiki/.pro
   #jdbcx.shell.cli.path=wsl -- /bin/bash -c
   ```
 
-To use `{{ sql(id=<connection>): <query> }}`, please create property files under `~/.jdbcx/connections` accordingly - check out examples at [here](/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections).
+To use `{{ sql(id=<connection>): <query> }}`, please create property files under `~/.jdbcx/connections` accordingly - check out examples at [here](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections).
 
 ## Usage
 
