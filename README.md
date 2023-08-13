@@ -22,44 +22,44 @@ Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.ja
 #
 # "-DnoProperties=true" is required for DuckDB, because its JDBC driver does not work with unsupported property
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    'jdbcx:duckdb:' "select '{{ shell: echo 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
+    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
 #
 # PRQL
 #
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
-    'jdbcx:derby:memory:x;create=true' '{{ prql: from SYS.SYSTABLES }}'
+    "jdbcx:derby:memory:x;create=true" "{{ prql: from SYS.SYSTABLES }}"
 # or change the default query language to PRQL
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
-    'jdbcx:prql:derby:memory:x;create=true' 'from SYS.SYSTABLES'
+    "jdbcx:prql:derby:memory:x;create=true" "from SYS.SYSTABLES"
 
 
 #
 # Scripting
 #
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    'jdbcx:duckdb:' "select '{{ script: conn.getClass()}}'"
+    "jdbcx:duckdb:" "select '{{ script: conn.getClass()}}'"
 # or change the default language to shell
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
-    'jdbcx:script:derby:memory:x;create=true' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+    "jdbcx:script:derby:memory:x;create=true" "helper.format('SELECT * FROM %s.%s', 'SYS', 'SYSTABLES')"
 
 
 #
 # Shell
 #
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    'jdbcx:duckdb:' '{{ shell(exec.timeout=1000): echo 123}}'
+    "jdbcx:duckdb:" "{{ shell(exec.timeout=1000): echo 123}}"
 # or change the default language to shell
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    'jdbcx:shell:duckdb:' 'echo "select 123"'
+    "jdbcx:shell:duckdb:" "echo select 123"
 
 
 #
 # SQL
 #
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    'jdbcx:duckdb:' "select '{{ sql(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two"
+    "jdbcx:duckdb:" "select '{{ sql(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two"
 ```
 
 ### Command Line
