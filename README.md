@@ -14,7 +14,42 @@ Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.ja
 
 ![image](https://user-images.githubusercontent.com/4270380/260209455-93e349c2-83e3-491b-8baf-6974ef00c767.png)
 
+## Configuration
+
+It is recommended to create a [property file](https://en.wikipedia.org/wiki/.properties) in the following locations:
+
+- ~/.jdbcx/config.properties on macOS/Linux
+
+  ```properties
+  # a directory contains all required JDBC drivers, and dependencies if any
+  jdbcx.custom.classpath=/path/to/jdbc/drivers
+
+  # CodeQL example
+  #jdbcx.codeql.cli.path=/opt/homebrew/bin/codeql
+  #jdbcx.codeql.database=~/Sources/Local/CodeQL/jdbcx
+  #jdbcx.codeql.work.dir=~/Sources/Github/jdbcx
+
+  # cargo install prqlc
+  jdbcx.prql.cli.path=~/.cargo/bin/prqlc
+  ```
+
+- %HOMEPATH%\\.jdbcx\config.properties on Windows
+
+  ```properties
+  jdbcx.custom.classpath=D:/My/Jdbc/Drivers
+
+  # If you prefer WSL
+  #jdbcx.prql.cli.path=wsl -- /home/<user>/.cargo/bin/prqlc
+  #jdbcx.shell.cli.path=wsl -- /bin/bash -c
+  ```
+
+To use `{{ sql(id=<connection>): <query> }}`, please create property files under `~/.jdbcx/connections` accordingly - check out examples at [here](/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections).
+
+## Usage
+
 ### Docker
+
+:information_source: If you're using Windows, please replace the trailing backslash `\` with a caret `^`.
 
 ```bash
 #
