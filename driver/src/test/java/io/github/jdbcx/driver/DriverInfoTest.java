@@ -110,7 +110,12 @@ public class DriverInfoTest {
             DriverInfo d = new DriverInfo(Utils.format("jdbcx:%s:", DriverExtension.getName(e.getValue())), props);
             Assert.assertEquals(d.extensionProps.getProperty("custom.classpath"), "my-classpath");
             for (Entry<Object, Object> p : props.entrySet()) {
-                Assert.assertEquals(d.normalizedInfo.get(p.getKey()), p.getValue());
+                Assert.assertEquals(d.mergedInfo.get(p.getKey()), p.getValue());
+                if (((String) p.getKey()).startsWith(Option.PROPERTY_PREFIX)) {
+                    Assert.assertNull(d.normalizedInfo.get(p.getKey()), "Should not have property with JDBCX prefix");
+                } else {
+                    Assert.assertEquals(d.normalizedInfo.get(p.getKey()), p.getValue());
+                }
             }
         }
     }

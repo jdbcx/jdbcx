@@ -58,7 +58,8 @@ final class DriverInfo {
     final Driver driver;
 
     final String normalizedUrl;
-    final Properties normalizedInfo;
+    final Properties mergedInfo; // consolidated properties for both JDBCX and the driver
+    final Properties normalizedInfo; // properties without "jdbcx." prefix
 
     final ClassLoader customClassLoader;
     final String actualUrl;
@@ -308,7 +309,15 @@ final class DriverInfo {
             }
             info = defaultConfig;
         }
-        this.normalizedInfo = info;
+        this.mergedInfo = info;
+        this.normalizedInfo = new Properties();
+        for (Entry<Object, Object> entry : info.entrySet()) {
+            String name = (String) entry.getKey();
+            String value = (String) entry.getValue();
+            if (!name.startsWith(Option.PROPERTY_PREFIX)) {
+                normalizedInfo.setProperty(name, value);
+            }
+        }
 
         final String customClassPath = Utils
                 .normalizePath(info.getProperty(Option.PROPERTY_PREFIX.concat(Option.CUSTOM_CLASSPATH.getName()),

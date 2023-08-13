@@ -2,10 +2,10 @@
 
 set -e
 
-: ${VERBOSE:="false"}
+: ${JDBCX_OPTS:=""}
 
 run_cli() {
-    java -Djdbcx.config.path=${JDBCX_CONFIG} -Dverbose=${VERBOSE} -jar jdbcx.jar "$@"
+    java ${JDBCX_OPTS} -jar jdbcx.jar "$@"
 }
 
 start_server() {

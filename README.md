@@ -10,40 +10,56 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 
 ## Quick Start
 
-Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.jar` from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to activate the extension.
+Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.jar` from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to change the default query language.
 
-```sql
--- define two custom variables(with prefix) for substitution later
-{% var(prefix=my.): value1=1, value2=2 %}                       -- {% ... %} block renders no output
--- issue query 'select 1 one, 2 two, 3 three' on current database server (after substitution)
-select
-    -- execute 'select 1' on database 'dev-db' defined in ~/.jdbcx/connections/dev-db.properties
-    {{ jdbc(id=dev-db): select ${my.value1} }} one,             -- variable ${my.value1} is relaced by its value
-    -- execute command line 'echo 2' on remote server 'my.test.server' via ssh
-    {{ shell: ssh me@my.test.server echo '${my.value2}' }} two, -- variable ${my.value2} is relaced by its value
-    -- execute JavaScript expression '1 + 2'
-    {{ javascript: ${my.value1} + ${my.value2} }} three         -- variables are relaced by their values
-```
+![image](https://user-images.githubusercontent.com/4270380/260209455-93e349c2-83e3-491b-8baf-6974ef00c767.png)
 
 ### Docker
 
 ```bash
-# SQL
-docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
-    'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'
+#
+# Mixed
+#
+# "-DnoProperties=true" is required for DuckDB, because its JDBC driver does not work with unsupported property
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+    'jdbcx:duckdb:' "select '{{ shell: echo 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
 
-# Scripting
-docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
-    'jdbcx:script:derby:memory:x;create=true' \
-    'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
 
+#
 # PRQL
-docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
-    'jdbcx:prql:derby:memory:x;create=true' 'from `SYS.SYSTABLES`'
+#
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+    'jdbcx:derby:memory:x;create=true' '{{ prql: from SYS.SYSTABLES }}'
+# or change the default query language to PRQL
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+    'jdbcx:prql:derby:memory:x;create=true' 'from SYS.SYSTABLES'
 
+
+#
+# Scripting
+#
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+    'jdbcx:duckdb:' "select '{{ script: conn.getClass()}}'"
+# or change the default language to shell
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+    'jdbcx:script:derby:memory:x;create=true' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+
+
+#
 # Shell
-docker run --rm -it -e VERBOSE=true jdbcx/jdbcx \
-    'jdbcx:shell:derby:memory:x;create=true' 'echo "select * from SYS.SYSTABLES"'
+#
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+    'jdbcx:duckdb:' '{{ shell(exec.timeout=1000): echo 123}}'
+# or change the default language to shell
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+    'jdbcx:shell:duckdb:' 'echo "select 123"'
+
+
+#
+# SQL
+#
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+    'jdbcx:duckdb:' "select '{{ sql(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two"
 ```
 
 ### Command Line
@@ -103,35 +119,38 @@ Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165),
 
 ## Known Issues
 
-| # | Issue | Workaround |
-| - | ----- | ---------- |
-| 1 | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
-| 2 | Scripting does not work on DBeaver | use JDK instead of JRE |
-| 3 | Requires additional JDBC driver to work | - |
-| 4 | Connection pooling is not supported | - |
-| 5 | Multi-ResultSet is not fully supported | - |
+| #   | Issue                                     | Workaround                          |
+| --- | ----------------------------------------- | ----------------------------------- |
+| 1   | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
+| 2   | Scripting does not work on DBeaver        | use JDK instead of JRE              |
+| 3   | Requires additional JDBC driver to work   | -                                   |
+| 4   | Connection pooling is not supported       | -                                   |
+| 5   | Multi-ResultSet is not fully supported    | -                                   |
+| 6   | Nested query is not supported             | -                                   |
 
 ## Performance
 
 ### Test Environment
-* JDK: openjdk version "17.0.7" 2023-04-18
-* Tool: Apache JMeter 5.6.2
-* Database: ClickHouse 22.8
-* JDBC Driver: clickhouse-jdbc v0.4.6
+
+- JDK: openjdk version "17.0.7" 2023-04-18
+- Tool: Apache JMeter 5.6.2
+- Database: ClickHouse 22.8
+- JDBC Driver: clickhouse-jdbc v0.4.6
 
 ### Test Configuration
-* Concurrent Users: 20
-* Loop Count: 1000
-* Connection Pool:
+
+- Concurrent Users: 20
+- Loop Count: 1000
+- Connection Pool:
   - Size: 30
   - Init SQL and Validation Query are identical
 
 ### Test Results
 
-| Connection | Init SQL | Test Query | Avg Response Time (ms) | Max Response Time (ms) | Throughput (qps) |
-| ---------- | -------- | ---------- | ---------------------- | ---------------------- | ---------------- |
-| `jdbc:ch` | select * from system.numbers limit 1 | select * from system.numbers limit 50000 | 69 | 815 | 279.87 |
-| `jdbcx:ch` | select * from system.numbers limit 1 | select * from system.numbers limit 50000 | 71 | 891 | 272.99 |
-| `jdbcx:script:ch` | 'select * from system.numbers limit 1' | 'select * from system.numbers limit ' + 50000 | 72 | 1251 | 270.65 |
-| `jdbcx:shell:ch` | echo 'select * from system.numbers limit 1' | echo 'select * from system.numbers limit 50000' | 91 | 650 | 214.45 |
-| `jdbcx:prql:ch` | from \`system.numbers\` \| take 1 | from \`system.numbers\` \| take 50000 | 106 | 1103 | 184.27 |
+| Connection        | Init SQL                                     | Test Query                                       | Avg Response Time (ms) | Max Response Time (ms) | Throughput (qps) |
+| ----------------- | -------------------------------------------- | ------------------------------------------------ | ---------------------- | ---------------------- | ---------------- |
+| `jdbc:ch`         | select \* from system.numbers limit 1        | select \* from system.numbers limit 50000        | 69                     | 815                    | 279.87           |
+| `jdbcx:ch`        | select \* from system.numbers limit 1        | select \* from system.numbers limit 50000        | 71                     | 891                    | 272.99           |
+| `jdbcx:script:ch` | 'select \* from system.numbers limit 1'      | 'select \* from system.numbers limit ' + 50000   | 72                     | 1251                   | 270.65           |
+| `jdbcx:shell:ch`  | echo 'select \* from system.numbers limit 1' | echo 'select \* from system.numbers limit 50000' | 91                     | 650                    | 214.45           |
+| `jdbcx:prql:ch`   | from \`system.numbers\` \| take 1            | from \`system.numbers\` \| take 50000            | 106                    | 1103                   | 184.27           |
