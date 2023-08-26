@@ -90,6 +90,24 @@ public final class Utils {
         return normalize ? Paths.get(path).toAbsolutePath().normalize() : Paths.get(path);
     }
 
+    public static String getVersion() {
+        final String version;
+        String str = Utils.class.getPackage().getImplementationVersion();
+        if (Checker.isNullOrEmpty(str)) {
+            version = Constants.EMPTY_STRING;
+        } else {
+            char[] chars = str.toCharArray();
+            for (int i = 0, len = chars.length; i < len; i++) {
+                if (Character.isDigit(chars[i])) {
+                    str = str.substring(i);
+                    break;
+                }
+            }
+            version = str;
+        }
+        return version;
+    }
+
     public static <T> ServiceLoader<T> load(Class<T> serviceClass, ClassLoader classLoader) {
         if (serviceClass == null || classLoader == null) {
             throw new IllegalArgumentException("Non-null service class and class loader are required");
