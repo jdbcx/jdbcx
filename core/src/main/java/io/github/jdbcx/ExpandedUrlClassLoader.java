@@ -71,17 +71,20 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
     private static final Logger log = LoggerFactory.getLogger(ExpandedUrlClassLoader.class);
 
-    private static final Cache<Fingerprint, ClassLoader> cache = Cache.create(50, 0,
-            ExpandedUrlClassLoader::getClassLoader);
+    private static final Option OPTION_CACHE_SIZE = Option.of("classloader.cache.size", "Class loader cache size",
+            "100");
+    private static final Option OPTION_CACHE_EXPTIME = Option.of("classloader.cache.exptime",
+            "Class loader cache expiration time in second", "0");
+
+    private static final Cache<Fingerprint, ClassLoader> cache = Cache.create(
+            Integer.parseInt(OPTION_CACHE_SIZE.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)),
+            Integer.parseInt(OPTION_CACHE_EXPTIME.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)),
+            ExpandedUrlClassLoader::new);
 
     static final String CLASS_PATH_DELIMITER = "||";
     static final String PROTOCOL_FILE = "file";
     static final String FILE_URL_PREFIX = PROTOCOL_FILE + ":///";
     static final String DRIVER_EXTENSION = ".jar";
-
-    static ClassLoader getClassLoader(Fingerprint fingerprint) {
-        return new ExpandedUrlClassLoader(fingerprint.parent, fingerprint.urls);
-    }
 
     public static final ClassLoader of(ClassLoader parent, String... urls) {
         if (urls == null || urls.length == 0) {
@@ -217,7 +220,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
         return loader;
     }
 
-    private final String originalUrls;
+    private final Fingerprint fingerprint;
     private final Map<String, Class<?>> loadedClasses;
 
     @Override
@@ -230,25 +233,30 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
         return clazz;
     }
 
-    protected ExpandedUrlClassLoader(ClassLoader parent, String... urls) {
-        super(expandURLs(urls), parent);
+    protected ExpandedUrlClassLoader(Fingerprint fingerprint) {
+        super(expandURLs(fingerprint.urls), fingerprint.parent);
 
-        this.originalUrls = String.join(",", urls);
+        this.fingerprint = fingerprint;
         loadedClasses = new ConcurrentHashMap<>();
     }
 
     public String getOriginalUrls() {
-        return originalUrls;
+        return Arrays.toString(fingerprint.urls);
     }
 
     @Override
     public void close() throws IOException {
         this.loadedClasses.clear();
-        super.close();
+        try {
+            super.close();
+        } finally {
+            cache.invalidate(fingerprint);
+        }
     }
 
     @Override
     public String toString() {
-        return new StringBuilder(super.toString()).append("(urls=").append(originalUrls).append(')').toString();
+        return new StringBuilder(super.toString()).append("(parent=").append(fingerprint.parent).append("urls=")
+                .append(Arrays.toString(fingerprint.urls)).append(')').toString();
     }
 }

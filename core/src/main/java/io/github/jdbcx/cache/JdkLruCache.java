@@ -84,6 +84,11 @@ public class JdkLruCache<K, V> implements Cache<K, V> {
     }
 
     @Override
+    public void invalidate(K key) {
+        cache.remove(key);
+    }
+
+    @Override
     public <T> T unwrap(Class<T> clazz) {
         return Checker.nonNull(clazz, Class.class.getName()).cast(cache);
     }

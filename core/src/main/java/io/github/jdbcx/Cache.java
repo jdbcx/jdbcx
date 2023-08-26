@@ -42,12 +42,14 @@ public interface Cache<K, V> {
      * @return in-memory cache
      */
     static <K, V> Cache<K, V> create(int capacity, long expireSeconds, Function<K, V> loadFunc) {
-        Cache<K, V> cache;
+        if (capacity <= 0) {
+            capacity = DEFAULT_CACHE_SIZE;
+        }
 
+        Cache<K, V> cache;
         try {
             cache = CaffeineCache.create(capacity, expireSeconds, loadFunc);
         } catch (Throwable e) { // NOSONAR
-            // ignore
             cache = JdkLruCache.create(capacity, loadFunc);
         }
         return cache;
@@ -60,6 +62,13 @@ public interface Cache<K, V> {
      * @return value, usually not null
      */
     V get(K key);
+
+    /**
+     * Invalidates any cached value for the {@code key}.
+     *
+     * @param key key, usually not null
+     */
+    void invalidate(K key);
 
     /**
      * Unwraps the inner cache object, providing additional access and the ability
