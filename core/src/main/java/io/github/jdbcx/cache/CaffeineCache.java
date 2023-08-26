@@ -76,6 +76,11 @@ public class CaffeineCache<K, V> implements Cache<K, V>, RemovalListener<K, V> {
     }
 
     @Override
+    public void invalidate(K key) {
+        cache.invalidate(key);
+    }
+
+    @Override
     public <T> T unwrap(Class<T> clazz) {
         return Checker.nonNull(clazz, Class.class.getName()).cast(cache);
     }

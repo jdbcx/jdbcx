@@ -89,4 +89,22 @@ public class CaffeineCacheTest {
         m.put("D", "D");
         Assert.assertEquals(c.asMap(), m);
     }
+
+    @Test(groups = { "unit" })
+    public void testInvalidate() {
+        io.github.jdbcx.Cache<String, String> cache = io.github.jdbcx.Cache.create(3, 1L, (k) -> k);
+        Cache<String, String> c = (Cache<String, String>) cache.unwrap(Cache.class);
+        Assert.assertEquals(c.estimatedSize(), 0L);
+        Assert.assertEquals(cache.get("test"), "test");
+        Assert.assertTrue(c.asMap().containsKey("test"), "Should have the entry");
+        cache.invalidate("test");
+        try {
+            Thread.sleep(1500L);
+        } catch (InterruptedException e) {
+            Assert.fail("Sleep was interrupted", e);
+        }
+        c.cleanUp();
+        Assert.assertEquals(c.estimatedSize(), 0L);
+        Assert.assertFalse(c.asMap().containsKey("test"), "Should not have the entry");
+    }
 }

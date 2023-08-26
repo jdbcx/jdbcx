@@ -71,4 +71,16 @@ public class JdkLruCacheTest {
         m.put("D", "D");
         Assert.assertEquals(map, m);
     }
+
+    @Test(groups = { "unit" })
+    public void testInvalidate() {
+        Cache<String, String> cache = JdkLruCache.create(3, (k) -> k);
+        Map<String, String> map = (Map<String, String>) cache.unwrap(Map.class);
+        Assert.assertEquals(map.size(), 0);
+        Assert.assertEquals(cache.get("test"), "test");
+        Assert.assertTrue(map.containsKey("test"), "Should have the entry");
+        cache.invalidate("test");
+        Assert.assertEquals(map.size(), 0L);
+        Assert.assertFalse(map.containsKey("test"), "Should not have the entry");
+    }
 }
