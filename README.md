@@ -10,9 +10,29 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 
 ## Quick Start
 
-Getting started with JDBCX is a breeze. Just download `jdbcx-driver-<version>.jar` from [GitHub Releases](https://github.com/jdbcx/jdbcx/releases/) or [Maven Central](https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/), add it to your classpath, and modify your JDBC connection string by replacing `jdbc:` with `jdbcx:`. For PRQL over SQL, simply switch to `jdbcx:prql:` to change the default query language.
+Getting started with JDBCX is easy.
 
-![image](https://user-images.githubusercontent.com/4270380/260209455-93e349c2-83e3-491b-8baf-6974ef00c767.png)
+![image](https://user-images.githubusercontent.com/4270380/263505625-f62b10f1-e3e9-4037-9ab0-2925191f851e.png)
+
+1. Download the JDBCX driver JAR (e.g. `jdbcx-driver-<version>.jar`) from one of these sources:
+   * GitHub Releases: https://github.com/jdbcx/jdbcx/releases/
+   * Maven Central: https://repo1.maven.org/maven2/io/github/jdbcx/jdbcx-driver/
+2. Add the JAR to your classpath
+3. Create a new connection to `jdbcx:`, or update your existing JDBC connection string by replacing the `jdbc:` prefix with `jdbcx:`, for instance:
+   ```
+   // Update existing JDBC connection
+   jdbc:duckdb: 
+   -->
+   jdbcx:duckdb:
+   ```
+4. To use PRQL instead of SQL, change the prefix to `jdbcx:prql:`, for example:
+   ```
+   // Update existing JDBC connection
+   jdbc:duckdb: 
+   -->
+   jdbcx:prql:duckdb:
+   ```
+
 
 ## Configuration
 
@@ -43,7 +63,28 @@ It is recommended to create a [property file](https://en.wikipedia.org/wiki/.pro
   #jdbcx.shell.cli.path=wsl -- /bin/bash -c
   ```
 
-To use `{{ sql(id=<connection>): <query> }}`, please create property files under `~/.jdbcx/connections` accordingly - check out examples at [here](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections).
+JDBCX also supports simplified connection strings like `jdbcx:sql:<name>` for predefined connections.
+
+To use this:
+
+1. Create a properties file under `~/.jdbcx/connections` to define your connection.
+    For example:
+    ```properties
+    # ~/.jdbcx/connections/my-connection.properties on macOS/Linux
+    # %HOMEPATH%\.jdbcx\connections\my-connection.properties on Windows
+    jdbcx.id=duckdb-local
+    jdbcx.classpath=/path/to/duckdb/jdbc/driver
+    jdbcx.driver=org.duckdb.DuckDBDriver
+    jdbcx.url=jdbc:duckdb:
+    ```
+2. Reference the connection in your code `jdbcx:sql:my-connection`
+3. You can also reference named connections directly in your queries:
+    ```sql
+    {{ sql(id=my-connection): SELECT * FROM table }}
+    ```
+
+See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections) for more details on configuring named connections.
+
 
 ## Usage
 
@@ -55,7 +96,7 @@ To use `{{ sql(id=<connection>): <query> }}`, please create property files under
 #
 # Mixed
 #
-# "-DnoProperties=true" is required for DuckDB, because its JDBC driver does not work with unsupported property
+# "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
 
@@ -105,6 +146,9 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
 wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
         | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
         | cut -d : -f 2,3 | tr -d \")
+
+# Try direct connect
+java -Dverbose=true -jar jdbcx.jar 'jdbcx:shell' 'echo Yes'
 
 # Download Apache Derby embedded database and its JDBC driver
 wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.14.2.0/derby-10.14.2.0.jar
