@@ -17,47 +17,34 @@ package io.github.jdbcx.driver;
 
 import java.sql.Connection;
 import java.sql.Driver;
+import java.sql.DriverAction;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-import io.github.jdbcx.Checker;
-import io.github.jdbcx.Option;
-import io.github.jdbcx.Utils;
+import io.github.jdbcx.driver.impl.DefaultConnection;
 
-final class InvalidDriver implements Driver {
-    private final Properties props;
+final class DefaultDriver implements Driver, DriverAction {
+    static final java.util.logging.Logger parentLogger = java.util.logging.Logger.getLogger("io.github.jdbcx.driver");
 
-    InvalidDriver(Properties props) {
-        this.props = props;
+    @Override
+    public boolean acceptsURL(String url) throws SQLException {
+        return url != null && url.length() >= ConnectionManager.JDBCX_PREFIX.length()
+                && url.substring(0, ConnectionManager.JDBCX_PREFIX.length())
+                        .equalsIgnoreCase(ConnectionManager.JDBCX_PREFIX);
     }
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        final String customClasspath = Option.CUSTOM_CLASSPATH.getValue(this.props);
-        final String errorMessage;
-        if (Checker.isNullOrEmpty(customClasspath)) {
-            errorMessage = Utils.format("Connection not established due to missing driver. "
-                    + "Please set \"%s\" property to driver directory path.",
-                    Option.CUSTOM_CLASSPATH.getSystemProperty(Option.PROPERTY_PREFIX));
-        } else {
-            errorMessage = Utils.format("Connection failed due to missing driver in directory \"%s\". "
-                    + "Please update \"%s\" property to the driver directory path.", customClasspath,
-                    Option.CUSTOM_CLASSPATH.getSystemProperty(Option.PROPERTY_PREFIX));
-        }
-        throw new SQLException(errorMessage);
-    }
-
-    @Override
-    public boolean acceptsURL(String url) throws SQLException {
-        return false;
+        return new DefaultConnection(driverInfo.getExtensions(), driverInfo.extension, driverInfo.actualUrl,
+                driverInfo.extensionProps, driverInfo.normalizedInfo, driverInfo.mergedInfo);
     }
 
     @Override
     public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
-        return new DriverPropertyInfo[0];
+        return driverInfo.getExtensionInfo();
     }
 
     @Override
@@ -77,6 +64,17 @@ final class InvalidDriver implements Driver {
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        return null;
+        return parentLogger;
+    }
+
+    private final DriverInfo driverInfo;
+
+    DefaultDriver(DriverInfo driverInfo) {
+        this.driverInfo = driverInfo;
+    }
+
+    @Override
+    public void deregister() {
+        driverInfo.close();
     }
 }

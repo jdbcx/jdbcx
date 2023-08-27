@@ -18,14 +18,17 @@ package io.github.jdbcx.data;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 
 public final class IterableReader implements Iterable<Row> {
     static final class ReaderIterator implements Iterator<Row> {
+        private final List<Field> fields;
         private final Reader reader;
         private final char[] delimiter;
         private final char[] buffer;
@@ -50,9 +53,10 @@ public final class IterableReader implements Iterable<Row> {
             }
         }
 
-        ReaderIterator(Reader reader, String delimiter) {
-            this.reader = reader;
-            this.delimiter = delimiter.toCharArray();
+        ReaderIterator(IterableReader i) {
+            this.fields = i.fields;
+            this.reader = i.reader;
+            this.delimiter = i.delimiter.toCharArray();
             this.buffer = new char[Math.max(Constants.DEFAULT_BUFFER_SIZE / 2, this.delimiter.length)];
 
             this.builder = new StringBuilder();
@@ -75,7 +79,7 @@ public final class IterableReader implements Iterable<Row> {
                     out.append(buffer, position, length);
                     position = length;
                 } while (read());
-                return Row.of(out.toString());
+                return Row.of(fields, out.toString());
             }
 
             int mi = 0;
@@ -99,24 +103,29 @@ public final class IterableReader implements Iterable<Row> {
             if (length == -1 && out.length() == 0) {
                 throw new NoSuchElementException();
             }
-            return Row.of(out.toString());
+            return Row.of(fields, out.toString());
         }
     }
 
+    private final List<Field> fields;
     private final Reader reader;
     private final String delimiter;
 
-    public IterableReader(Reader reader) {
-        this(reader, null);
+    public IterableReader(List<Field> fields, Reader reader) {
+        this(fields, reader, null);
     }
 
-    public IterableReader(Reader reader, String delimiter) {
-        this.reader = Checker.nonNull(reader, Reader.class.getSimpleName());
+    public IterableReader(List<Field> fields, Reader reader, String delimiter) {
+        if (fields == null || reader == null) {
+            throw new IllegalArgumentException("Non-null fields and reader are required");
+        }
+        this.fields = fields;
+        this.reader = reader;
         this.delimiter = Checker.isNullOrEmpty(delimiter) ? Constants.EMPTY_STRING : delimiter;
     }
 
     @Override
     public Iterator<Row> iterator() {
-        return new ReaderIterator(reader, delimiter);
+        return new ReaderIterator(this);
     }
 }

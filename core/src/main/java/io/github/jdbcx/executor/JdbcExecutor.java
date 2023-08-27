@@ -20,6 +20,8 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
@@ -31,9 +33,8 @@ import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public class JdbcExecutor extends AbstractExecutor {
-    private static final Field[] dryRunFields = new Field[] {
-            Field.of("connection"), Field.of("query"), Field.of("timeout"), Field.of("properties")
-    };
+    private static final List<Field> dryRunFields = Collections
+            .unmodifiableList(Arrays.asList(Field.of("connection"), FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
     public JdbcExecutor(Properties props) {
         super(props);
@@ -41,9 +42,9 @@ public class JdbcExecutor extends AbstractExecutor {
 
     public Object execute(String query, Connection conn, Properties props) throws SQLException {
         if (getDryRun(props)) {
-            return new ReadOnlyResultSet(null, Result.of(Arrays
-                    .asList(Row.of(dryRunFields, new StringValue(conn), new StringValue(query),
-                            new StringValue(getTimeout(props)), new StringValue(props)))));
+            return new ReadOnlyResultSet(null,
+                    Result.of(Row.of(dryRunFields, new StringValue(conn), new StringValue(query),
+                            new StringValue(getTimeout(props)), new StringValue(props))));
         } else if (Checker.isNullOrBlank(query)) {
             return new CombinedResultSet();
         }

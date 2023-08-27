@@ -15,6 +15,9 @@
  */
 package io.github.jdbcx.data;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -25,7 +28,7 @@ public class DefaultRowTest {
     public void testConstructor() {
         Assert.assertEquals(DefaultRow.EMPTY.size(), new DefaultRow().size());
 
-        Field[] fields = new Field[] { Field.of("a"), Field.of("b") };
+        List<Field> fields = Arrays.asList(Field.of("a"), Field.of("b"));
         Assert.assertEquals(DefaultRow.EMPTY.size(), new DefaultRow(fields).size());
 
         DefaultRow row = new DefaultRow(fields, new StringValue("a1"));
@@ -38,18 +41,18 @@ public class DefaultRowTest {
 
     @Test(groups = { "unit" })
     public void testGetFieldAndValue() {
-        Field[] fields = new Field[] { Field.of("a"), Field.of("b") };
+        List<Field> fields = Arrays.asList(Field.of("a"), Field.of("b"));
         DefaultRow row = new DefaultRow(fields, new StringValue("a1"));
         Assert.assertEquals(row.size(), 1);
-        Assert.assertEquals(row.field(0), fields[0]);
-        Assert.assertEquals(row.field(1), fields[1]);
+        Assert.assertEquals(row.field(0), fields.get(0));
+        Assert.assertEquals(row.field(1), fields.get(1));
         Assert.assertEquals(row.value(0).asString(), "a1");
         Assert.assertThrows(IndexOutOfBoundsException.class, () -> row.value(1));
     }
 
     @Test(groups = { "unit" })
     public void testIndex() {
-        Field[] fields = new Field[] { Field.of("aa"), Field.of("bb") };
+        List<Field> fields = Arrays.asList(Field.of("aa"), Field.of("bb"));
         DefaultRow row = new DefaultRow(fields, new StringValue("a1"), new StringValue("b1"), new StringValue("c"));
         Assert.assertEquals(row.size(), 2);
         Assert.assertEquals(row.index("bB"), 1);

@@ -16,9 +16,11 @@
 package io.github.jdbcx.executor;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -36,13 +38,18 @@ import javax.script.ScriptException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 
 public class ScriptExecutor extends AbstractExecutor {
     private static final Logger log = LoggerFactory.getLogger(ScriptExecutor.class);
+
+    private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(Field.of("language"),
+            Field.of("script"), FIELD_TIMEOUT_MS, Field.of("vars"), FIELD_OPTIONS));
 
     public static final String DEFAULT_SCRIPT_LANGUAGE = "rhino";
 
@@ -52,6 +59,21 @@ public class ScriptExecutor extends AbstractExecutor {
     public static final Option OPTION_BINDING_ERROR = Option
             .of(new String[] { "binding.error", "Error handling strategy for bindings during script evaluation.",
                     Option.ERROR_HANDLING_THROW, Option.ERROR_HANDLING_IGNORE });
+
+    public static List<String> getAllSupportedLanguages(ClassLoader loader) {
+        ScriptEngineManager manager = new ScriptEngineManager(
+                loader != null ? loader : ScriptExecutor.class.getClassLoader());
+        Set<String> langs = new LinkedHashSet<>();
+        for (ScriptEngineFactory factory : manager.getEngineFactories()) {
+            langs.add(factory.getLanguageName());
+        }
+        for (ScriptEngineFactory factory : ServiceLoader.load(ScriptEngineFactory.class,
+                ScriptExecutor.class.getClassLoader())) {
+            langs.add(factory.getLanguageName());
+        }
+
+        return Collections.unmodifiableList(new ArrayList<>(langs));
+    }
 
     private final String defaultLanguage;
     private final ScriptEngineManager manager;
@@ -127,12 +149,8 @@ public class ScriptExecutor extends AbstractExecutor {
     public Object execute(String query, Properties props, Map<String, Object> vars)
             throws IOException, TimeoutException {
         if (getDryRun(props)) {
-            return Collections.unmodifiableList(Arrays.asList(
-                    "language=".concat(defaultLanguage),
-                    "script=".concat(query),
-                    "options=".concat(String.valueOf(props)),
-                    "vars=".concat(String.valueOf(vars)),
-                    Option.EXEC_TIMEOUT.getName().concat("=").concat(String.valueOf(getTimeout(props)))));
+            return Result.of(dryRunFields,
+                    new Object[][] { { defaultLanguage, query, getTimeout(props), vars, props } });
         }
 
         if (Checker.isNullOrBlank(query)) {

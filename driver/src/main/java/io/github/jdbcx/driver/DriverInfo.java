@@ -52,9 +52,6 @@ import io.github.jdbcx.Utils;
 final class DriverInfo {
     private static final Logger log = LoggerFactory.getLogger(DriverInfo.class);
 
-    static final String JDBC_PREFIX = "jdbc:";
-    static final String JDBCX_PREFIX = Option.PROPERTY_JDBCX + ":";
-
     final Driver driver;
 
     final String normalizedUrl;
@@ -87,6 +84,43 @@ final class DriverInfo {
         return propInfo;
     }
 
+    /**
+     * Finds the suitable JDBC driver.
+     *
+     * @param actualUrl   connection url
+     * @param props       connection properties
+     * @param classLoader class loader can be used to find JDBC driver
+     * @return non-null JDBC driver
+     * @throws SQLException when failed to get the actual driver
+     */
+    static Driver findSuitableDriver(String url, Properties props, ClassLoader classLoader) {
+        Driver d = null;
+        boolean found = false;
+
+        for (Driver newDriver : Utils.load(Driver.class, classLoader)) {
+            try {
+                if (newDriver.acceptsURL(url)) {
+                    d = newDriver;
+                    found = true;
+                    break;
+                }
+            } catch (Throwable t) { // NOSONAR
+                log.debug("Failed to test url [%s] using driver [%s]", url, newDriver, t);
+            }
+        }
+
+        if (!found) {
+            Driver newDriver = new InvalidDriver(props);
+            try {
+                newDriver = DriverManager.getDriver(url);
+            } catch (SQLException e) {
+                // ignore
+            }
+            d = newDriver;
+        }
+        return d;
+    }
+
     static ClassLoader getCustomClassLoader(String customClassPath) {
         return Checker.isNullOrEmpty(customClassPath) ? DriverInfo.class.getClassLoader()
                 : ExpandedUrlClassLoader.of(DriverInfo.class, customClassPath);
@@ -99,9 +133,9 @@ final class DriverInfo {
 
         DriverExtension ext = null;
         if (url != null) {
-            int index = url.indexOf(':', JDBCX_PREFIX.length());
+            int index = url.indexOf(':', ConnectionManager.JDBCX_PREFIX.length());
             if (index > 0) {
-                String extName = url.substring(JDBCX_PREFIX.length(), index);
+                String extName = url.substring(ConnectionManager.JDBCX_PREFIX.length(), index);
                 ext = extensions.get(extName);
             }
         }
@@ -150,18 +184,19 @@ final class DriverInfo {
      * @return normalized URL
      */
     static String normalizeUrl(DriverExtension extension, String url) {
-        if (Checker.isNullOrEmpty(url) || !url.startsWith(JDBCX_PREFIX)) { // invalid
+        if (Checker.isNullOrEmpty(url) || !url.startsWith(ConnectionManager.JDBCX_PREFIX)) { // invalid
             return url;
         }
 
         if (extension == DefaultDriverExtension.getInstance()) {
-            return JDBC_PREFIX.concat(url.substring(JDBCX_PREFIX.length()));
+            return ConnectionManager.JDBC_PREFIX.concat(url.substring(ConnectionManager.JDBCX_PREFIX.length()));
         }
 
         String className = extension.getClass().getSimpleName();
         String extName = className.substring(0,
                 className.length() - DriverExtension.class.getSimpleName().length());
-        return JDBC_PREFIX.concat(url.substring(JDBCX_PREFIX.length() + extName.length() + 1));
+        return ConnectionManager.JDBC_PREFIX
+                .concat(url.substring(ConnectionManager.JDBCX_PREFIX.length() + extName.length() + 1));
     }
 
     Map<String, DriverExtension> getExtensions() {
@@ -247,40 +282,6 @@ final class DriverInfo {
         return list.toArray(new DriverPropertyInfo[0]);
     }
 
-    /**
-     * Gets the actual driver.
-     *
-     * @return actual driver
-     * @throws SQLException when failed to get the actual driver
-     */
-    protected Driver getActualDriver() {
-        Driver d = null;
-        boolean found = false;
-
-        for (Driver newDriver : Utils.load(Driver.class, customClassLoader)) {
-            try {
-                if (newDriver.acceptsURL(actualUrl)) {
-                    d = newDriver;
-                    found = true;
-                    break;
-                }
-            } catch (Throwable t) { // NOSONAR
-                log.debug("Failed to test url [%s] using driver [%s]", actualUrl, newDriver, t);
-            }
-        }
-
-        if (!found) {
-            Driver newDriver = new InvalidDriver(extensionProps);
-            try {
-                newDriver = DriverManager.getDriver(actualUrl);
-            } catch (SQLException e) {
-                // ignore
-            }
-            d = newDriver;
-        }
-        return d;
-    }
-
     DriverInfo() {
         this(null, null);
     }
@@ -289,7 +290,7 @@ final class DriverInfo {
         this.originalUrl = url;
         this.originalProperties = info;
 
-        this.normalizedUrl = url != null ? url : Constants.EMPTY_STRING;
+        this.normalizedUrl = url != null ? url.trim() : Constants.EMPTY_STRING;
 
         if (info == null) {
             info = new Properties();
@@ -327,7 +328,7 @@ final class DriverInfo {
         this.actualUrl = normalizeUrl(this.extension, this.normalizedUrl);
         this.extensionProps = DriverExtension.extractProperties(this.extension, info);
 
-        this.driver = getActualDriver();
+        this.driver = findSuitableDriver(this.actualUrl, this.extensionProps, this.customClassLoader);
     }
 
     boolean isFor(String url, Properties info) {

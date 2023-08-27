@@ -44,6 +44,7 @@ import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
 
 public final class ReadOnlyResultSet extends AbstractResultSet {
+    private static final Result<?> emptyResult = Result.of(Constants.EMPTY_STRING);
     private static final Row LAST_ROW = Row.of("last");
 
     private final Result<?> result;
@@ -62,7 +63,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
             this.result = result;
             this.cursor = result.rows().iterator();
         } else {
-            this.result = null;
+            this.result = emptyResult;
             this.cursor = Collections.emptyIterator();
         }
 
@@ -74,7 +75,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     protected Row current() throws SQLException {
         ensureOpen();
 
-        if (count == 0 || row == null) {
+        if (count == 0 || row == null || row == LAST_ROW) {
             throw SqlExceptionUtils.clientError("No row to read");
         }
         return row;
@@ -84,7 +85,6 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
         ensureOpen();
 
         if (count == 0 || row == null || row == LAST_ROW) {
-            val = null;
             throw SqlExceptionUtils.clientError("No row to read");
         } else {
             try {
@@ -99,15 +99,8 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     protected ResultSetMetaData createMetaData() throws SQLException {
         if (metaData == null) {
             try {
-                final Row r;
-                if (count == 0 && row == null && cursor.hasNext()) {
-                    row = cursor.next();
-                    r = row;
-                } else {
-                    r = LAST_ROW;
-                }
                 metaData = new SimpleResultSetMetaData(Constants.EMPTY_STRING, Constants.EMPTY_STRING,
-                        Constants.EMPTY_STRING, r);
+                        Constants.EMPTY_STRING, result.fields());
             } catch (Exception e) {
                 // unwrap the first tier, which is UncheckedIOException in most cases
                 Throwable t = e.getCause();
@@ -124,22 +117,14 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     public boolean next() throws SQLException {
         final boolean b;
         try {
-            if (row == LAST_ROW) {
-                b = false;
-            } else if (!cursor.hasNext()) {
-                if (b = (count == 0 && row != null)) { // NOSONAR
-                    count++;
-                } else {
-                    row = LAST_ROW;
-                }
+            b = row != LAST_ROW && cursor.hasNext();
+            if (b) {
+                row = cursor.next();
+                val = null;
+                count++;
             } else {
-                if (count != 0 || row == null) {
-                    row = cursor.next();
-                }
-                if (count++ == 0) {
-                    createMetaData();
-                }
-                b = true;
+                row = LAST_ROW;
+                val = null;
             }
         } catch (Exception e) {
             // unwrap the first tier, which is UncheckedIOException in most cases
@@ -155,9 +140,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     @Override
     public void close() throws SQLException {
         try {
-            if (result != null) {
-                result.close();
-            }
+            result.close();
         } catch (Exception e) {
             throw SqlExceptionUtils.handle(e);
         } finally {
@@ -274,7 +257,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
-        return current().index(columnLabel);
+        return current().index(columnLabel) + 1;
     }
 
     @Override
@@ -292,14 +275,14 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     public boolean isBeforeFirst() throws SQLException {
         ensureOpen();
 
-        return count == 0 && row != LAST_ROW;
+        return count == 0 && row == null;
     }
 
     @Override
     public boolean isAfterLast() throws SQLException {
         ensureOpen();
 
-        return row == LAST_ROW;
+        return row == LAST_ROW && !cursor.hasNext();
     }
 
     @Override
@@ -313,7 +296,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
     public boolean isLast() throws SQLException {
         ensureOpen();
 
-        return row != null && row != LAST_ROW && !cursor.hasNext();
+        return row != LAST_ROW && !cursor.hasNext();
     }
 
     @Override

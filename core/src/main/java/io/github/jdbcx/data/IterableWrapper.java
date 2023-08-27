@@ -16,16 +16,19 @@
 package io.github.jdbcx.data;
 
 import java.util.Iterator;
+import java.util.List;
 
-import io.github.jdbcx.Checker;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 
 public final class IterableWrapper implements Iterable<Row> {
     static final class WrappedIterator implements Iterator<Row> {
+        private final List<Field> fields;
         private final Iterator<?> it;
 
-        WrappedIterator(Iterator<?> it) {
-            this.it = it;
+        WrappedIterator(IterableWrapper wrapper) {
+            this.fields = wrapper.fields;
+            this.it = wrapper.it.iterator();
         }
 
         @Override
@@ -35,18 +38,24 @@ public final class IterableWrapper implements Iterable<Row> {
 
         @Override
         public Row next() {
-            return Row.of(it.next());
+            return Row.of(fields, it.next());
         }
     }
 
+    private final List<Field> fields;
     private final Iterable<?> it;
 
-    public IterableWrapper(Iterable<?> it) {
-        this.it = Checker.nonNull(it, Iterable.class.getSimpleName());
+    public IterableWrapper(List<Field> fields, Iterable<?> it) {
+        if (fields == null || it == null) {
+            throw new IllegalArgumentException("Non-null fields and values are required");
+        }
+
+        this.fields = fields;
+        this.it = it;
     }
 
     @Override
     public Iterator<Row> iterator() {
-        return new WrappedIterator(it.iterator());
+        return new WrappedIterator(this);
     }
 }

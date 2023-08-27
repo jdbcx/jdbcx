@@ -15,7 +15,13 @@
  */
 package io.github.jdbcx;
 
+import java.sql.JDBCType;
+
 public interface Executor {
+    static final Field FIELD_QUERY = Field.of("query");
+    static final Field FIELD_TIMEOUT_MS = Field.of("timeout_ms", JDBCType.BIGINT);
+    static final Field FIELD_OPTIONS = Field.of("options");
+
     // error handling
     // named query
     // dry-run

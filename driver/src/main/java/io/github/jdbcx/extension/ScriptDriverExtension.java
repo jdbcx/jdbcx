@@ -75,6 +75,11 @@ public class ScriptDriverExtension implements DriverExtension {
     }
 
     @Override
+    public List<String> getSchemas(String pattern, Properties props) {
+        return DriverExtension.getMatched(ScriptExecutor.getAllSupportedLanguages(loader), pattern);
+    }
+
+    @Override
     public List<Option> getDefaultOptions() {
         return options;
     }

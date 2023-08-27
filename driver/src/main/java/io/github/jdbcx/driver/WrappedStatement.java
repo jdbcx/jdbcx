@@ -38,19 +38,16 @@ public class WrappedStatement implements Statement {
 
     private final Statement stmt;
 
-    protected final AtomicReference<ResultSet> currentGeneratedKeys;
-    protected final AtomicReference<ResultSet> currentResultSet;
-    protected final AtomicReference<Integer> currentUpdateCount;
     protected final AtomicReference<SQLWarning> warning;
+
+    protected final QueryResult queryResult;
 
     protected WrappedStatement(WrappedConnection conn, Statement stmt) {
         this.conn = conn;
         this.stmt = stmt;
 
-        this.currentGeneratedKeys = new AtomicReference<>();
-        this.currentResultSet = new AtomicReference<>();
-        this.currentUpdateCount = new AtomicReference<>();
         this.warning = new AtomicReference<>();
+        this.queryResult = new QueryResult(this.warning);
     }
 
     protected ResultSet getGeneratedKeysSafely() throws SQLException {
@@ -63,20 +60,12 @@ public class WrappedStatement implements Statement {
         return rs;
     }
 
-    protected void resetCurrentResults() {
-        currentGeneratedKeys.set(null);
-        currentResultSet.set(null);
-        currentUpdateCount.set(null);
-
-        warning.set(null);
-    }
-
     protected boolean execute(String query, ExecuteCallback callback) throws SQLException {
-        resetCurrentResults();
+        queryResult.reset();
 
         final List<String> queries = conn.handleResults(query, this);
         if (queries.isEmpty()) {
-            return currentResultSet.get() != null;
+            return queryResult.hasResultSet();
         }
 
         boolean result = false;
@@ -102,15 +91,7 @@ public class WrappedStatement implements Statement {
                         keys[i] = getGeneratedKeysSafely();
                     }
                 }
-                if (!currentGeneratedKeys.compareAndSet(null, rs[0])) {
-                    throw SqlExceptionUtils.clientError("Conflict when setting generated keys");
-                }
-                if (!currentResultSet.compareAndSet(null, rs[1])) {
-                    throw SqlExceptionUtils.clientError("Conflict when setting result sets");
-                }
-                if (!currentUpdateCount.compareAndSet(null, affectedRows)) {
-                    throw SqlExceptionUtils.clientError("Conflict when setting update count");
-                }
+                queryResult.updateAll(rs[0], rs[1], affectedRows);
             }
             return result;
         } catch (Exception e) {
@@ -127,7 +108,7 @@ public class WrappedStatement implements Statement {
     }
 
     protected int executeUpdate(String query, ExecuteCallback callback) throws SQLException {
-        resetCurrentResults();
+        queryResult.reset();
 
         final List<String> queries = conn.handleResults(query, this);
         if (queries.isEmpty()) {
@@ -152,12 +133,7 @@ public class WrappedStatement implements Statement {
                     arr[i] = getGeneratedKeysSafely();
                 }
             }
-            if (!currentGeneratedKeys.compareAndSet(null, rs)) {
-                throw SqlExceptionUtils.clientError("Conflict when setting generated keys");
-            }
-            if (!currentUpdateCount.compareAndSet(null, affectedRows)) {
-                throw SqlExceptionUtils.clientError("Conflict when setting update count");
-            }
+            queryResult.updateKeys(rs, affectedRows);
             return affectedRows;
         } catch (Exception e) {
             log.error("Failed to invoke executeUpdate(*): %s", queries);
@@ -184,11 +160,11 @@ public class WrappedStatement implements Statement {
 
     @Override
     public ResultSet executeQuery(String query) throws SQLException {
-        resetCurrentResults();
+        queryResult.reset();
 
         final List<String> queries = conn.handleResults(query, this);
         if (queries.isEmpty()) {
-            return currentResultSet.get();
+            return queryResult.getResultSet();
         }
 
         final int size = queries.size();
@@ -207,9 +183,7 @@ public class WrappedStatement implements Statement {
                     arr[i] = stmt.executeQuery(q);
                 }
             }
-            if (!currentResultSet.compareAndSet(null, rs)) {
-                throw SqlExceptionUtils.clientError("Conflict when setting current result set");
-            }
+            queryResult.updateResult(rs);
             return rs;
         } catch (Exception e) {
             log.error("Failed to invoke executeQuery(String query): %s", queries);
@@ -231,7 +205,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public void close() throws SQLException {
-        resetCurrentResults();
+        queryResult.reset();
 
         stmt.close();
     }
@@ -278,7 +252,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-        SQLWarning w = warning.get();
+        SQLWarning w = queryResult.getWarnings();
         if (w != null) {
             SQLWarning next = null;
             try {
@@ -293,7 +267,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public void clearWarnings() throws SQLException {
-        warning.set(null);
+        queryResult.setWarnings(null);
         stmt.clearWarnings();
     }
 
@@ -309,13 +283,13 @@ public class WrappedStatement implements Statement {
 
     @Override
     public ResultSet getResultSet() throws SQLException {
-        ResultSet rs = currentResultSet.getAndSet(null);
+        ResultSet rs = queryResult.getResultSet();
         return rs != null ? rs : new WrappedResultSet(this, stmt.getResultSet());
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
-        Integer i = currentUpdateCount.get();
+        Integer i = queryResult.getUpdateCount();
         return i != null ? i.intValue() : stmt.getUpdateCount();
     }
 
@@ -372,7 +346,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public int[] executeBatch() throws SQLException {
-        resetCurrentResults();
+        queryResult.reset();
 
         return stmt.executeBatch();
     }
@@ -389,7 +363,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
-        ResultSet rs = currentGeneratedKeys.getAndSet(null);
+        ResultSet rs = queryResult.getGeneratedKeys();
         return rs != null ? rs : new WrappedResultSet(this, stmt.getGeneratedKeys());
     }
 

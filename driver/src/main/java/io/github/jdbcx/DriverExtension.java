@@ -16,12 +16,15 @@
 package io.github.jdbcx;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 import io.github.jdbcx.driver.DefaultActivityListener;
 import io.github.jdbcx.driver.DefaultDriverExtension;
@@ -30,6 +33,29 @@ import io.github.jdbcx.driver.DefaultDriverExtension;
 // query extension:
 // result extension
 public interface DriverExtension extends Comparable<DriverExtension> {
+    static List<String> getMatched(List<String> list, String pattern) {
+        if (Utils.containsJdbcWildcard(pattern)) {
+            String re = Utils.jdbcNamePatternToRe(pattern);
+            List<String> matched = new ArrayList<>(list.size());
+            for (String s : list) {
+                if (Pattern.matches(re, s)) {
+                    matched.add(s);
+                }
+            }
+            list = Collections.unmodifiableList(matched);
+        } else if (pattern != null) {
+            String matched = null;
+            for (String s : list) {
+                if (pattern.equals(s)) {
+                    matched = s;
+                    break;
+                }
+            }
+            list = matched != null ? Collections.singletonList(matched) : Collections.emptyList();
+        }
+        return list;
+    }
+
     static String getName(DriverExtension extension) {
         if (extension == null) {
             return Constants.EMPTY_STRING;
@@ -112,6 +138,19 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return config;
     }
 
+    default Connection getConnection(String url, Properties props) throws SQLException {
+        return null;
+    }
+
+    default List<String> getSchemas(String pattern, Properties props) {
+        return Collections.emptyList();
+    }
+
+    default ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
+            throws SQLException {
+        return null;
+    }
+
     /**
      * Gets the default configuration for this extension, containing all supported
      * options with their default values.
@@ -186,6 +225,7 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return false;
     }
 
+    @Override
     default int compareTo(DriverExtension o) {
         if (o == null) {
             return 1;

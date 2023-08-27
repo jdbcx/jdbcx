@@ -53,6 +53,9 @@ public class ShellInterpreter extends AbstractInterpreter {
 
         InputStream input = null;
         try {
+            if (executor.getDryRun(props)) {
+                return executor.getDryRunResult(Collections.emptyList(), query, props);
+            }
             input = executor.execute(props, null, query);
             return Result.of(input,
                     Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));

@@ -27,8 +27,6 @@ import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
-import io.github.jdbcx.data.IterableInputStream;
-import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.executor.Stream;
 
 abstract class AbstractInterpreter implements Interpreter {
@@ -40,7 +38,7 @@ abstract class AbstractInterpreter implements Interpreter {
 
     protected final Result<InputStream> handleError(Throwable error, String query, String charset, Properties props,
             AutoCloseable... resources) {
-        return Result.of(new ErrorHandler(query, props).attach(resources).handle(error, charset));
+        return Result.of(new ErrorHandler(query, props).attach(resources).handle(error, charset), null);
     }
 
     protected final Result<String> handleError(Throwable error, String query, Properties props,
@@ -66,8 +64,7 @@ abstract class AbstractInterpreter implements Interpreter {
             }
         }
 
-        return Result.of(result, () -> new IterableInputStream(result,
-                delimiter.getBytes(Charset.forName(Option.OUTPUT_CHARSET.getValue(props)))));
+        return Result.of(result, delimiter.getBytes(Charset.forName(Option.OUTPUT_CHARSET.getValue(props))));
     }
 
     protected Result<?> process(String query, Reader result, Properties props) {
@@ -87,7 +84,7 @@ abstract class AbstractInterpreter implements Interpreter {
             }
         }
 
-        return Result.of(result, () -> new IterableReader(result, delimiter));
+        return Result.of(result, delimiter);
     }
 
     @Override

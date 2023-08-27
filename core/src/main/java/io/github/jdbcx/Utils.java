@@ -440,6 +440,50 @@ public final class Utils {
         return files;
     }
 
+    public static boolean containsJdbcWildcard(CharSequence chars) {
+        if (chars != null) {
+            for (int i = 0, len = chars.length(); i < len; i++) {
+                char ch = chars.charAt(i);
+                if (ch == '\\') { // escaped
+                    i++;
+                } else if (ch == '%' || ch == '_') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public static String jdbcNamePatternToRe(CharSequence chars) {
+        if (chars == null) {
+            return Constants.EMPTY_STRING;
+        }
+
+        int len = chars.length();
+        StringBuilder builder = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            char ch = chars.charAt(i);
+            if (ch == '\\') {
+                if (++i < len) {
+                    ch = chars.charAt(i);
+                }
+            } else if (ch == '%') {
+                builder.append(".*");
+                continue;
+            } else if (ch == '_') {
+                builder.append('.');
+                continue;
+            }
+
+            if (Constants.RE_META_CHARS.indexOf(ch) != -1) {
+                builder.append('\\');
+            }
+            builder.append(ch);
+        }
+        return builder.toString();
+    }
+
     public static boolean isCloseBracket(char ch) {
         return ch == ')' || ch == ']' || ch == '}';
     }

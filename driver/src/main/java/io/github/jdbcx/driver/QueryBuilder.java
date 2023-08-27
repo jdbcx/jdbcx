@@ -29,6 +29,7 @@ import java.util.Properties;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
@@ -42,18 +43,20 @@ public final class QueryBuilder {
     private final String[] parts;
     private final ExecutableBlock[] blocks;
 
-    private final WrappedStatement stmt;
+    private final ConnectionManager manager;
+    private final QueryResult queryResult;
 
     private SQLWarning lastWarning;
 
-    QueryBuilder(QueryContext context, ParsedQuery pq, WrappedStatement stmt) {
+    public QueryBuilder(QueryContext context, ParsedQuery pq, ConnectionManager manager, QueryResult queryResult) {
         this.context = context;
 
         this.directQuery = pq.isDirectQuery();
         this.parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
         this.blocks = pq.getExecutableBlocks().toArray(new ExecutableBlock[0]);
 
-        this.stmt = stmt;
+        this.manager = manager;
+        this.queryResult = queryResult;
 
         this.lastWarning = null;
     }
@@ -80,11 +83,10 @@ public final class QueryBuilder {
         final Result<?>[] results = new Result[len];
         final Properties[] properties = new Properties[len];
 
-        final WrappedConnection conn = stmt.getConnection();
         for (int i = 0; i < len; i++) {
             ExecutableBlock block = blocks[i];
-            DriverExtension ext = conn.getExtension(block.getExtensionName());
-            Properties p = conn.extractProperties(ext);
+            DriverExtension ext = manager.getExtension(block.getExtensionName());
+            Properties p = manager.extractProperties(ext);
             properties[i] = p;
             p.putAll(context.getCustomVariables());
             for (Entry<Object, Object> entry : block.getProperties().entrySet()) {
@@ -93,23 +95,24 @@ public final class QueryBuilder {
                 p.setProperty(key, val);
             }
 
-            JdbcActivityListener cl = ext.createListener(context, conn, p);
+            JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
             if (block.hasOutput()) {
                 try {
                     if (directQuery && !ext.supportsNoArguments() && block.hasNoArguments()) {
-                        stmt.currentResultSet
-                                .set(WrappedConnection.convertTo(WrappedConnection.describe(ext, p), ResultSet.class));
+                        queryResult.setResultSet(
+                                ConnectionManager.convertTo(ConnectionManager.describe(ext, p), ResultSet.class));
                         return Collections.emptyList();
                     }
                     Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
-                    if (directQuery && ext.supportsDirectQuery()) {
-                        stmt.currentResultSet.set(WrappedConnection.convertTo(r, ResultSet.class));
+                    if (directQuery
+                            && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
+                        queryResult.setResultSet(ConnectionManager.convertTo(r, ResultSet.class));
                         return Collections.emptyList();
                     } else {
                         results[i] = r;
                     }
                 } catch (SQLWarning e) {
-                    stmt.warning.set(lastWarning = SqlExceptionUtils.consolidate(lastWarning, e));
+                    queryResult.setWarnings(lastWarning = SqlExceptionUtils.consolidate(lastWarning, e));
                     results[i] = Result.of(block.getContent());
                 }
             } else {
@@ -125,7 +128,7 @@ public final class QueryBuilder {
             String[][] mo = exploded.toArray(new String[0][]);
             exploded.clear();
             for (Row row : r.rows()) {
-                String val = WrappedConnection.normalize(row.value(0).asString(), properties[i]);
+                String val = ConnectionManager.normalize(row.value(0).asString(), properties[i]);
                 for (int ji = 0, l = mo.length; ji < l; ji++) {
                     String[] e = mo[ji]; // 😀
                     String[] newParts = Arrays.copyOf(e, len);

@@ -35,14 +35,14 @@ public class QueryBuilderTest {
             Assert.assertTrue(conn instanceof WrappedConnection, "Should return wrapped connection");
             try (WrappedConnection c = (WrappedConnection) conn; QueryContext context = QueryContext.newContext()) {
                 ParsedQuery pq = QueryParser.parse("select {{ javascript: ['1','2','3']}}", props);
-                QueryBuilder builder = new QueryBuilder(context, pq, stmt);
+                QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(), Arrays.asList("select 1", "select 2", "select 3"));
             }
 
             try (WrappedConnection c = (WrappedConnection) conn; QueryContext context = QueryContext.newContext()) {
                 ParsedQuery pq = QueryParser
                         .parse("select {{ javascript: ['1','2','3']}} + {{ javascript: ['4', '5']}}", props);
-                QueryBuilder builder = new QueryBuilder(context, pq, stmt);
+                QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(), Arrays.asList("select 1 + 4", "select 2 + 4", "select 3 + 4",
                         "select 1 + 5", "select 2 + 5", "select 3 + 5"));
             }
@@ -51,7 +51,7 @@ public class QueryBuilderTest {
                 ParsedQuery pq = QueryParser
                         .parse("select {{ javascript: ['1','2','3']}} + {{ javascript: ['4', '5']}} as {{ script: 'a' }}",
                                 props);
-                QueryBuilder builder = new QueryBuilder(context, pq, stmt);
+                QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(),
                         Arrays.asList("select 1 + 4 as a", "select 2 + 4 as a", "select 3 + 4 as a",
                                 "select 1 + 5 as a", "select 2 + 5 as a", "select 3 + 5 as a"));

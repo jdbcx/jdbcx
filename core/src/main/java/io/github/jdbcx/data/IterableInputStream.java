@@ -20,14 +20,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
-import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 
 public final class IterableInputStream implements Iterable<Row> {
     static final class InputStreamIterator implements Iterator<Row> {
+        private final List<Field> fields;
         private final InputStream input;
         private final byte[] delimiter;
         private final byte[] buffer;
@@ -55,9 +57,10 @@ public final class IterableInputStream implements Iterable<Row> {
             }
         }
 
-        InputStreamIterator(InputStream input, byte[] delimiter) {
-            this.input = input;
-            this.delimiter = delimiter;
+        InputStreamIterator(IterableInputStream i) {
+            this.fields = i.fields;
+            this.input = i.input;
+            this.delimiter = i.delimiter;
             this.buffer = new byte[Math.max(Constants.DEFAULT_BUFFER_SIZE, delimiter.length)];
 
             this.builder = new ByteArrayOutputStream();
@@ -81,7 +84,7 @@ public final class IterableInputStream implements Iterable<Row> {
                     out.write(buffer, position, length);
                     position = length;
                 } while (read());
-                return Row.of(out.toByteArray());
+                return Row.of(fields, out.toByteArray());
             }
 
             int mi = 0;
@@ -114,24 +117,29 @@ public final class IterableInputStream implements Iterable<Row> {
                     throw new NoSuchElementException();
                 }
             }
-            return Row.of(out.toByteArray());
+            return Row.of(fields, out.toByteArray());
         }
     }
 
+    private final List<Field> fields;
     private final InputStream input;
     private final byte[] delimiter;
 
-    public IterableInputStream(InputStream input) {
-        this(input, null);
+    public IterableInputStream(List<Field> fields, InputStream input) {
+        this(fields, input, null);
     }
 
-    public IterableInputStream(InputStream input, byte[] delimiter) {
-        this.input = Checker.nonNull(input, InputStream.class.getSimpleName());
+    public IterableInputStream(List<Field> fields, InputStream input, byte[] delimiter) {
+        if (fields == null || input == null) {
+            throw new IllegalArgumentException("Non-null fields and input are required");
+        }
+        this.fields = fields;
+        this.input = input;
         this.delimiter = delimiter != null ? delimiter : Constants.EMPTY_BYTE_ARRAY;
     }
 
     @Override
     public Iterator<Row> iterator() {
-        return new InputStreamIterator(input, delimiter);
+        return new InputStreamIterator(this);
     }
 }

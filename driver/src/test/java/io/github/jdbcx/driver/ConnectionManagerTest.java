@@ -22,30 +22,30 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.Option;
 
-public class WrappedConnectionTest {
+public class ConnectionManagerTest {
     @Test(groups = { "unit" })
     public void testHandleString() {
         String str = " re'sult ";
-        Assert.assertEquals(WrappedConnection.normalize(str, null), str);
+        Assert.assertEquals(ConnectionManager.normalize(str, null), str);
 
         Properties props = new Properties();
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str);
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str);
         Option.RESULT_STRING_TRIM.setValue(props);
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str);
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str);
         Option.RESULT_STRING_TRIM.setValue(props, "true");
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim());
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim());
 
         Option.RESULT_STRING_ESCAPE.setValue(props);
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim());
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim());
         Option.RESULT_STRING_ESCAPE.setValue(props, "true");
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim().replace("'", "\\'"));
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "\\'"));
         Option.RESULT_STRING_ESCAPE_CHAR.setValue(props);
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim().replace("'", "\\'"));
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "\\'"));
         Option.RESULT_STRING_ESCAPE_CHAR.setValue(props, "b");
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim().replace("'", "b'"));
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "b'"));
         Option.RESULT_STRING_ESCAPE_TARGET.setValue(props);
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim().replace("'", "b'"));
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "b'"));
         Option.RESULT_STRING_ESCAPE_TARGET.setValue(props, "s");
-        Assert.assertEquals(WrappedConnection.normalize(str, props), str.trim().replace("s", "bs"));
+        Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("s", "bs"));
     }
 }

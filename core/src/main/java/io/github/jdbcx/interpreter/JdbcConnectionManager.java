@@ -20,6 +20,8 @@ import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Map.Entry;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
@@ -63,6 +65,10 @@ public abstract class JdbcConnectionManager {
             d = DriverManager.getDriver(url);
         }
         return d;
+    }
+
+    public List<String> getAllConnectionIds() {
+        return Collections.emptyList();
     }
 
     public abstract Connection getConnection(String id) throws SQLException;

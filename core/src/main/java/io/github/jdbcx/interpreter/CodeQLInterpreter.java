@@ -22,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -68,6 +69,31 @@ public class CodeQLInterpreter extends AbstractInterpreter {
                     CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
                     Option.INPUT_CHARSET, Option.OUTPUT_CHARSET, Option.WORK_DIRECTORY));
 
+    public static List<String> getAllQlPacks(Properties props) {
+        final List<String> qlpacks = new LinkedList<>();
+        try {
+            final CodeQLInterpreter i = new CodeQLInterpreter(null, props);
+            final String searchPath;
+            if (!Checker.isNullOrEmpty(i.defaultSearchPath)) {
+                searchPath = Utils.normalizePath(i.defaultSearchPath);
+            } else {
+                searchPath = i.executor.getWorkDirectory(props).toFile().getAbsolutePath();
+            }
+
+            for (String s : Stream
+                    .readAllAsString(i.executor.execute(props, null, "resolve", "qlpacks", "--kind", "query",
+                            "--no-recursive", "--search-path", searchPath))
+                    .split("\n")) {
+                if (!Checker.isNullOrBlank(s)) {
+                    qlpacks.add(s.split("\\s\\(")[0]);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Failed to get all QL packs", e);
+        }
+        return qlpacks.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(qlpacks));
+    }
+
     private final String defaultDatabase;
     private final String defaultSearchPath;
     private final String defaultQueryArgs;
@@ -90,7 +116,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
         }
     }
 
-    private Result<?> localQueryRun(String queryFile, String bqrsFile, String database, String searchPath,
+    private Result<?> localQueryRun(String query, String queryFile, String bqrsFile, String database, String searchPath,
             String queryArgs, Properties props) throws IOException, TimeoutException {
         final List<String> args = new LinkedList<>();
         args.add("query");
@@ -122,7 +148,8 @@ public class CodeQLInterpreter extends AbstractInterpreter {
         }
         args.add(queryFile);
 
-        return Result.of(executor.execute(props, null, args.toArray(Constants.EMPTY_STRING_ARRAY)));
+        return executor.getDryRun(props) ? executor.getDryRunResult(args, query, props)
+                : Result.of(executor.execute(props, null, args.toArray(Constants.EMPTY_STRING_ARRAY)), null);
     }
 
     private Result<?> localBqrsDecode(String bqrsFile, String format, String decodeArgs, Properties props)
@@ -144,7 +171,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
         }
         args.add(bqrsFile);
 
-        return Result.of(executor.execute(props, null, args.toArray(Constants.EMPTY_STRING_ARRAY)));
+        return Result.of(executor.execute(props, null, args.toArray(Constants.EMPTY_STRING_ARRAY)), null);
     }
 
     public CodeQLInterpreter(QueryContext context, Properties config) {
@@ -186,16 +213,21 @@ public class CodeQLInterpreter extends AbstractInterpreter {
             if (!Checker.isNullOrBlank(format) && !"text".equals(format)) {
                 bqrsFilePath = filePath.substring(0, filePath.length() - 3).concat(".bqrs");
             }
+
             try {
-                final Result<?> result = localQueryRun(filePath, bqrsFilePath,
+                final Result<?> result = localQueryRun(query, filePath, bqrsFilePath,
                         Utils.normalizePath(OPTION_DATABASE.getValue(props, defaultDatabase)),
                         OPTION_SEARCH_PATH.getValue(props, defaultSearchPath),
                         OPTION_QUERY_ARGS.getValue(props, defaultQueryArgs), props);
+
+                if (executor.getDryRun(props)) {
+                    return result;
+                }
                 if (bqrsFilePath == null) {
                     return result;
                 } else if ("bqrs".equals(format)) {
                     log.debug("Generating result in bqrs format... %s", result.get(String.class));
-                    return Result.of(new FileInputStream(bqrsFilePath));
+                    return Result.of(new FileInputStream(bqrsFilePath), null);
                 } else {
                     log.debug("Generating result in %s format... %s", format, result.get(String.class));
                     return localBqrsDecode(bqrsFilePath, format, OPTION_DECODE_ARGS.getValue(props, defaultDecodeArgs),

@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.executor;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -205,6 +204,18 @@ public class WebExecutor extends AbstractExecutor {
         this.defaultProxy = OPTION_PROXY.getValue(props);
     }
 
+    public int getConnectTimeout(Properties props) {
+        int execTimeout = getTimeout(props);
+        int connectTimeout = Integer.parseInt(OPTION_CONNECT_TIMEOUT.getValue(props, defaultConnectTimeout));
+        return execTimeout > 0 ? Math.min(connectTimeout, execTimeout) : connectTimeout;
+    }
+
+    public int getSocketTimeout(Properties props) {
+        int execTimeout = getTimeout(props);
+        int socketTimeout = Integer.parseInt(OPTION_SOCKET_TIMEOUT.getValue(props, defaultSocketTimeout));
+        return execTimeout > 0 ? Math.min(socketTimeout, execTimeout) : socketTimeout;
+    }
+
     public int getDefaultConnectTimeout() {
         return Integer.parseInt(defaultConnectTimeout);
     }
@@ -218,14 +229,6 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     public InputStream get(URL url, Properties config, Map<?, ?> headers) throws IOException {
-        if (getDryRun(config)) {
-            return new ByteArrayInputStream(
-                    new StringBuilder().append("url=").append(url).append("\nmethod=GET\n")
-                            .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(config)).append('\n')
-                            .append("options=").append(config).append('\n')
-                            .append("headers=").append(headers).toString().getBytes(getOutputCharset(config)));
-        }
-
         HttpURLConnection conn = null;
         try {
             conn = openConnection(url, config, headers);
@@ -244,15 +247,6 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     public InputStream post(URL url, Object request, Properties config, Map<?, ?> headers) throws IOException {
-        if (getDryRun(config)) {
-            return new ByteArrayInputStream(
-                    new StringBuilder().append("url=").append(url).append("\nmethod=POST\n")
-                            .append("request=").append(request).append('\n')
-                            .append(Option.EXEC_TIMEOUT.getName()).append('=').append(getTimeout(config)).append('\n')
-                            .append("options=").append(config).append('\n')
-                            .append("headers=").append(headers).toString().getBytes(getOutputCharset(config)));
-        }
-
         HttpURLConnection conn = null;
         try {
             conn = openConnection(url, config, headers);
