@@ -66,9 +66,9 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
     public void testConnectURL() throws SQLException {
         final WrappedDriver d = new WrappedDriver();
-        Assert.assertThrows(SQLException.class, () -> d.connect(null, null));
-        Assert.assertThrows(SQLException.class, () -> d.connect(null, new Properties()));
-        Assert.assertThrows(SQLException.class, () -> d.connect("", null));
+        Assert.assertNotNull(d.connect(null, null));
+        Assert.assertNotNull(d.connect(null, new Properties()));
+        Assert.assertNotNull(d.connect("", null));
 
         try (Connection c = d.connect("jdbc:derby:memory:x;create=true", null)) {
             Assert.assertNotNull(c);
@@ -358,6 +358,25 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         }
     }
 
+    @Test(groups = { "unit" })
+    public void testConnectToLocal() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        try (Connection conn = d.connect("jdbcx:", props)) {
+            DatabaseMetaData metaData = conn.getMetaData();
+            Assert.assertNotNull(metaData);
+
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertTrue(stmt.execute("{{ help }}"));
+                ResultSet rs = stmt.getResultSet();
+                while (rs.next()) {
+                    Assert.assertNotNull(rs.getString(1));
+                }
+            }
+        }
+    }
+
     @Test(groups = { "integration" })
     public void testInspection() throws Exception {
         Properties props = new Properties();
@@ -367,9 +386,11 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         try (Connection conn = d.connect("jdbcx:ch://" + address, props)) {
             DatabaseMetaData metaData = conn.getMetaData();
             Assert.assertNotNull(metaData);
-
             try (Statement stmt = conn.createStatement()) {
                 Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("{{ java }}"));
+                try (ResultSet rs = stmt.executeQuery("{{ script }}")) {
+                    Assert.assertNotNull(rs.getMetaData());
+                }
             }
         }
     }

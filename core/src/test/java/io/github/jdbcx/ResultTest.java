@@ -19,31 +19,71 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class ResultTest {
     @Test(groups = "unit")
-    public void testInputStream() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((InputStream) null));
+    public void testBuilder() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.builder().build());
 
-        Assert.assertEquals(Result.of(new ByteArrayInputStream(new byte[0])).type(), ByteArrayInputStream.class);
+        Assert.assertEquals(Result.builder().value(null).build().fields(), Result.DEFAULT_FIELDS);
+        Assert.assertEquals(Result.builder().value(null).build().get(), null);
+
+        Assert.assertEquals(Result.builder().rows(new Object[] { 1 }).build().fields(), Result.DEFAULT_FIELDS);
+        Assert.assertEquals(Result.builder().rows(new Object[] { 1 }).build().get(), new Object[][] { { 1 } });
+
+        Result<?> result = Result.builder().fields(Field.of("f1"), Field.of("f2")).value("fields").build();
+
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("f1"), Field.of("f2")));
+        Assert.assertEquals(result.type(), String.class);
+        Assert.assertEquals(result.get(), "fields");
+        int count = 0;
+        for (Row row : result.rows()) {
+            Assert.assertEquals(row.size(), 1);
+            Assert.assertEquals(row.field(0), Field.of("f1"));
+            Assert.assertEquals(row.field(1), Field.of("f2"));
+            Assert.assertEquals(row.value(0).asString(), "fields");
+            Assert.assertEquals(row.value("F1").asString(), "fields");
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+    }
+
+    @Test(groups = "unit")
+    public void testUpdate() {
+        Result<?> result = Result.builder().fields(Field.of("f1"), Field.of("f2")).value("fields").build();
+
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("f1"), Field.of("f2")));
+        Assert.assertEquals((result = Result.builder().value(null).build()).get(), null);
+        Assert.assertEquals(result.fields(), Result.DEFAULT_FIELDS);
+    }
+
+    @Test(groups = "unit")
+    public void testInputStream() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((InputStream) null, null));
+
+        Assert.assertEquals(Result.of(new ByteArrayInputStream(new byte[0]), null).type(), ByteArrayInputStream.class);
         ByteArrayInputStream in = new ByteArrayInputStream(new byte[0]);
-        Assert.assertEquals(Result.of(in).get(), in);
-        Assert.assertEquals(Result.of(in).get(InputStream.class), in);
-        Assert.assertEquals(Result.of(new ByteArrayInputStream(new byte[0])).get(String.class), "");
-        for (Row row : Result.of(new ByteArrayInputStream(new byte[0])).rows()) {
+        Assert.assertEquals(Result.of(in, null).get(), in);
+        Assert.assertEquals(Result.of(in, null).get(InputStream.class), in);
+        Assert.assertEquals(Result.of(new ByteArrayInputStream(new byte[0]), null).get(String.class), "");
+        for (Row row : Result.of(new ByteArrayInputStream(new byte[0]), null).rows()) {
             Assert.fail("Should have no row");
         }
 
-        Assert.assertEquals(Result.of(new ByteArrayInputStream("321".getBytes())).type(), ByteArrayInputStream.class);
+        Assert.assertEquals(Result.of(new ByteArrayInputStream("321".getBytes()), null).type(),
+                ByteArrayInputStream.class);
         in = new ByteArrayInputStream("321".getBytes());
-        Assert.assertEquals(Result.of(in).get(), in);
-        Assert.assertEquals(Result.of(in).get(InputStream.class), in);
-        Assert.assertEquals(Result.of(new ByteArrayInputStream("321".getBytes())).get(String.class), "321");
+        Assert.assertEquals(Result.of(in, null).get(), in);
+        Assert.assertEquals(Result.of(in, null).get(InputStream.class), in);
+        Assert.assertEquals(Result.of(new ByteArrayInputStream("321".getBytes()), null).get(String.class), "321");
         int count = 0;
-        for (Row row : Result.of(new ByteArrayInputStream("321".getBytes())).rows()) {
+        for (Row row : Result.of(new ByteArrayInputStream("321".getBytes()), null).rows()) {
             Assert.assertEquals(row.size(), 1);
             Assert.assertEquals(row.value(0).asString(), "321");
             count++;
@@ -61,24 +101,24 @@ public class ResultTest {
 
     @Test(groups = "unit")
     public void testReader() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((Reader) null));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((Reader) null, null));
 
-        Assert.assertEquals(Result.of(new StringReader("")).type(), StringReader.class);
+        Assert.assertEquals(Result.of(new StringReader(""), null).type(), StringReader.class);
         Reader in = new StringReader("");
-        Assert.assertEquals(Result.of(in).get(), in);
-        Assert.assertEquals(Result.of(in).get(Reader.class), in);
-        Assert.assertEquals(Result.of(new StringReader("")).get(String.class), "");
-        for (Row row : Result.of(new StringReader("")).rows()) {
+        Assert.assertEquals(Result.of(in, null).get(), in);
+        Assert.assertEquals(Result.of(in, null).get(Reader.class), in);
+        Assert.assertEquals(Result.of(new StringReader(""), null).get(String.class), "");
+        for (Row row : Result.of(new StringReader(""), null).rows()) {
             Assert.fail("Should have no row");
         }
 
-        Assert.assertEquals(Result.of(new StringReader("321")).type(), StringReader.class);
+        Assert.assertEquals(Result.of(new StringReader("321"), null).type(), StringReader.class);
         in = new StringReader("321");
-        Assert.assertEquals(Result.of(in).get(), in);
-        Assert.assertEquals(Result.of(in).get(Reader.class), in);
-        Assert.assertEquals(Result.of(new StringReader("321")).get(String.class), "321");
+        Assert.assertEquals(Result.of(in, null).get(), in);
+        Assert.assertEquals(Result.of(in, null).get(Reader.class), in);
+        Assert.assertEquals(Result.of(new StringReader("321"), null).get(String.class), "321");
         int count = 0;
-        for (Row row : Result.of(new StringReader("321")).rows()) {
+        for (Row row : Result.of(new StringReader("321"), null).rows()) {
             Assert.assertEquals(row.size(), 1);
             Assert.assertEquals(row.value(0).asString(), "321");
             count++;
@@ -96,7 +136,8 @@ public class ResultTest {
 
     @Test(groups = "unit")
     public void testString() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((String) null));
+        Assert.assertEquals(Result.of((String) null).type(), String.class);
+        Assert.assertEquals(Result.of((String) null).get(), null);
 
         Assert.assertEquals(Result.of("").type(), String.class);
         Assert.assertEquals(Result.of("").get(), "");
@@ -121,5 +162,23 @@ public class ResultTest {
             count++;
         }
         Assert.assertEquals(count, 1);
+    }
+
+    @Test(groups = "unit")
+    public void testFields() {
+        Assert.assertEquals(Result.of(Constants.EMPTY_STRING).fields(), Result.DEFAULT_FIELDS);
+
+        Assert.assertEquals(Result.of(Arrays.asList(Field.of("a"), Field.of("b")), Collections.emptyList()).fields(),
+                Arrays.asList(Field.of("a"), Field.of("b")));
+    }
+
+    @Test(groups = "unit")
+    public void testRows() throws Exception {
+        Result<?> r = Result.of((Row) null);
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        Assert.assertEquals(r.rows(), Collections.emptyList());
+        Assert.assertEquals(r.get(), null);
+        Assert.assertEquals(r.type(), Row.class);
+        Assert.assertEquals(r.get(ResultSet.class).next(), false);
     }
 }

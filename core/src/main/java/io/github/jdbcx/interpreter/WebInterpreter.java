@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.sql.JDBCType;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -32,6 +33,8 @@ import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Executor;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
@@ -68,6 +71,10 @@ public class WebInterpreter extends AbstractInterpreter {
                     Arrays.asList(Option.EXEC_ERROR, OPTION_BASE_URL, OPTION_URL_TEMPLATE, OPTION_REQUEST_HEADERS,
                             OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_TEMPLATE_FILE, WebExecutor.OPTION_CONNECT_TIMEOUT,
                             WebExecutor.OPTION_PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT));
+
+    private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(
+            Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),
+            Field.of("socket_timeout_ms", JDBCType.BIGINT), Field.of(KEY_HEADERS), Executor.FIELD_OPTIONS));
 
     private final Map<String, String> defaultHeaders;
     private final String defaultTemplate;
@@ -138,15 +145,27 @@ public class WebInterpreter extends AbstractInterpreter {
                     headers = getDefaultRequestHeaders();
                 }
             }
+
             String request = query;
+            final String method;
             if (Checker.isNullOrBlank(request)) {
                 if (Checker.isNullOrEmpty(defaultTemplate)) {
-                    input = executor.get(url, props, headers);
-                    return Result.of(input, Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
-                            .getBytes(Option.OUTPUT_CHARSET.getValue(props)));
+                    method = "GET";
                 } else {
+                    method = "POST";
                     request = Utils.applyVariables(defaultTemplate, props);
                 }
+            } else {
+                method = "POST";
+            }
+
+            if (executor.getDryRun(props)) {
+                return Result.of(dryRunFields, new Object[][] { { url, method, request,
+                        executor.getConnectTimeout(props), executor.getSocketTimeout(props), headers, props } });
+            } else if (Checker.isNullOrBlank(request)) {
+                input = executor.get(url, props, headers);
+                return Result.of(input, Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
+                        .getBytes(Option.OUTPUT_CHARSET.getValue(props)));
             }
 
             input = executor.post(url, request, props, headers);

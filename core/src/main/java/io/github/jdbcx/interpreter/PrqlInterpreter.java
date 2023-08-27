@@ -68,9 +68,12 @@ public class PrqlInterpreter extends AbstractInterpreter {
             final String compileTarget = OPTION_COMPILE_TARGET.getValue(props, defaultCompileTarget);
             final String[] args = Checker.isNullOrEmpty(compileTarget) ? new String[] { "compile" }
                     : new String[] { "compile", "-t", "sql.".concat(compileTarget) };
+            if (executor.getDryRun(props)) {
+                return executor.getDryRunResult(Arrays.asList(args), query, props);
+            }
             input = executor.execute(props,
                     new ByteArrayInputStream(query.getBytes(executor.getInputCharset(props))), args);
-            return Result.of(input);
+            return Result.of(input, null);
         } catch (Exception e) {
             return handleError(e, query, props, input);
         }

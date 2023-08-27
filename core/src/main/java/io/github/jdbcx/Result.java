@@ -18,13 +18,16 @@ package io.github.jdbcx;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
-import java.io.UncheckedIOException;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
+import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.data.IterableArray;
 import io.github.jdbcx.data.IterableInputStream;
@@ -35,81 +38,222 @@ import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public final class Result<T> implements AutoCloseable {
-    private static final ErrorHandler defaultErrorHandler = new ErrorHandler(Constants.EMPTY_STRING);
+    public static final class Builder {
+        static final DeferredValue<Iterable<Row>> NO_ROW = DeferredValue.of(Optional.of(Collections.emptyList()));
 
-    public static Result<Object[]> of(Object[] arr) {
-        return of(arr, () -> new IterableArray(arr));
+        private final List<Field> fields;
+
+        private Object rawValue;
+        private Class<?> valueType;
+        private DeferredValue<Iterable<Row>> rows;
+
+        private Builder() {
+            this.fields = new ArrayList<>();
+            this.fields.add(Field.DEFAULT);
+
+            this.rawValue = null;
+            this.valueType = null;
+            this.rows = null;
+        }
+
+        private Builder(Result<?> template) {
+            this.fields = new ArrayList<>(template.fields());
+
+            this.rawValue = template.rawValue;
+            this.valueType = template.valueType;
+            this.rows = template.rows;
+        }
+
+        public Builder fields(Field... fields) {
+            this.fields.clear();
+            if (fields != null && fields.length > 0) {
+                this.fields.addAll(Arrays.asList(fields));
+            }
+            return this;
+        }
+
+        public Builder fields(Collection<Field> fields) {
+            this.fields.clear();
+            if (fields != null) {
+                this.fields.addAll(fields);
+            }
+            return this;
+        }
+
+        public Builder rows(Value[]... rows) {
+            this.rawValue = rows;
+            if (rows == null || rows.length == 0) {
+                this.valueType = Value[].class;
+                this.rows = NO_ROW;
+            } else {
+                this.valueType = rows.getClass();
+                this.rows = DeferredValue.of(Optional.of(new IterableArray(fields, rows)));
+            }
+            return this;
+        }
+
+        public Builder rows(Object[]... rows) {
+            this.rawValue = rows;
+            if (rows == null || rows.length == 0) {
+                this.valueType = Object[].class;
+                this.rows = NO_ROW;
+            } else {
+                this.valueType = rows.getClass();
+                this.rows = DeferredValue.of(Optional.of(new IterableArray(fields, rows)));
+            }
+            return this;
+        }
+
+        public Builder value(String str) {
+            this.rawValue = str;
+            if (str == null) {
+                this.valueType = String.class;
+                this.rows = NO_ROW;
+            } else {
+                this.valueType = str.getClass();
+                this.rows = DeferredValue.of(Optional.of(Collections.singletonList(Row.of(fields, str))));
+            }
+            return this;
+        }
+
+        public Builder value(InputStream input, byte[] delimiter) {
+            this.rawValue = input;
+            if (input == null) {
+                this.valueType = InputStream.class;
+                this.rows = NO_ROW;
+            } else {
+                this.valueType = input.getClass();
+                this.rows = DeferredValue.of(Optional.of(new IterableInputStream(DEFAULT_FIELDS, input, delimiter)));
+            }
+            return this;
+        }
+
+        public Builder value(Reader reader, String delimiter) {
+            this.rawValue = reader;
+            if (reader == null) {
+                this.valueType = Reader.class;
+                this.rows = NO_ROW;
+            } else {
+                this.valueType = reader.getClass();
+                this.rows = DeferredValue.of(Optional.of(new IterableReader(DEFAULT_FIELDS, reader, delimiter)));
+            }
+            return this;
+        }
+
+        public Result<?> build() {
+            if (valueType == null || rows == null) {
+                throw new IllegalArgumentException("Non-null value type and rows are required");
+            }
+
+            return new Result<>(fields, rawValue, valueType, rows);
+        }
     }
 
-    public static Result<Iterable<?>> of(Iterable<?> it) {
-        return of(it, () -> new IterableWrapper(it));
+    private static final ErrorHandler defaultErrorHandler = new ErrorHandler(Constants.EMPTY_STRING);
+
+    public static final List<Field> DEFAULT_FIELDS = Collections.singletonList(Field.DEFAULT);
+
+    public static Result<Object[]> of(Object[] arr, Field... fields) {
+        return of(fields != null && fields.length > 0 ? Arrays.asList(fields) : DEFAULT_FIELDS, arr);
+    }
+
+    public static Result<Object[]> of(List<Field> fields, Object[] arr) {
+        IterableArray wrapper = new IterableArray(fields, arr);
+        return new Result<>(fields, arr, arr.getClass(), wrapper);
+    }
+
+    public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) {
+        IterableWrapper wrapper = new IterableWrapper(fields, it);
+        return new Result<>(fields, it, it.getClass(), wrapper);
+    }
+
+    public static Result<?> of(List<Field> fields, Row... rows) {
+        return rows != null && rows.length > 0 ? new Result<>(fields, rows, rows.getClass(), Arrays.asList(rows))
+                : new Result<>(fields, null, Void.class, Collections.emptyList());
+    }
+
+    public static Result<?> of(Row row, Row... more) {
+        final int len;
+        if (more == null || (len = more.length) == 0) {
+            return row != null ? new Result<>(row.fields(), row, row.getClass(), Collections.singletonList(row))
+                    : new Result<>(DEFAULT_FIELDS, null, Row.class, Collections.emptyList());
+        }
+
+        final List<Field> fields;
+        List<Row> rows = new ArrayList<>(len + 1);
+        if (row != null) {
+            fields = row.fields();
+            rows.add(row);
+        } else {
+            fields = DEFAULT_FIELDS;
+        }
+        for (int i = 0; i < len; i++) {
+            Row r = more[i];
+            if (r != null) {
+                rows.add(r);
+            }
+        }
+        return new Result<>(fields, rows, rows.getClass(), rows);
     }
 
     public static Result<ResultSet> of(ResultSet rs) {
-        return of(rs, () -> new IterableResultSet(rs));
+        if (rs == null) {
+            throw new IllegalArgumentException("Non-null ResultSet is required");
+        }
+
+        try {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columns = metaData.getColumnCount();
+            List<Field> fields = new ArrayList<>(columns);
+            for (int i = 0; i < columns; i++) {
+                int index = i + 1;
+                fields.add(Field.of(metaData.getColumnName(index), metaData.getColumnType(index)));
+            }
+            fields = Collections.unmodifiableList(fields);
+            return new Result<>(fields, rs, ResultSet.class, new IterableResultSet(rs, fields));
+        } catch (SQLException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     public static Result<String> of(String str) {
-        return of(str, () -> Collections.singletonList(Row.of(str)));
+        return new Result<>(DEFAULT_FIELDS, str, String.class, Collections.singletonList(Row.of(str)));
     }
 
     public static Result<Long> of(Long l) {
-        return of(l, () -> Collections.singletonList(Row.of(l)));
+        return new Result<>(DEFAULT_FIELDS, l, Long.class, Collections.singletonList(Row.of(l)));
     }
 
-    public static Result<InputStream> of(InputStream input) {
-        return of(input, () -> new IterableInputStream(input));
+    public static Result<InputStream> of(InputStream input, byte[] delimiter, Field... fields) {
+        return of(fields != null && fields.length > 0 ? Arrays.asList(fields) : DEFAULT_FIELDS, input, delimiter);
     }
 
-    public static Result<InputStream> of(InputStream input, byte[] delimiter) {
-        return of(input, () -> new IterableInputStream(input, delimiter));
+    public static Result<InputStream> of(List<Field> fields, InputStream input, byte[] delimiter) {
+        return new Result<>(fields, Checker.nonNull(input, InputStream.class.getSimpleName()), input.getClass(),
+                new IterableInputStream(fields, input, delimiter));
     }
 
-    public static Result<Reader> of(Reader reader) {
-        return of(reader, () -> new IterableReader(reader));
+    public static Result<Reader> of(Reader reader, String delimiter, Field... fields) {
+        return of(fields != null && fields.length > 0 ? Arrays.asList(fields) : DEFAULT_FIELDS, reader, delimiter);
     }
 
-    public static Result<Reader> of(Reader reader, String delimiter) {
-        return of(reader, () -> new IterableReader(reader, delimiter));
+    public static Result<Reader> of(List<Field> fields, Reader reader, String delimiter) {
+        return new Result<>(fields, Checker.nonNull(reader, InputStream.class.getSimpleName()), reader.getClass(),
+                new IterableReader(fields, reader, delimiter));
     }
 
-    public static <T> Result<T> of(T rawValue, Supplier<Iterable<Row>> supplier) {
-        return of(rawValue, supplier, defaultErrorHandler);
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static <T> Result<T> of(T rawValue, Supplier<Iterable<Row>> supplier, ErrorHandler errorHandler) {
-        if (rawValue == null || supplier == null) {
-            throw new IllegalArgumentException("Non-null raw value and supplier are required");
-        }
-
-        return new Result<>(rawValue, DeferredValue.of(supplier), errorHandler);
-    }
-
-    public static <T> Result<T> of(T rawValue, Iterable<Row> rows) {
-        return of(rawValue, rows, defaultErrorHandler);
-    }
-
-    public static <T> Result<T> of(T rawValue, Iterable<Row> rows, ErrorHandler errorHandler) {
-        if (rawValue == null || rows == null) {
-            throw new IllegalArgumentException("Non-null raw value and rows are required");
-        }
-
-        return new Result<>(rawValue, DeferredValue.of(Optional.of(rows)), errorHandler);
-    }
-
+    private final List<Field> fields;
     private final T rawValue;
     private final Class<?> valueType;
 
-    private final AtomicReference<ErrorHandler> handler;
     private final DeferredValue<Iterable<Row>> rows;
 
-    public Result<T> update(ErrorHandler errorHandler) {
-        if (!handler.compareAndSet(defaultErrorHandler, errorHandler)) {
-            throw new IllegalArgumentException(
-                    Utils.format("Cannot update error handler to [%s] as we got [%s] already",
-                            errorHandler, handler.get()));
-        }
-        return this;
+    public Builder update() {
+        return new Builder(this);
     }
 
     public T get() {
@@ -117,35 +261,49 @@ public final class Result<T> implements AutoCloseable {
     }
 
     /**
-     * Gets value according to the given type.
+     * Gets value according to the given type. Same as {@code get(clazz, null)}.
      *
      * @param <R>   type of the value
      * @param clazz non-null class of the value
      * @return non-null value
-     * @throws UncheckedIOException when failed to read data from
-     *                              {@link InputStream} or {@link Reader}
+     * @throws CompletionException      when failed to retrieve or convert value
+     * @throws IllegalArgumentException when the given {@code clazz} is null
      */
-    @SuppressWarnings("unchecked")
-    public <R> R get(Class<R> clazz) {
+    public <R> R get(Class<R> clazz) throws CompletionException {
+        return get(clazz, defaultErrorHandler);
+    }
+
+    /**
+     * Gets value according to the given type.
+     *
+     * @param <R>     type of the value
+     * @param clazz   non-null class of the value
+     * @param handler optional error handler
+     * @return non-null value
+     * @throws CompletionException      when failed to retrieve or convert value
+     * @throws IllegalArgumentException when the given {@code clazz} is null
+     */
+    @SuppressWarnings("resource")
+    public <R> R get(Class<R> clazz, ErrorHandler handler) {
         if (clazz == null) {
             throw new IllegalArgumentException("Non-null class is required");
-        } else if (clazz.isAssignableFrom(valueType)) {
+        } else if (Result.class.equals(clazz) || clazz.isAssignableFrom(valueType)) {
             return clazz.cast(rawValue);
         } else if (ResultSet.class.equals(clazz)) {
-            return (R) new ReadOnlyResultSet(null, this);
+            return clazz.cast(new ReadOnlyResultSet(null, this));
         } else if (String.class.equals(clazz)) {
             String str;
             if (InputStream.class.isAssignableFrom(valueType)) {
                 try {
                     str = Stream.readAllAsString((InputStream) rawValue);
                 } catch (IOException e) {
-                    str = handler.get().handle(e);
+                    str = (handler != null ? handler : defaultErrorHandler).handle(e);
                 }
             } else if (Reader.class.isAssignableFrom(valueType)) {
                 try {
                     str = Stream.readAllAsString((Reader) rawValue);
                 } catch (IOException e) {
-                    str = handler.get().handle(e);
+                    str = (handler != null ? handler : defaultErrorHandler).handle(e);
                 }
             } else if (ResultSet.class.isAssignableFrom(valueType)) {
                 try (ResultSet rs = (ResultSet) rawValue) {
@@ -155,12 +313,12 @@ public final class Result<T> implements AutoCloseable {
                     }
                     str = builder.toString();
                 } catch (SQLException e) {
-                    str = handler.get().handle(e);
+                    str = (handler != null ? handler : defaultErrorHandler).handle(e);
                 }
             } else {
                 str = String.valueOf(rawValue);
             }
-            return (R) str;
+            return clazz.cast(str);
         }
 
         throw new UnsupportedOperationException(
@@ -169,6 +327,10 @@ public final class Result<T> implements AutoCloseable {
 
     public Class<?> type() {
         return valueType;
+    }
+
+    public List<Field> fields() {
+        return Collections.unmodifiableList(fields);
     }
 
     public Iterable<Row> rows() {
@@ -188,11 +350,14 @@ public final class Result<T> implements AutoCloseable {
         }
     }
 
-    private Result(T rawValue, DeferredValue<Iterable<Row>> rows, ErrorHandler errorHandler) {
-        this.rawValue = rawValue;
-        this.valueType = rawValue.getClass();
+    private Result(List<Field> fields, T rawValue, Class<?> valueType, Iterable<Row> rows) {
+        this(fields, rawValue, valueType, DeferredValue.of(Optional.of(rows)));
+    }
 
-        this.handler = new AtomicReference<>(errorHandler != null ? errorHandler : defaultErrorHandler);
+    private Result(List<Field> fields, T rawValue, Class<?> valueType, DeferredValue<Iterable<Row>> rows) {
+        this.fields = fields;
+        this.rawValue = rawValue;
+        this.valueType = valueType;
         this.rows = rows;
     }
 }

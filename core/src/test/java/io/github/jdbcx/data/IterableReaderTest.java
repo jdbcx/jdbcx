@@ -27,7 +27,7 @@ public class IterableReaderTest {
     public void testRead() {
         String str = "\na1,a2,a3\n,a2,,a5\n";
         int index = 0;
-        for (Row r : new IterableReader(new StringReader(str))) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str))) {
             Assert.assertEquals(r.value(0).asString(), str);
             index++;
         }
@@ -35,41 +35,41 @@ public class IterableReaderTest {
 
         String[] arr = str.split("\n");
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), "\n")) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), "\n")) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",");
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), ",")) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), ",")) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",a");
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), ",a")) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), ",a")) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",a2");
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), ",a2")) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), ",a2")) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), str)) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), str)) {
             Assert.assertEquals(r.value(0).asString(), "");
             index++;
         }
         Assert.assertEquals(index, 1);
 
         index = 0;
-        for (Row r : new IterableReader(new StringReader(str), "1" + str)) {
+        for (Row r : new IterableReader(DefaultRow.defaultFields, new StringReader(str), "1" + str)) {
             Assert.assertEquals(r.value(0).asString(), str);
             index++;
         }

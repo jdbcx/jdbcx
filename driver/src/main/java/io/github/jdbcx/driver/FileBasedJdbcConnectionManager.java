@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
@@ -28,8 +29,11 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -37,6 +41,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -157,6 +162,22 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
             log.error("Failed to monitor path [%s]", path, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
+    public List<String> getAllConnectionIds() {
+        if (managed.get()) {
+            return Collections.unmodifiableList(new ArrayList<>(config.keySet()));
+        }
+
+        try {
+            return Files.walk(path.get())
+                    .filter(p -> p.getFileName().toString().endsWith(FILE_EXTENSION))
+                    .map(p -> p.getFileName().toString().replace(FILE_EXTENSION, Constants.EMPTY_STRING))
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
         }
     }
 

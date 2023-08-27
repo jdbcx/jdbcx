@@ -16,14 +16,20 @@
 package io.github.jdbcx.extension;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import io.github.jdbcx.Checker;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.executor.jdbc.CombinedResultSet;
+import io.github.jdbcx.interpreter.JdbcConnectionManager;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 public class SqlDriverExtension implements DriverExtension {
@@ -43,6 +49,56 @@ public class SqlDriverExtension implements DriverExtension {
     @Override
     public List<String> getAliases() {
         return Collections.singletonList("jdbc");
+    }
+
+    @Override
+    public Connection getConnection(String url, Properties props) throws SQLException {
+        if (Checker.isNullOrBlank(url)) {
+            url = JdbcConnectionManager.OPTION_ID.getValue(props);
+        }
+        return Checker.isNullOrBlank(url) ? null : JdbcConnectionManager.getInstance().getConnection(url);
+    }
+
+    @Override
+    public List<String> getSchemas(String pattern, Properties props) {
+        return DriverExtension.getMatched(JdbcConnectionManager.getInstance().getAllConnectionIds(), pattern);
+    }
+
+    @Override
+    public ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
+            throws SQLException {
+        List<String> ids = getSchemas(schemaPattern, props);
+        if (ids.isEmpty()) {
+            return null;
+        }
+
+        int len = ids.size();
+        ResultSet[] arr = new ResultSet[len];
+        JdbcConnectionManager manager = JdbcConnectionManager.getInstance();
+        for (int i = 0; i < len; i++) {
+            String id = ids.get(i);
+            try {
+                Connection conn = manager.getConnection(id);
+                String catalog = null;
+                String schema = null;
+                try { // NOSONAR
+                    catalog = conn.getCatalog();
+                } catch (Exception e) {
+                    // ignore
+                }
+                try { // NOSONAR
+                    schema = conn.getSchema();
+                } catch (Exception e) {
+                    // ignore
+                }
+
+                DatabaseMetaData metaData = manager.getConnection(id).getMetaData();
+                arr[i] = metaData.getTables(catalog, schema, tableNamePattern, types);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        return new CombinedResultSet(arr);
     }
 
     @Override

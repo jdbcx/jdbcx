@@ -16,44 +16,56 @@
 package io.github.jdbcx.data;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
-import io.github.jdbcx.Checker;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 
 public final class IterableArray implements Iterable<Row> {
     static final class ArrayIterator implements Iterator<Row> {
-        private final Object[] array;
+        private final IterableArray ref;
+
         private int index;
 
-        ArrayIterator(Object[] array) {
-            this.array = array;
+        ArrayIterator(IterableArray ref) {
+            this.ref = ref;
+
             this.index = 0;
         }
 
         @Override
         public boolean hasNext() {
-            return index < array.length;
+            return index < ref.array.length;
         }
 
         @Override
         public Row next() {
             try {
-                return Row.of(array[index++]);
+                return Row.of(ref.fields, ref.array[index++]);
             } catch (IndexOutOfBoundsException e) {
                 throw new NoSuchElementException(e.getMessage());
             }
         }
     }
 
+    private final List<Field> fields;
     private final Object[] array;
 
     public IterableArray(Object[] array) {
-        this.array = Checker.nonNull(array, Object[].class.getSimpleName());
+        this(DefaultRow.defaultFields, array);
+    }
+
+    public IterableArray(List<Field> fields, Object[] array) {
+        if (fields == null || array == null) {
+            throw new IllegalArgumentException("Non-null fields and values are required");
+        }
+        this.fields = fields;
+        this.array = array;
     }
 
     @Override
     public Iterator<Row> iterator() {
-        return new ArrayIterator(array);
+        return new ArrayIterator(this);
     }
 }

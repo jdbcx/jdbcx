@@ -49,6 +49,8 @@ public final class Constants {
     public static final String INF_EXPR = "Inf";
     public static final String NINF_EXPR = "-Inf";
 
+    public static final String RE_META_CHARS = "<([{\\^-=$!|]})?*+.>";
+
     public static final int DEFAULT_BUFFER_SIZE = 2048;
     public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 

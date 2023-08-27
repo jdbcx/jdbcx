@@ -19,8 +19,10 @@ import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 import io.github.jdbcx.Checker;
@@ -64,23 +66,38 @@ public final class IterableResultSet implements Iterable<Row> {
 
     static final class ResultSetIterator implements Iterator<Row> {
         private final ResultSet rs;
+        private final List<Field> fields;
         private final Row cursor;
 
         private int state; // 0 - before first; 1 - has next; 2 - eos
 
         ResultSetIterator(ResultSet rs) {
+            this(rs, null);
+        }
+
+        ResultSetIterator(ResultSet rs, List<Field> fields) {
             this.rs = rs;
 
             try {
-                ResultSetMetaData metaData = rs.getMetaData();
-                int columns = metaData.getColumnCount();
-                Field[] fields = new Field[columns];
-                Value[] values = new Value[columns];
-                for (int i = 0; i < columns; i++) {
-                    int index = i + 1;
-                    fields[i] = Field.of(metaData.getColumnName(index), metaData.getColumnType(index));
-                    values[i] = new ResultSetValue(rs, index);
+                final Value[] values;
+                if (fields != null) {
+                    int size = fields.size();
+                    values = new Value[size];
+                    for (int i = 0; i < size; i++) {
+                        values[i] = new ResultSetValue(rs, i + 1);
+                    }
+                } else {
+                    ResultSetMetaData metaData = rs.getMetaData();
+                    int columns = metaData.getColumnCount();
+                    fields = new ArrayList<>(columns);
+                    values = new Value[columns];
+                    for (int i = 0; i < columns; i++) {
+                        int index = i + 1;
+                        fields.add(Field.of(metaData.getColumnName(index), metaData.getColumnType(index)));
+                        values[i] = new ResultSetValue(rs, index);
+                    }
                 }
+                this.fields = fields;
                 this.cursor = new DefaultRow(fields, values);
             } catch (SQLException e) {
                 throw new IllegalArgumentException(e);
@@ -112,10 +129,16 @@ public final class IterableResultSet implements Iterable<Row> {
         }
     }
 
+    private final List<Field> fields;
     private final ResultSet rs;
 
     public IterableResultSet(ResultSet rs) {
+        this(rs, null);
+    }
+
+    public IterableResultSet(ResultSet rs, List<Field> fields) {
         this.rs = Checker.nonNull(rs, ResultSet.class.getSimpleName());
+        this.fields = fields;
     }
 
     @Override
@@ -137,6 +160,6 @@ public final class IterableResultSet implements Iterable<Row> {
         //     // ignore
         // }
 
-        return new ResultSetIterator(rs);
+        return new ResultSetIterator(rs, fields);
     }
 }

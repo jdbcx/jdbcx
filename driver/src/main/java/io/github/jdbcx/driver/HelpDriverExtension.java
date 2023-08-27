@@ -18,6 +18,7 @@ package io.github.jdbcx.driver;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -42,9 +43,8 @@ public final class HelpDriverExtension implements DriverExtension {
 
         static final DriverInfo defaultDriverInfo = new DriverInfo();
 
-        private static final Field[] summaryFields = new Field[] {
-                Field.of("name"), Field.of("alias"), Field.of("description"), Field.of("usage"),
-        };
+        private static final List<Field> summaryFields = Collections.unmodifiableList(
+                Arrays.asList(Field.of("name"), Field.of("alias"), Field.of("description"), Field.of("usage")));
 
         private final Properties config;
 
@@ -67,7 +67,7 @@ public final class HelpDriverExtension implements DriverExtension {
                             new StringValue(ext.getDescription()),
                             new StringValue(ext.getUsage())));
                 }
-                return Result.of(rows);
+                return Result.of(summaryFields, rows);
             }
 
             DriverExtension ext = map.get(nameOrAlias);
@@ -75,7 +75,7 @@ public final class HelpDriverExtension implements DriverExtension {
                 throw new IllegalArgumentException(Utils.format("Name or alias [%s] does not exist", nameOrAlias));
             }
 
-            return WrappedConnection.describe(ext, config);
+            return ConnectionManager.describe(ext, config);
         }
     }
 

@@ -27,7 +27,7 @@ public class IterableInutStreamTest {
     public void testRead() {
         String str = "\na1,a2,a3\n,a2,,a5\n";
         int index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()))) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()))) {
             Assert.assertEquals(r.value(0).asString(), str);
             index++;
         }
@@ -35,41 +35,47 @@ public class IterableInutStreamTest {
 
         String[] arr = str.split("\n");
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), "\n".getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                "\n".getBytes())) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",");
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), ",".getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                ",".getBytes())) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",a");
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), ",a".getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                ",a".getBytes())) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         arr = str.split(",a2");
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), ",a2".getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                ",a2".getBytes())) {
             Assert.assertEquals(r.value(0).asString(), arr[index++]);
         }
         Assert.assertEquals(index, arr.length);
 
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), str.getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                str.getBytes())) {
             Assert.assertEquals(r.value(0).asString(), "");
             index++;
         }
         Assert.assertEquals(index, 1);
 
         index = 0;
-        for (Row r : new IterableInputStream(new ByteArrayInputStream(str.getBytes()), (str + "1").getBytes())) {
+        for (Row r : new IterableInputStream(DefaultRow.defaultFields, new ByteArrayInputStream(str.getBytes()),
+                (str + "1").getBytes())) {
             Assert.assertEquals(r.value(0).asString(), str);
             index++;
         }

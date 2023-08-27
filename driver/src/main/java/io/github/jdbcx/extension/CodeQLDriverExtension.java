@@ -33,6 +33,11 @@ public class CodeQLDriverExtension implements DriverExtension {
     }
 
     @Override
+    public List<String> getSchemas(String pattern, Properties props) {
+        return DriverExtension.getMatched(CodeQLInterpreter.getAllQlPacks(props), pattern);
+    }
+
+    @Override
     public List<Option> getDefaultOptions() {
         return CodeQLInterpreter.OPTIONS;
     }

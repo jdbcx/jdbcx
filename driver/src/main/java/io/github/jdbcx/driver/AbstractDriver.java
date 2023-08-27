@@ -20,8 +20,13 @@ import java.sql.Driver;
 import java.sql.DriverAction;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+
+import io.github.jdbcx.Constants;
+import io.github.jdbcx.DriverExtension;
+import io.github.jdbcx.driver.impl.DefaultConnection;
 
 /**
  * This class is essentially a wrapper of the {@link Driver} interface. It
@@ -50,28 +55,53 @@ public abstract class AbstractDriver implements Driver, DriverAction {
 
     protected Driver getActualDriver() {
         final DriverInfo driverInfo = cache.get();
-        return driverInfo != null ? driverInfo.getActualDriver() : null;
+        return driverInfo != null ? driverInfo.driver : null;
     }
 
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        return url != null && url.length() >= DriverInfo.JDBCX_PREFIX.length()
-                && url.substring(0, DriverInfo.JDBCX_PREFIX.length()).equalsIgnoreCase(DriverInfo.JDBCX_PREFIX);
+        return url != null && url.length() >= ConnectionManager.JDBCX_PREFIX.length()
+                && url.substring(0, ConnectionManager.JDBCX_PREFIX.length())
+                        .equalsIgnoreCase(ConnectionManager.JDBCX_PREFIX);
     }
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
         final DriverInfo driverInfo = getDriverInfo(url, info);
+        if (driverInfo.driver instanceof InvalidDriver) {
+            String tailored = driverInfo.normalizedUrl.startsWith(ConnectionManager.JDBCX_PREFIX)
+                    ? driverInfo.normalizedUrl.substring(ConnectionManager.JDBCX_PREFIX.length())
+                    : driverInfo.normalizedUrl;
+            int index = tailored.indexOf(':');
+            String extName;
+            if (index == -1) {
+                extName = tailored;
+                tailored = Constants.EMPTY_STRING;
+            } else {
+                extName = tailored.substring(0, index);
+                tailored = tailored.substring(index + 1);
+            }
+            Map<String, DriverExtension> extensions = driverInfo.getExtensions();
+            DriverExtension ext = extensions.get(extName);
+            if (ext != null) {
+                Properties extProps = ext == driverInfo.extension ? driverInfo.extensionProps
+                        : DriverExtension.extractProperties(ext, info);
+                Connection conn = ext.getConnection(tailored, extProps);
+                return conn != null ? conn
+                        : new DefaultConnection(extensions, ext, url, extProps, driverInfo.normalizedInfo,
+                                driverInfo.mergedInfo);
+            }
+        }
         return acceptsURL(url) ? new WrappedConnection(driverInfo)
-                : driverInfo.getActualDriver().connect(driverInfo.actualUrl, driverInfo.normalizedInfo);
+                : driverInfo.driver.connect(driverInfo.actualUrl, driverInfo.normalizedInfo);
     }
 
     @Override
     public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
         final DriverInfo driverInfo = getDriverInfo(url, info);
 
-        DriverPropertyInfo[] driverPropInfo = driverInfo.getActualDriver()
-                .getPropertyInfo(driverInfo.actualUrl, driverInfo.normalizedInfo);
+        DriverPropertyInfo[] driverPropInfo = driverInfo.driver.getPropertyInfo(driverInfo.actualUrl,
+                driverInfo.normalizedInfo);
         if (driverPropInfo == null) {
             driverPropInfo = new DriverPropertyInfo[0];
         }

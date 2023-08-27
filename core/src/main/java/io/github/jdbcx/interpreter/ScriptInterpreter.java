@@ -70,14 +70,16 @@ public class ScriptInterpreter extends AbstractInterpreter {
 
         try {
             final Object result = executor.execute(query, props, null);
-            if (result instanceof InputStream) {
+            if (result instanceof Result) {
+                return (Result<?>) result;
+            } else if (result instanceof InputStream) {
                 return process(query, (InputStream) result, props);
             } else if (result instanceof Reader) {
                 return process(query, (Reader) result, props);
             } else if (result instanceof ResultSet) {
                 return Result.of((ResultSet) result);
             } else if (result instanceof Iterable) {
-                return Result.of((Iterable<?>) result);
+                return Result.of(Result.DEFAULT_FIELDS, (Iterable<?>) result);
             } else if (result instanceof Object[]) {
                 return Result.of((Object[]) result);
             } else {

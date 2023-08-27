@@ -30,9 +30,11 @@ import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -44,9 +46,11 @@ import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 
 /**
@@ -57,6 +61,9 @@ public class CommandLineExecutor extends AbstractExecutor {
     private static final Logger log = LoggerFactory.getLogger(CommandLineExecutor.class);
 
     private static final Map<String, Boolean> cache = Collections.synchronizedMap(new WeakHashMap<>(8));
+
+    private static final List<Field> dryRunFields = Collections
+            .unmodifiableList(Arrays.asList(Field.of("command"), FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
     public static final Option OPTION_CLI_PATH = Option.of("cli.path",
             "The full command line or path specifying the command to execute.", "");
@@ -187,6 +194,13 @@ public class CommandLineExecutor extends AbstractExecutor {
 
     public List<String> getCommand() {
         return command;
+    }
+
+    public Result<?> getDryRunResult(List<String> args, String query, Properties props) {
+        List<String> list = new LinkedList<>(command);
+        list.addAll(args);
+        return Result.of(dryRunFields,
+                new Object[][] { { String.join(" ", list), query, getTimeout(props), props } });
     }
 
     public boolean getDefaultStdErrRedirect() {

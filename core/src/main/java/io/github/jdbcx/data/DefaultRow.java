@@ -15,16 +15,21 @@
  */
 package io.github.jdbcx.data;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
 
 public final class DefaultRow implements Row {
-    private static final Field[] DEFAULT_FIELDS = new Field[] { Field.of("results") };
+    static final List<Field> defaultFields = Collections.singletonList(Field.DEFAULT);
 
-    public static final DefaultRow EMPTY = new DefaultRow(new Field[0]);
+    public static final DefaultRow EMPTY = new DefaultRow(Collections.emptyList());
 
-    private final Field[] fields;
+    private final List<Field> fields;
     private final Value[] values;
     private final int size;
 
@@ -32,37 +37,49 @@ public final class DefaultRow implements Row {
         int len = 0;
         if (values == null) {
             this.fields = EMPTY.fields;
-            values = EMPTY.values;
+            this.values = EMPTY.values;
         } else if ((len = values.length) == 1) {
-            this.fields = DEFAULT_FIELDS;
+            this.fields = defaultFields;
+            this.values = values;
         } else {
-            this.fields = new Field[len];
+            List<Field> list = new ArrayList<>(len);
             StringBuilder builder = new StringBuilder("field");
             int position = builder.length();
             for (int i = 0; i < len; i++) {
-                this.fields[i] = Field.of(builder.append(i + 1).toString());
+                list.add(Field.of(builder.append(i + 1).toString()));
                 builder.setLength(position);
             }
+            this.fields = Collections.unmodifiableList(list);
+            this.values = values;
         }
-        this.values = values;
         this.size = len;
     }
 
-    public DefaultRow(Field[] fields, Value... values) {
-        this.fields = fields != null ? fields : new Field[0];
+    public DefaultRow(List<Field> fields, Value... values) {
+        this.fields = fields != null ? fields : Collections.emptyList();
         this.values = values != null ? values : new Value[0];
 
-        this.size = Math.min(this.fields.length, this.values.length);
+        this.size = Math.min(this.fields.size(), this.values.length);
     }
 
     @Override
     public Field field(int index) {
-        return fields[index];
+        return fields.get(index);
+    }
+
+    @Override
+    public List<Field> fields() {
+        return Collections.unmodifiableList(fields);
     }
 
     @Override
     public Value value(int index) {
         return values[index];
+    }
+
+    @Override
+    public List<Value> values() {
+        return Collections.unmodifiableList(Arrays.asList(values));
     }
 
     @Override

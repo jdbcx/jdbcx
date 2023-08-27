@@ -17,34 +17,30 @@ package io.github.jdbcx.executor.jdbc;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
 
 import io.github.jdbcx.Field;
-import io.github.jdbcx.Row;
 
 final class SimpleResultSetMetaData implements ResultSetMetaData {
     private final String catalog;
     private final String schema;
     private final String table;
 
-    private final Field[] fields;
+    private final List<Field> fields;
 
-    SimpleResultSetMetaData(String catalog, String schema, String table, Row row) {
+    SimpleResultSetMetaData(String catalog, String schema, String table, List<Field> fields) {
         this.catalog = catalog;
         this.schema = schema;
         this.table = table;
 
-        int size = row.size();
-        this.fields = new Field[size];
-        for (int i = 0; i < size; i++) {
-            this.fields[i] = row.field(i);
-        }
+        this.fields = fields;
     }
 
     protected Field field(int columnIndex) throws SQLException {
-        if (fields.length < columnIndex) {
+        if (fields.size() < columnIndex) {
             throw SqlExceptionUtils.clientError("Invalid column index %d, should between 1 and %d");
         }
-        return fields[columnIndex - 1];
+        return fields.get(columnIndex - 1);
     }
 
     @Override
@@ -59,7 +55,7 @@ final class SimpleResultSetMetaData implements ResultSetMetaData {
 
     @Override
     public int getColumnCount() throws SQLException {
-        return this.fields.length;
+        return this.fields.size();
     }
 
     @Override

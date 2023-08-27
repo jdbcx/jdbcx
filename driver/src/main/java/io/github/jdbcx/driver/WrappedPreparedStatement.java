@@ -36,9 +36,6 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 
-import io.github.jdbcx.QueryContext;
-import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
-
 /**
  * This class serves as a wrapper for a {@link PreparedStatement}.
  */
@@ -201,13 +198,7 @@ public class WrappedPreparedStatement extends WrappedStatement implements Prepar
 
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
-        try (QueryContext context = QueryContext.newContext()) {
-            return conn.createListener(context).onMetaData(stmt.getMetaData());
-        } catch (SQLException e) {
-            throw e;
-        } catch (Exception e) {
-            throw SqlExceptionUtils.clientError(e);
-        }
+        return conn.manager.getMetaData(stmt.getMetaData());
     }
 
     @Override
@@ -237,13 +228,7 @@ public class WrappedPreparedStatement extends WrappedStatement implements Prepar
 
     @Override
     public ParameterMetaData getParameterMetaData() throws SQLException {
-        try (QueryContext context = QueryContext.newContext()) {
-            return conn.createListener(context).onMetaData(stmt.getParameterMetaData());
-        } catch (SQLException e) {
-            throw e;
-        } catch (Exception e) {
-            throw SqlExceptionUtils.clientError(e);
-        }
+        return conn.manager.getMetaData(stmt.getParameterMetaData());
     }
 
     @Override

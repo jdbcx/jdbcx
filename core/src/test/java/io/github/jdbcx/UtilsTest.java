@@ -28,6 +28,30 @@ import org.testng.annotations.Test;
 
 public class UtilsTest {
     @Test(groups = "unit")
+    public void testContainsJdbcWildcard() {
+        Assert.assertFalse(Utils.containsJdbcWildcard(null));
+        Assert.assertFalse(Utils.containsJdbcWildcard(""));
+
+        Assert.assertFalse(Utils.containsJdbcWildcard("1\\%23"));
+        Assert.assertFalse(Utils.containsJdbcWildcard("abc\\_"));
+
+        Assert.assertTrue(Utils.containsJdbcWildcard("1%23"));
+        Assert.assertTrue(Utils.containsJdbcWildcard("abc_"));
+    }
+
+    @Test(groups = "unit")
+    public void testJdbcNamePatternToRe() {
+        Assert.assertEquals(Utils.jdbcNamePatternToRe(null), "");
+        Assert.assertEquals(Utils.jdbcNamePatternToRe(""), "");
+
+        Assert.assertEquals(Utils.jdbcNamePatternToRe("\\<"), "\\<");
+        Assert.assertEquals(Utils.jdbcNamePatternToRe("<"), "\\<");
+
+        Assert.assertEquals(Utils.jdbcNamePatternToRe("_ta\\_ble%"), ".ta_ble.*");
+        Assert.assertEquals(Utils.jdbcNamePatternToRe("s\\%ch%m_"), "s%ch.*m.");
+    }
+
+    @Test(groups = "unit")
     public void testApplyVariables() throws IOException {
         Assert.assertEquals(Utils.applyVariables(null, (Properties) null), "");
         Assert.assertEquals(Utils.applyVariables(null, (Map<String, String>) null), "");
