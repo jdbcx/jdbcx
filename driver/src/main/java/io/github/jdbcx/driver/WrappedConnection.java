@@ -162,7 +162,8 @@ public class WrappedConnection implements Connection {
             final String substitutedQuery = Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts),
                     context.getCustomVariables());
             log.debug("Original Query: [%s]\r\nSubstituted Query: [%s]", query, substitutedQuery);
-            return ConnectionManager.convertTo(manager.createDefaultListener(context).onQuery(substitutedQuery), String.class);
+            return ConnectionManager.convertTo(manager.createDefaultListener(context).onQuery(substitutedQuery),
+                    String.class);
         } catch (SQLWarning e) {
             ref.set(SqlExceptionUtils.consolidate(w, e));
             return query;
@@ -360,16 +361,16 @@ public class WrappedConnection implements Connection {
     public PreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
         return new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency,
-                        resultSetHoldability)); // NOSONAR
+                manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
+                        resultSetHoldability));
     }
 
     @Override
     public CallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
         return new WrappedCallableStatement(this, query,
-                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency,
-                        resultSetHoldability)); // NOSONAR
+                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
+                        resultSetHoldability));
     }
 
     @Override

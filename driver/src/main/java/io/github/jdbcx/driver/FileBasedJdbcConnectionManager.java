@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -171,9 +172,8 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
             return Collections.unmodifiableList(new ArrayList<>(config.keySet()));
         }
 
-        try {
-            return Files.walk(path.get())
-                    .filter(p -> p.getFileName().toString().endsWith(FILE_EXTENSION))
+        try (Stream<Path> s = Files.walk(path.get())) {
+            return s.filter(p -> p.getFileName().toString().endsWith(FILE_EXTENSION))
                     .map(p -> p.getFileName().toString().replace(FILE_EXTENSION, Constants.EMPTY_STRING))
                     .collect(Collectors.toList());
         } catch (IOException e) {
