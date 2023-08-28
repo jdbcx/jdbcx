@@ -32,7 +32,7 @@ LABEL os.dist=Ubuntu os.version=22.04 app.name="JDBCX" app.version="$JDBCX_VERSI
 
 # Configure system(charset and timezone) and install ClickHouse
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y locales curl wget tzdata \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ca-certificates locales curl wget tzdata \
     && locale-gen en_US.UTF-8 \
     && groupadd -r -g $JDBCX_USER_ID $JDBCX_USER_NAME \
     && useradd -r -Md /app -s /bin/bash -u $JDBCX_USER_ID -g $JDBCX_USER_ID $JDBCX_USER_NAME \
