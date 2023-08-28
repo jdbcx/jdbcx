@@ -3,12 +3,19 @@
 #
 
 # Stage 1 - build prqlc
-FROM rust:1.70 AS builder
+FROM rust:1.70 AS prql
 
 RUN cargo install prqlc
 
-# Stage 2 - build jdbcx
-FROM eclipse-temurin:17-jdk-jammy
+# Stage 2 - build minimal JRE
+FROM eclipse-temurin:17-jdk-jammy as jdk
+
+RUN jlink --add-modules \
+    java.base,java.logging,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki \
+    --output /min-jre --strip-debug --no-man-pages --no-header-files --compress=2
+
+# Stage 3 - build jdbcx
+FROM ubuntu:jammy
 
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
@@ -17,13 +24,16 @@ ARG JDBCX_VERSION=0.3.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
+    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
     JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.3.0}
 
 # Labels
 LABEL os.dist=Ubuntu os.version=22.04 app.name="JDBCX" app.version="$JDBCX_VERSION"
 
 # Configure system(charset and timezone) and install ClickHouse
-RUN locale-gen en_US.UTF-8 \
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y locales curl wget tzdata \
+    && locale-gen en_US.UTF-8 \
     && groupadd -r -g $JDBCX_USER_ID $JDBCX_USER_NAME \
     && useradd -r -Md /app -s /bin/bash -u $JDBCX_USER_ID -g $JDBCX_USER_ID $JDBCX_USER_NAME \
     && echo 13 > /etc/timezone \
@@ -50,10 +60,13 @@ RUN locale-gen en_US.UTF-8 \
         https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.8.1/duckdb_jdbc-0.8.1.jar \
         https://repo1.maven.org/maven2/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
-        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
+        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar \
+    && apt-get clean \
+	&& rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
 
 # Use custom configuration
-COPY --from=builder /usr/local/cargo/bin/prqlc /usr/local/bin/prqlc
+COPY --from=prql /usr/local/cargo/bin/prqlc /usr/local/bin/prqlc
+COPY --from=jdk /min-jre /app/openjdk
 COPY --chown=root:root docker/ /
 
 RUN chmod +x /*.sh /usr/local/bin/*
