@@ -11,7 +11,7 @@ RUN cargo install prqlc
 FROM eclipse-temurin:17-jdk-jammy as jdk
 
 RUN jlink --add-modules \
-    java.base,java.logging,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki \
+    java.base,java.compiler,java.logging,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki \
     --output /min-jre --strip-debug --no-man-pages --no-header-files --compress=2
 
 # Stage 3 - build jdbcx
