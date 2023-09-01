@@ -86,4 +86,16 @@ public final class DefaultRow implements Row {
     public int size() {
         return size;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder("Row[");
+        for (int i = 0; i < size; i++) {
+            builder.append(fields.get(i).name()).append('=').append(values[i].asString()).append(',');
+        }
+        if (size > 0) {
+            builder.setLength(builder.length() - 1);
+        }
+        return builder.append("]@").append(hashCode()).toString();
+    }
 }

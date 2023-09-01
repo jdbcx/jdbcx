@@ -16,6 +16,7 @@
 package io.github.jdbcx;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 import java.util.List;
 
 import io.github.jdbcx.data.DefaultRow;
@@ -31,6 +32,8 @@ public interface Row extends Serializable {
             row = of(fields);
         } else if (value instanceof Row) {
             row = (Row) value;
+        } else if (value instanceof Iterable) {
+            row = of(fields, (Iterable<?>) value);
         } else if (value instanceof Value[]) {
             row = of(fields, (Value[]) value);
         } else if (value instanceof String[]) {
@@ -43,6 +46,18 @@ public interface Row extends Serializable {
             row = of(fields, new StringValue(value));
         }
         return row;
+    }
+
+    static Row of(List<Field> fields, Iterable<?> iterable) {
+        if (iterable == null) {
+            return new DefaultRow(fields);
+        }
+
+        List<Value> list = new LinkedList<>();
+        for (Object obj : iterable) {
+            list.add(new StringValue(obj));
+        }
+        return new DefaultRow(fields, list.toArray(new Value[0]));
     }
 
     static Row of(List<Field> fields, Object[] array) {
