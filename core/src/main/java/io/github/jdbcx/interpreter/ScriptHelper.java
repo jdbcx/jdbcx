@@ -23,7 +23,11 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -36,7 +40,10 @@ import java.util.concurrent.TimeoutException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.CommandLineExecutor;
 import io.github.jdbcx.executor.Stream;
@@ -44,6 +51,24 @@ import io.github.jdbcx.security.SslContextProvider;
 
 public final class ScriptHelper {
     private static final ScriptHelper instance = new ScriptHelper();
+
+    static List<Field> toList(Object[] fields) {
+        final int len;
+        if (fields == null || (len = fields.length) == 0) {
+            return Collections.emptyList();
+        }
+
+        List<Field> list = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            Object f = fields[i];
+            if (f instanceof Field) {
+                list.add((Field) f);
+            } else {
+                list.add(Field.of(f == null ? "null_field_" + i : f.toString()));
+            }
+        }
+        return list;
+    }
 
     public static ScriptHelper getInstance() {
         return instance;
@@ -215,6 +240,52 @@ public final class ScriptHelper {
                 // ignore
             }
         }
+    }
+
+    public Result<?> table(Object[] fields) {
+        return Result.of(toList(fields));
+    }
+
+    public Result<?> table(Object[] fields, Object[][] rows) {
+        List<Field> fieldsList = toList(fields);
+        if (fieldsList.isEmpty()) {
+            return Result.of(fieldsList);
+        }
+
+        final List<Row> list;
+        if (rows != null && rows.length > 0) {
+            list = new ArrayList<>(rows.length);
+            for (Object[] r : rows) {
+                list.add(Row.of(fieldsList, r));
+            }
+        } else {
+            list = Collections.emptyList();
+        }
+        return Result.of(fieldsList, list);
+    }
+
+    public Result<?> table(Object[] fields, Object row, Object... more) {
+        List<Field> fieldsList = toList(fields);
+        if (fieldsList.isEmpty()) {
+            return Result.of(fieldsList);
+        }
+
+        final List<Row> rows;
+        if (more != null && more.length > 0) {
+            rows = new ArrayList<>(more.length + 1);
+            rows.add(Row.of(fieldsList, row));
+            for (Object r : more) {
+                rows.add(Row.of(fieldsList, r));
+            }
+        } else if (row instanceof Iterable) {
+            rows = new LinkedList<>();
+            for (Object obj : (Iterable<?>) row) {
+                rows.add(Row.of(fieldsList, obj));
+            }
+        } else {
+            rows = Collections.singletonList(Row.of(fieldsList, row));
+        }
+        return Result.of(fieldsList, rows);
     }
 
     // TODO additional methods to simplify execution of sql, prql, script, and web

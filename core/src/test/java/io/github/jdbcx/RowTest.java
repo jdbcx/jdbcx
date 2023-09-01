@@ -15,22 +15,47 @@
  */
 package io.github.jdbcx;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.data.LongValue;
 import io.github.jdbcx.data.StringValue;
 
 public class RowTest {
     @Test(groups = "unit")
     public void testConstructor() {
-        Assert.assertEquals(Row.of((String) null).values().size(), 1);
-        Assert.assertEquals(Row.of((String) null).value(0).asString(), "");
+        Row r = Row.of((String) null);
+        Assert.assertEquals(r.values().size(), 1);
+        Assert.assertEquals(r.value(0).asString(), "");
 
-        Assert.assertEquals(Row.of(Collections.emptyList(), new String[] { "2", "1" }).size(), 0);
-        Assert.assertEquals(Row.of(Collections.emptyList(), new String[] { "2", "1" }).values().size(), 2);
+        r = Row.of((Long) null);
+        Assert.assertEquals(r.values().size(), 1);
+        Assert.assertEquals(r.value(0).asString(), "");
 
-        Assert.assertEquals(Row.of(Collections.emptyList(), new StringValue("3")).value(0).asString(), "3");
+        r = Row.of(Collections.emptyList(), new String[] { "2", "1" });
+        Assert.assertEquals(r.size(), 0);
+        Assert.assertEquals(r.value(0).asString(), "2");
+        Assert.assertEquals(r.value(1).asString(), "1");
+        Assert.assertEquals(r.values().size(), 2);
+
+        r = Row.of(Collections.emptyList(), Arrays.asList(1, 2));
+        Assert.assertEquals(r.size(), 0);
+        Assert.assertEquals(r.value(0).asString(), "1");
+        Assert.assertEquals(r.value(1).asString(), "2");
+        Assert.assertEquals(r.values().size(), 2);
+
+        r = Row.of(Collections.singletonList(Field.of("name")), new StringValue("3"));
+        Assert.assertEquals(r.size(), 1);
+        Assert.assertEquals(r.value(0).asString(), "3");
+        Assert.assertEquals(r.values().size(), 1);
+
+        r = Row.of(Collections.singletonList(Field.of("name")), new StringValue("3"), new LongValue(4L));
+        Assert.assertEquals(r.size(), 1);
+        Assert.assertEquals(r.value(0).asString(), "3");
+        Assert.assertEquals(r.value(1).asString(), "4");
+        Assert.assertEquals(r.values().size(), 2);
     }
 }

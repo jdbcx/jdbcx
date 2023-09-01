@@ -17,12 +17,16 @@ package io.github.jdbcx.interpreter;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Field;
+import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 
 public class ScriptHelperTest extends BaseIntegrationTest {
     private final ScriptHelper helper = ScriptHelper.getInstance();
@@ -45,5 +49,60 @@ public class ScriptHelperTest extends BaseIntegrationTest {
         Assert.assertEquals(helper.read("http://default:@" + address, "select 2\n"), "2\n");
         Assert.assertEquals(helper.read("http://" + address, "select 3\n",
                 Collections.singletonMap("X-ClickHouse-User", "default")), "3\n");
+    }
+
+    @Test(groups = { "unit" })
+    public void testTable() {
+        Result<?> result = helper.table(null);
+        Assert.assertEquals(result.fields(), Collections.emptyList());
+        Assert.assertEquals(result.rows(), Collections.emptyList());
+
+        result = helper.table(new Object[] { 1, null, 2 });
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("1"), Field.of("null_field_1"), Field.of("2")));
+        Assert.assertEquals(result.rows(), Collections.emptyList());
+
+        result = helper.table(new Object[] { "a", "b" }, new Object[] { 1, 2 });
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("a"), Field.of("b")));
+        int count = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), result.fields().size());
+            Assert.assertEquals(r.value(0).asInt(), 1);
+            Assert.assertEquals(r.value(1).asInt(), 2);
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+
+        result = helper.table(new Object[] { "a", "b" }, new Object[][] { { 1, 2 }, { 3, 4 } });
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("a"), Field.of("b")));
+        count = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), result.fields().size());
+            Assert.assertEquals(r.value(0).asInt(), count * 2 + 1);
+            Assert.assertEquals(r.value(1).asInt(), count * 2 + 2);
+            count++;
+        }
+        Assert.assertEquals(count, 2);
+
+        result = helper.table(new Object[] { "a", "b" }, Arrays.asList(1, 2), Arrays.asList(3, 4));
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("a"), Field.of("b")));
+        count = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), result.fields().size());
+            Assert.assertEquals(r.value(0).asInt(), count * 2 + 1);
+            Assert.assertEquals(r.value(1).asInt(), count * 2 + 2);
+            count++;
+        }
+        Assert.assertEquals(count, 2);
+
+        result = helper.table(new Object[] { "a", "b" }, Arrays.asList(Arrays.asList(1, 2), Arrays.asList(3, 4)));
+        Assert.assertEquals(result.fields(), Arrays.asList(Field.of("a"), Field.of("b")));
+        count = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), result.fields().size());
+            Assert.assertEquals(r.value(0).asInt(), count * 2 + 1);
+            Assert.assertEquals(r.value(1).asInt(), count * 2 + 2);
+            count++;
+        }
+        Assert.assertEquals(count, 2);
     }
 }
