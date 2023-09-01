@@ -67,7 +67,7 @@
     </distributionManagement>
 
     <properties>
-        <revision>0.3.0-SNAPSHOT</revision>
+        <revision>0.4.0-SNAPSHOT</revision>
         <project.current.year>2023</project.current.year>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -153,7 +153,7 @@
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
         <sonar.organization>jdbcx</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.projectVersion>0.3.0</sonar.projectVersion>
+        <sonar.projectVersion>0.4.0</sonar.projectVersion>
         <sonar.cpd.exclusions>
             **/*0*.java,**/value/*Value.java,**/value/array/*Value.java,**/stream/*Stream.java</sonar.cpd.exclusions>
     </properties>

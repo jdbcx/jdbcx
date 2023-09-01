@@ -20,12 +20,12 @@ FROM ubuntu:jammy
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
 
-ARG JDBCX_VERSION=0.3.0
+ARG JDBCX_VERSION=0.4.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
     JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
-    JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.3.0}
+    JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.4.0}
 
 # Labels
 LABEL os.dist=Ubuntu os.version=22.04 app.name="JDBCX" app.version="$JDBCX_VERSION"
