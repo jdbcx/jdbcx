@@ -17,11 +17,13 @@ package io.github.jdbcx.interpreter;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -51,6 +53,14 @@ import io.github.jdbcx.security.SslContextProvider;
 
 public final class ScriptHelper {
     private static final ScriptHelper instance = new ScriptHelper();
+
+    static final String ENCODER_JSON = "json";
+    static final String ENCODER_URL = "url";
+    static final String ENCODER_BASE64 = "base64";
+    static final String ENCODER_XML = "xml";
+
+    static final String CDATA_START = "<![CDATA[";
+    static final String CDATA_END = "]]>";
 
     static List<Field> toList(Object[] fields) {
         final int len;
@@ -106,6 +116,35 @@ public final class ScriptHelper {
             return Constants.EMPTY_STRING;
         }
         return Utils.escape(obj.toString(), '"');
+    }
+
+    public String encode(Object obj, String encoder) {
+        final String encoded;
+        switch (encoder) {
+            case ENCODER_BASE64:
+                encoded = Base64.getEncoder()
+                        .encodeToString(obj != null ? obj.toString().getBytes(Constants.DEFAULT_CHARSET) : new byte[0]);
+                break;
+            case ENCODER_JSON:
+                encoded = JsonHelper.encode(obj);
+                break;
+            case ENCODER_URL:
+                try {
+                    encoded = obj != null ? URLEncoder.encode(obj.toString(), Constants.DEFAULT_CHARSET.name())
+                            : Constants.EMPTY_STRING;
+                } catch (UnsupportedEncodingException e) {
+                    throw new IllegalArgumentException(e); // not going to happen
+                }
+                break;
+            case ENCODER_XML:
+                encoded = new StringBuilder(CDATA_START).append(obj != null ? obj.toString() : Constants.EMPTY_STRING)
+                        .append(CDATA_END).toString();
+                break;
+            default:
+                encoded = String.valueOf(obj);
+                break;
+        }
+        return encoded;
     }
 
     public String format(Object obj, Object... args) {
