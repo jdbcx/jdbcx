@@ -54,11 +54,16 @@ public class WebInterpreter extends AbstractInterpreter {
     public static final Option OPTION_URL_TEMPLATE = Option
             .of(new String[] { "url.template", "URL template", "${base.url}" });
     public static final Option OPTION_REQUEST_HEADERS = Option
-            .of(new String[] { "request.headers", "Comma separated key value pairs", "" });
+            .of(new String[] { "request.headers", "Comma separated key value pairs" });
     public static final Option OPTION_REQUEST_TEMPLATE = Option
-            .of(new String[] { "request.template", "Request template", "" });
+            .of(new String[] { "request.template", "Request template" });
+    public static final Option OPTION_REQUEST_ESCAPE_CHAR = Option
+            .of(new String[] { "request.escape.char", "The character that will be used for escaping." });
+    public static final Option OPTION_REQUEST_ESCAPE_TARGET = Option
+            .of(new String[] { "request.escape.target",
+                    "The target character that will be escaped in request." });
     public static final Option OPTION_REQUEST_TEMPLATE_FILE = Option
-            .of(new String[] { "request.template.file", "Request template file", "" });
+            .of(new String[] { "request.template.file", "Request template file" });
     public static final Option OPTION_AUTH_BASIC_USER = Option
             .of(new String[] { "auth.basic.user", "Username used for HTTP basic authentication" });
     public static final Option OPTION_AUTH_BASIC_PASSWORD = Option
@@ -69,8 +74,9 @@ public class WebInterpreter extends AbstractInterpreter {
     public static final List<Option> OPTIONS = Collections
             .unmodifiableList(
                     Arrays.asList(Option.EXEC_ERROR, OPTION_BASE_URL, OPTION_URL_TEMPLATE, OPTION_REQUEST_HEADERS,
-                            OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_TEMPLATE_FILE, WebExecutor.OPTION_CONNECT_TIMEOUT,
-                            WebExecutor.OPTION_PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT));
+                            OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_TEMPLATE_FILE, OPTION_REQUEST_ESCAPE_CHAR,
+                            OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT, WebExecutor.OPTION_PROXY,
+                            WebExecutor.OPTION_SOCKET_TIMEOUT));
 
     private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(
             Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),
@@ -100,23 +106,31 @@ public class WebInterpreter extends AbstractInterpreter {
         return headers;
     }
 
-    public WebInterpreter(QueryContext context, Properties config) {
-        super(context);
-
-        this.defaultHeaders = Collections.unmodifiableMap(getHeaders(config));
-        String template = OPTION_REQUEST_TEMPLATE.getValue(config);
+    static final String getRequestTemplate(Properties config, String defaultTemplate) {
+        String template = OPTION_REQUEST_TEMPLATE.getValue(config, defaultTemplate);
         if (Checker.isNullOrEmpty(template)) {
-            String file = Utils.normalizePath(OPTION_REQUEST_TEMPLATE_FILE.getValue(config)).trim();
+            String file = Utils
+                    .normalizePath(Utils.applyVariables(OPTION_REQUEST_TEMPLATE_FILE.getValue(config), config)).trim();
             if (!Checker.isNullOrEmpty(file)) {
                 try {
                     template = Stream.readAllAsString(new FileInputStream(file),
                             Charset.forName(Option.INPUT_CHARSET.getValue(config)));
+                    if (Checker.isNullOrEmpty(template)) {
+                        template = defaultTemplate;
+                    }
                 } catch (IOException e) {
                     throw new IllegalArgumentException(e);
                 }
             }
         }
-        this.defaultTemplate = template;
+        return template;
+    }
+
+    public WebInterpreter(QueryContext context, Properties config) {
+        super(context);
+
+        this.defaultHeaders = Collections.unmodifiableMap(getHeaders(config));
+        this.defaultTemplate = getRequestTemplate(config, Constants.EMPTY_STRING);
         this.defaultUrl = Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(config), config);
         this.executor = new WebExecutor(config);
     }
@@ -146,18 +160,21 @@ public class WebInterpreter extends AbstractInterpreter {
                 }
             }
 
-            String request = query;
-            final String method;
-            if (Checker.isNullOrBlank(request)) {
-                if (Checker.isNullOrEmpty(defaultTemplate)) {
-                    method = "GET";
-                } else {
-                    method = "POST";
-                    request = Utils.applyVariables(defaultTemplate, props);
-                }
+            final String request;
+            String template = getRequestTemplate(props, defaultTemplate);
+            if (Checker.isNullOrEmpty(template)) {
+                request = query;
             } else {
-                method = "POST";
+                Properties newProps = new Properties(props);
+                String escapeTarget = OPTION_REQUEST_ESCAPE_TARGET.getValue(props);
+                String escapeChar = OPTION_REQUEST_ESCAPE_CHAR.getValue(props);
+                newProps.setProperty(Constants.EMPTY_STRING,
+                        Checker.isNullOrEmpty(escapeTarget) || Checker.isNullOrEmpty(escapeChar) ? query
+                                : Utils.escape(query, escapeTarget.charAt(0), escapeChar.charAt(0)));
+                request = Utils.applyVariables(template, newProps);
             }
+
+            final String method = Checker.isNullOrEmpty(request) ? "GET" : "POST";
 
             if (executor.getDryRun(props)) {
                 return Result.of(dryRunFields, new Object[][] { { url, method, request,
@@ -169,8 +186,7 @@ public class WebInterpreter extends AbstractInterpreter {
             }
 
             input = executor.post(url, request, props, headers);
-            return Result.of(input,
-                    Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));
+            return process(request, input, props);
         } catch (SocketTimeoutException e) {
             return handleError(new TimeoutException(e.getMessage()), query, props, input);
         } catch (IOException e) {

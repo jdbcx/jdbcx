@@ -19,20 +19,20 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
-import io.github.jdbcx.Checker;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
-import io.github.jdbcx.interpreter.JdbcConnectionManager;
+import io.github.jdbcx.interpreter.ConfigManager;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
-public class SqlDriverExtension implements DriverExtension {
+public class DbDriverExtension implements DriverExtension {
     static final class ActivityListener extends AbstractActivityListener {
         ActivityListener(QueryContext context, Properties config, ClassLoader loader) {
             super(new JdbcInterpreter(context, config, loader), config);
@@ -41,58 +41,51 @@ public class SqlDriverExtension implements DriverExtension {
 
     private final ClassLoader loader;
 
-    public SqlDriverExtension() {
+    public DbDriverExtension() {
         ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
         this.loader = contextClassLoader != null ? contextClassLoader : getClass().getClassLoader();
     }
 
     @Override
     public List<String> getAliases() {
-        return Collections.singletonList("jdbc");
+        return Collections.unmodifiableList(Arrays.asList("sql", "jdbc"));
     }
 
     @Override
     public Connection getConnection(String url, Properties props) throws SQLException {
-        if (Checker.isNullOrBlank(url)) {
-            url = JdbcConnectionManager.OPTION_ID.getValue(props);
-        }
-        return Checker.isNullOrBlank(url) ? null : JdbcConnectionManager.getInstance().getConnection(url);
-    }
-
-    @Override
-    public List<String> getSchemas(String pattern, Properties props) {
-        return DriverExtension.getMatched(JdbcConnectionManager.getInstance().getAllConnectionIds(), pattern);
+        return JdbcInterpreter.getConnection(url, props, loader);
     }
 
     @Override
     public ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
             throws SQLException {
         List<String> ids = getSchemas(schemaPattern, props);
-        if (ids.isEmpty()) {
+        if (ids == null || ids.isEmpty()) {
             return null;
         }
 
         int len = ids.size();
         ResultSet[] arr = new ResultSet[len];
-        JdbcConnectionManager manager = JdbcConnectionManager.getInstance();
+        String category = getName();
+        ConfigManager manager = ConfigManager.getInstance();
         for (int i = 0; i < len; i++) {
             String id = ids.get(i);
             try {
-                Connection conn = manager.getConnection(id);
+                Properties newProps = new Properties(props);
+                newProps.putAll(manager.getConfig(category, id));
+                Connection conn = JdbcInterpreter.getConnection(null, newProps, loader);
                 String catalog = null;
                 String schema = null;
                 try { // NOSONAR
                     catalog = conn.getCatalog();
-                } catch (Exception e) {
-                    // ignore
+                } catch (Throwable e) { // NOSONAR
                 }
                 try { // NOSONAR
                     schema = conn.getSchema();
-                } catch (Exception e) {
-                    // ignore
+                } catch (Throwable t) { // NOSONAR
                 }
 
-                DatabaseMetaData metaData = manager.getConnection(id).getMetaData();
+                DatabaseMetaData metaData = conn.getMetaData();
                 arr[i] = metaData.getTables(catalog, schema, tableNamePattern, types);
             } catch (Exception e) {
                 // ignore

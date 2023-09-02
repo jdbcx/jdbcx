@@ -23,18 +23,18 @@ import java.util.Properties;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.QueryContext;
-import io.github.jdbcx.interpreter.VarsInterpreter;
+import io.github.jdbcx.interpreter.VarInterpreter;
 
-public class VarsDriverExtension implements DriverExtension {
+public class VarDriverExtension implements DriverExtension {
     static final class ActivityListener extends AbstractActivityListener {
         ActivityListener(QueryContext context, Properties config) {
-            super(new VarsInterpreter(context, config), config);
+            super(new VarInterpreter(context, config), config);
         }
     }
 
     @Override
     public List<String> getAliases() {
-        return Collections.singletonList("var");
+        return Collections.singletonList("vars");
     }
 
     @Override

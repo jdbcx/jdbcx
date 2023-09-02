@@ -34,14 +34,14 @@ public class QueryBuilderTest {
                 WrappedStatement stmt = conn.createStatement()) {
             Assert.assertTrue(conn instanceof WrappedConnection, "Should return wrapped connection");
             try (WrappedConnection c = (WrappedConnection) conn; QueryContext context = QueryContext.newContext()) {
-                ParsedQuery pq = QueryParser.parse("select {{ javascript: ['1','2','3']}}", props);
+                ParsedQuery pq = QueryParser.parse("select {{ rhino: ['1','2','3']}}", props);
                 QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(), Arrays.asList("select 1", "select 2", "select 3"));
             }
 
             try (WrappedConnection c = (WrappedConnection) conn; QueryContext context = QueryContext.newContext()) {
                 ParsedQuery pq = QueryParser
-                        .parse("select {{ javascript: ['1','2','3']}} + {{ javascript: ['4', '5']}}", props);
+                        .parse("select {{ rhino: ['1','2','3']}} + {{ rhino: ['4', '5']}}", props);
                 QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(), Arrays.asList("select 1 + 4", "select 2 + 4", "select 3 + 4",
                         "select 1 + 5", "select 2 + 5", "select 3 + 5"));
@@ -49,7 +49,7 @@ public class QueryBuilderTest {
 
             try (WrappedConnection c = (WrappedConnection) conn; QueryContext context = QueryContext.newContext()) {
                 ParsedQuery pq = QueryParser
-                        .parse("select {{ javascript: ['1','2','3']}} + {{ javascript: ['4', '5']}} as {{ script: 'a' }}",
+                        .parse("select {{ rhino: ['1','2','3']}} + {{ rhino: ['4', '5']}} as {{ rhino: 'a' }}",
                                 props);
                 QueryBuilder builder = new QueryBuilder(context, pq, conn.manager, stmt.queryResult);
                 Assert.assertEquals(builder.build(),

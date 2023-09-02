@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.driver;
 
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -24,6 +23,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
 
 /**
@@ -240,7 +240,37 @@ public final class QueryParser {
                     break;
                 }
             } else if (scope == 0) { // extension
-                if (Character.isJavaIdentifierPart(ch)) {
+                if (ch == '.') {
+                    extension = block.substring(beginIndex, i++).trim();
+                    beginIndex = i;
+                    int j = i;
+                    for (; j < len; j++) {
+                        ch = block.charAt(j);
+                        if (ch == '{') {
+                            j = block.indexOf('}', j + 1);
+                            if (j == -1) {
+                                throw new IllegalArgumentException("Unclosed brace found at " + j);
+                            }
+                            i = j + 1;
+                        } else if (ch != '-' && !Character.isJavaIdentifierPart(ch)) {
+                            i = j - 1;
+                            break;
+                        }
+                    }
+                    if (j > beginIndex) {
+                        Option.ID.setValue(props, block.substring(beginIndex, j));
+                    }
+                    beginIndex = j;
+                    scope = 1;
+                } else if (ch == '(') {
+                    extension = block.substring(beginIndex, i).trim();
+                    i = extractProperties(block, i + 1, len, props);
+                    scope = 1;
+                    beginIndex = i + 1;
+                } else if (ch == ':') {
+                    extension = block.substring(beginIndex, i).trim();
+                    scope = 2;
+                    beginIndex = i + 1;
                 } else if (Character.isWhitespace(ch)) {
                     int j = i + 1;
                     for (; j < len; j++) {
@@ -260,16 +290,7 @@ public final class QueryParser {
                         script = Constants.EMPTY_STRING;
                         break;
                     }
-                } else if (ch == '(') {
-                    extension = block.substring(beginIndex, i).trim();
-                    i = extractProperties(block, i + 1, len, props);
-                    scope = 1;
-                    beginIndex = i + 1;
-                } else if (ch == ':') {
-                    extension = block.substring(beginIndex, i).trim();
-                    scope = 2;
-                    beginIndex = i + 1;
-                } else {
+                } else if (!Character.isJavaIdentifierPart(ch)) {
                     break;
                 }
             } else if (scope == 1) { // properties
@@ -306,7 +327,7 @@ public final class QueryParser {
 
     static void addExecutableBlock(StringBuilder builder, String executableBlock, Properties vars, boolean output,
             List<String> parts, List<ExecutableBlock> blocks) {
-        parts.add(Utils.applyVariables(builder.toString(), vars));
+        parts.add(Utils.applyVariables(builder, vars));
         builder.setLength(0);
 
         int id = parts.size();
@@ -342,9 +363,10 @@ public final class QueryParser {
      */
     public static ParsedQuery parse(String query, Properties vars, char escapeChar) {
         if (Checker.isNullOrEmpty(query)) {
-            return new ParsedQuery(Collections.emptyList(), Collections.emptyList());
+            return ParsedQuery.EMPTY;
         } else if (escapeChar == '%' || escapeChar == '{' || escapeChar == '}') {
-            throw new IllegalArgumentException("Escape character cannot be percent or brace");
+            throw new IllegalArgumentException(
+                    "The escape character cannot be '%' or '{}' as these are reserved symbols. Please specify a different character.");
         }
 
         final int len = query.length();

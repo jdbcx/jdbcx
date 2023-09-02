@@ -19,12 +19,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeoutException;
@@ -73,6 +76,54 @@ public class ScriptExecutor extends AbstractExecutor {
         }
 
         return Collections.unmodifiableList(new ArrayList<>(langs));
+    }
+
+    public static List<String> getAllScriptEngines(ClassLoader loader) {
+        ScriptEngineManager manager = new ScriptEngineManager(
+                loader != null ? loader : ScriptExecutor.class.getClassLoader());
+        Set<String> engines = new LinkedHashSet<>();
+        for (ScriptEngineFactory factory : manager.getEngineFactories()) {
+            engines.add(factory.getEngineName());
+        }
+        for (ScriptEngineFactory factory : ServiceLoader.load(ScriptEngineFactory.class,
+                ScriptExecutor.class.getClassLoader())) {
+            engines.add(factory.getEngineName());
+        }
+
+        return Collections.unmodifiableList(new ArrayList<>(engines));
+    }
+
+    public static List<String[]> getMatchedScriptEngineInfo(ClassLoader loader, List<String> engineNames) {
+        ScriptEngineManager manager = new ScriptEngineManager(
+                loader != null ? loader : ScriptExecutor.class.getClassLoader());
+        Map<String, ScriptEngineFactory> factories = new LinkedHashMap<>();
+        for (ScriptEngineFactory factory : manager.getEngineFactories()) {
+            String name = factory.getEngineName();
+            if (engineNames.contains(name)) {
+                factories.put(name, factory);
+            }
+        }
+        for (ScriptEngineFactory factory : ServiceLoader.load(ScriptEngineFactory.class,
+                ScriptExecutor.class.getClassLoader())) {
+            String name = factory.getEngineName();
+            if (!engineNames.contains(name)) {
+                factories.put(name, factory);
+            }
+        }
+
+        List<String[]> list = new LinkedList<>();
+        // language, shortName, description
+        for (Entry<String, ScriptEngineFactory> e : factories.entrySet()) {
+            ScriptEngineFactory f = e.getValue();
+            for (String n : f.getNames()) {
+                list.add(new String[] { e.getKey(), n,
+                        new StringBuilder("Language=").append(f.getLanguageName()).append(' ')
+                                .append(f.getLanguageVersion()).append("; Engine=").append(f.getEngineName())
+                                .append(' ').append(f.getEngineVersion()).append("; SupportedExtensions=")
+                                .append(String.join(",", f.getExtensions())).toString() });
+            }
+        }
+        return Collections.unmodifiableList(new ArrayList<>(list));
     }
 
     private final String defaultLanguage;

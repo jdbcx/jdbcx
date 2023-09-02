@@ -237,7 +237,7 @@ public final class ConnectionManager implements AutoCloseable {
         final DriverExtension ext;
         if (Checker.isNullOrEmpty(name)) {
             ext = defaultExtension;
-        } else if (DriverExtension.getName(DefaultDriverExtension.getInstance()).equals(name)) {
+        } else if (DefaultDriverExtension.getInstance().getName().equals(name)) {
             ext = DefaultDriverExtension.getInstance();
         } else {
             ext = extMappings.get(name);

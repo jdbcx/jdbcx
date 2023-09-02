@@ -34,7 +34,7 @@ public class ScriptExecutorTest {
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ScriptExecutor("lua", new Properties(), new HashMap<>()));
 
-        Assert.assertEquals(new ScriptExecutor("javascript", null, null).getDefaultLanguage(), "javascript");
+        Assert.assertEquals(new ScriptExecutor("rhino", null, null).getDefaultLanguage(), "rhino");
         Assert.assertEquals(new ScriptExecutor("Groovy", new Properties(), new HashMap<>()).getDefaultLanguage(),
                 "Groovy");
     }
@@ -44,15 +44,15 @@ public class ScriptExecutorTest {
         Properties props = new Properties();
         Map<String, Object> vars = new HashMap<>();
         Map<String, Object> tmp = new HashMap<>();
-        Assert.assertEquals(new ScriptExecutor("javascript", props, vars).execute(null, props, tmp), "");
-        // Assert.assertEquals(new Scripting("javascript", props, vars).execute("1+1",
+        Assert.assertEquals(new ScriptExecutor("rhino", props, vars).execute(null, props, tmp), "");
+        // Assert.assertEquals(new Scripting("rhino", props, vars).execute("1+1",
         // tmp), 2L);
         Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute(null, props, tmp), "");
         Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("1+1", props, tmp), 2);
 
         vars.put("a", 5);
         tmp.put("b", 6L);
-        // Assert.assertEquals(new Scripting("javascript", props, vars).execute("a+b",
+        // Assert.assertEquals(new Scripting("rhino", props, vars).execute("a+b",
         // tmp), 11L);
         Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("a+b", props, tmp), 11L);
     }

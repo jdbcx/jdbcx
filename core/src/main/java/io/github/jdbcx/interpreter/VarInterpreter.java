@@ -26,12 +26,12 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 
-public class VarsInterpreter extends AbstractInterpreter {
+public class VarInterpreter extends AbstractInterpreter {
     static final Option OPTION_PREFIX = Option.of(new String[] { "prefix", "Prefix of variable", "" });
 
     private final String defaultPrefix;
 
-    public VarsInterpreter(QueryContext context, Properties config) {
+    public VarInterpreter(QueryContext context, Properties config) {
         super(context);
 
         defaultPrefix = OPTION_PREFIX.getValue(config);

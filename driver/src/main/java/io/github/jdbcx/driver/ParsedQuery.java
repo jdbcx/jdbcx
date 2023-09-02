@@ -22,6 +22,8 @@ import java.util.List;
 import io.github.jdbcx.Checker;
 
 public final class ParsedQuery {
+    static final ParsedQuery EMPTY = new ParsedQuery(Collections.emptyList(), Collections.emptyList());
+
     private final List<String> parts;
     private final List<ExecutableBlock> blocks;
 

@@ -88,7 +88,7 @@ public final class DefaultConnection extends DefaultResource implements Connecti
         this.readOnly = new AtomicBoolean();
         this.txIsoLevel = new AtomicInteger(TRANSACTION_READ_COMMITTED);
 
-        this.catalog = new AtomicReference<>(DriverExtension.getName(defaultExtension));
+        this.catalog = new AtomicReference<>(defaultExtension.getName());
         this.schema = new AtomicReference<>();
 
         this.manager = new ConnectionManager(extensions, defaultExtension, this, url, extensionProps, normalizedProps,
@@ -173,7 +173,7 @@ public final class DefaultConnection extends DefaultResource implements Connecti
     public void setCatalog(String catalog) throws SQLException {
         ensureOpen();
 
-        if (DriverExtension.getName(DefaultDriverExtension.getInstance()).equals(catalog)
+        if (DefaultDriverExtension.getInstance().getName().equals(catalog)
                 || manager.getExtension(catalog) != null) {
             this.catalog.set(catalog);
         }

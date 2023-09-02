@@ -27,9 +27,9 @@ import io.github.jdbcx.extension.PrqlDriverExtension;
 public class DriverExtensionTest {
     @Test(groups = { "unit" })
     public void testGetName() {
-        Assert.assertEquals(DriverExtension.getName(DefaultDriverExtension.getInstance()), "default");
-        Assert.assertEquals(DriverExtension.getName(new BlackholeDriverExtension()), "blackhole");
-        Assert.assertEquals(DriverExtension.getName(new PrqlDriverExtension()), "prql");
+        Assert.assertEquals(DefaultDriverExtension.getInstance().getName(), "default");
+        Assert.assertEquals(new BlackholeDriverExtension().getName(), "blackhole");
+        Assert.assertEquals(new PrqlDriverExtension().getName(), "prql");
     }
 
     @Test(groups = { "unit" })

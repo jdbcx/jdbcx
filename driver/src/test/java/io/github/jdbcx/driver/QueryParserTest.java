@@ -22,6 +22,8 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Option;
+
 public class QueryParserTest {
     @Test(groups = { "unit" })
     public void testExtractQuotedString() {
@@ -276,5 +278,76 @@ public class QueryParserTest {
                         Arrays.asList(
                                 new ExecutableBlock(1, "script", new Properties(), "helper.format('%s', '*')", true),
                                 new ExecutableBlock(3, "shell", new Properties(), "echo 'mytable' ", false))));
+    }
+
+    @Test(groups = { "unit" })
+    public void testParseDotNotation() {
+        Properties props = new Properties();
+        String str;
+
+        Assert.assertThrows(IllegalArgumentException.class, () -> QueryParser.parse("{{web.{}}", props));
+
+        Assert.assertEquals(QueryParser.parse(str = "{{web}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{web.}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web. }}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+
+        Assert.assertEquals(QueryParser.parse(str = "{{web.()}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{web.:}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{web.():}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{  web. (   ) :  }}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{  web. (   ) :  request body }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", props, "request body ", true))));
+
+        Properties expectedProps = new Properties();
+        Option.ID.setValue(expectedProps, "ch-dev");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web. ( id = 'ch-dev' ) }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web. (id = ch-dev): request }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "request ", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.ch-dev }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.ch-dev: my request }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "my request ", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.ch-dev1 (id=ch-dev): my request }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "my request ", true))));
+
+        Option.ID.setValue(expectedProps, "$");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.$: my request }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "my request ", true))));
+        Option.ID.setValue(expectedProps, "${}");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.${}}}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+        Option.ID.setValue(expectedProps, "${x}");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.${x}}}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+        Option.ID.setValue(expectedProps, "${x}x");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.${x}x}}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.${x}x }}", props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", expectedProps, "", true))));
+
+        Option.ID.setValue(expectedProps, "${x}");
+        Assert.assertEquals(QueryParser.parse(str = "{% var: x=ch-dev %}{{ web.${x}: my request }}", props),
+                new ParsedQuery(Arrays.asList("", "", "", ""),
+                        Arrays.asList(new ExecutableBlock(1, "var", props, "x=ch-dev ", false),
+                                new ExecutableBlock(3, "web", expectedProps, "my request ", true))));
     }
 }

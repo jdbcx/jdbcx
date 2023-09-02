@@ -273,7 +273,7 @@ final class DriverInfo {
         Set<DriverExtension> sets = new HashSet<>(extensions.get().values());
         for (DriverExtension ext : sets) {
             final String prefix = ext == DefaultDriverExtension.getInstance() ? Option.PROPERTY_PREFIX
-                    : new StringBuilder(Option.PROPERTY_PREFIX).append(DriverExtension.getName(ext))
+                    : new StringBuilder(Option.PROPERTY_PREFIX).append(ext.getName())
                             .append('.').toString();
             for (Option option : ext.getOptions(extensionProps)) {
                 list.add(create(prefix, option, extensionProps));

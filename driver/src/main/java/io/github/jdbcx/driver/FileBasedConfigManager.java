@@ -27,12 +27,12 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -50,24 +50,27 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
-import io.github.jdbcx.interpreter.JdbcConnectionManager;
+import io.github.jdbcx.interpreter.ConfigManager;
 
-public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
-    private static final Logger log = LoggerFactory.getLogger(FileBasedJdbcConnectionManager.class);
+public class FileBasedConfigManager extends ConfigManager {
+    private static final Logger log = LoggerFactory.getLogger(FileBasedConfigManager.class);
 
-    static final Option OPTION_DIRECTORY = Option.of(
-            new String[] { "directory", "Configuration directory without backslash suffix", "~/.jdbcx/connections" });
+    static final Option OPTION_DIRECTORY = Option
+            .of(new String[] { "directory", "Configuration directory without backslash suffix", Constants.CONF_DIR });
     static final String FILE_EXTENSION = ".properties";
 
     private final AtomicReference<Thread> monitor;
+
+    private final Set<String> categories;
     private final Map<String, Properties> config;
 
     private final AtomicReference<Path> path;
     private final AtomicBoolean managed;
 
-    public FileBasedJdbcConnectionManager() {
+    public FileBasedConfigManager() {
         monitor = new AtomicReference<>();
+
+        categories = Collections.synchronizedSet(new LinkedHashSet<>());
         config = new ConcurrentHashMap<>();
 
         path = new AtomicReference<>(Utils.getPath(OPTION_DIRECTORY.getDefaultValue(), true));
@@ -76,32 +79,47 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
 
     void load() {
         if (!managed.get()) {
+            categories.clear();
             config.clear();
             return;
         }
+
         Set<String> ids = new HashSet<>();
         try {
             File[] files = path.get().toFile().listFiles();
             if (files == null) {
                 config.clear();
-                log.debug("Emptyed all connections");
+                log.debug("Deleted configuration cache to force re-initialization.");
                 return;
             }
 
-            for (File file : files) {
-                if (file.isFile() && file.canRead()) {
-                    String fileName = file.getName();
-                    if (fileName.endsWith(FILE_EXTENSION)) {
-                        String id = fileName.substring(0, fileName.length() - FILE_EXTENSION.length());
-                        log.debug("Loading connection [%s] from [%s]...", id, file);
-                        try (Reader reader = new InputStreamReader(new FileInputStream(file),
-                                Constants.DEFAULT_CHARSET)) {
-                            Properties properties = new Properties();
-                            properties.load(reader);
-                            ids.add(id);
-                            config.put(id, properties);
-                        } catch (IOException e) {
-                            log.debug("Failed to load [%s]", file, e);
+            for (File f : files) {
+                if (f.isDirectory() && f.canRead()) {
+                    String category = f.getName();
+                    categories.add(category);
+                    for (File file : f.listFiles()) {
+                        if (file.isFile() && file.canRead()) {
+                            String fileName = file.getName();
+                            if (fileName.endsWith(FILE_EXTENSION)) {
+                                String id = fileName.substring(0, fileName.length() - FILE_EXTENSION.length());
+                                if (id.indexOf('.') != -1) {
+                                    log.debug("Skip configuration [%s] as dot is a reserved character", id);
+                                    continue;
+                                }
+
+                                String uid = getUniqueId(category, id);
+                                log.debug("Loading configuration [%s] from [%/s%s]...", id, category, file);
+                                try (Reader reader = new InputStreamReader(new FileInputStream(file),
+                                        Constants.DEFAULT_CHARSET)) {
+                                    Properties properties = new Properties();
+                                    properties.load(reader);
+                                    ids.add(uid);
+                                    config.put(uid, properties);
+                                    Option.ID.setJdbcxValue(properties, id);
+                                } catch (IOException e) {
+                                    log.debug("Failed to load configuration from [%s/%s]", category, file, e);
+                                }
+                            }
                         }
                     }
                 }
@@ -109,18 +127,20 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
 
             // now aliases
             for (Properties props : config.values()) {
+                String id = Option.ID.getJdbcxValue(props);
+                String category = id.split("/")[0];
                 for (String alias : OPTION_ALIAS.getJdbcxValue(props).split(",")) {
                     if (!Checker.isNullOrBlank(alias)) {
-                        String newId = alias.trim();
-                        Properties p = config.get(newId);
+                        String uid = getUniqueId(category, alias.trim());
+                        Properties p = config.get(uid);
                         String legacyId = Constants.EMPTY_STRING;
-                        if (p != null && config.containsKey(legacyId = OPTION_ID.getJdbcxValue(p))
-                                && legacyId.equals(newId)) {
-                            log.warn("Skip alias [%s] as it's been taken", newId);
+                        if (p != null && config.containsKey(legacyId = Option.ID.getJdbcxValue(p))
+                                && legacyId.equals(uid)) {
+                            log.warn("Skip alias [%s] as it's been taken", uid);
                         } else { // either new entry or an alias, which is safe to override
-                            ids.add(newId);
-                            config.put(newId, props);
-                            log.debug("Added alias [%s]", newId);
+                            ids.add(uid);
+                            config.put(uid, props);
+                            log.debug("Added alias [%s]", uid);
                         }
                     }
                 }
@@ -130,7 +150,7 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
                 Entry<String, Properties> entry = it.next();
                 if (!ids.contains(entry.getKey())) {
                     it.remove();
-                    log.debug("Removed connection [%s]", entry.getKey());
+                    log.debug("Removed configuration [%s]", entry.getKey());
                 }
             }
         } catch (Exception e) {
@@ -167,12 +187,35 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
     }
 
     @Override
-    public List<String> getAllConnectionIds() {
+    public List<String> getAllIDs(String category) {
         if (managed.get()) {
-            return Collections.unmodifiableList(new ArrayList<>(config.keySet()));
+            final List<String> matched;
+            if (Checker.isNullOrEmpty(category)) {
+                matched = Collections.unmodifiableList(new ArrayList<>(config.keySet()));
+            } else {
+                String prefix = new StringBuilder(category).append('/').toString();
+                List<String> list = new LinkedList<>();
+                for (String id : config.keySet()) {
+                    if (id.startsWith(prefix)) {
+                        list.add(id);
+                    }
+                }
+                matched = list.isEmpty() ? Collections.emptyList()
+                        : Collections.unmodifiableList(new ArrayList<>(list));
+            }
+            return matched;
         }
 
-        try (Stream<Path> s = Files.walk(path.get())) {
+        if (Checker.isNullOrEmpty(category)) {
+            return Collections.emptyList();
+        }
+
+        Path dir = path.get().resolve(category);
+        if (!Files.exists(dir)) {
+            return Collections.emptyList();
+        }
+
+        try (Stream<Path> s = Files.walk(dir)) {
             return s.filter(p -> p.getFileName().toString().endsWith(FILE_EXTENSION))
                     .map(p -> p.getFileName().toString().replace(FILE_EXTENSION, Constants.EMPTY_STRING))
                     .collect(Collectors.toList());
@@ -182,37 +225,36 @@ public class FileBasedJdbcConnectionManager extends JdbcConnectionManager {
     }
 
     @Override
-    public Connection getConnection(String id) throws SQLException {
+    public Properties getConfig(String category, String id) {
+        if (Checker.isNullOrEmpty(category) || Checker.isNullOrEmpty(id)) {
+            throw new IllegalArgumentException("Non-empty category and id are required");
+        }
+
         Properties props;
         if (managed.get()) {
-            props = config.get(id);
+            props = config.get(getUniqueId(category, id));
+            if (props != null) {
+                Properties newProps = new Properties();
+                newProps.putAll(props);
+                props = newProps;
+            }
         } else {
             props = new Properties();
-            Path p = path.get().resolve(id + FILE_EXTENSION);
-            log.debug("Loading connection [%s] from [%s]...", id, p);
+            Path p = path.get().resolve(getUniqueId(category, id).concat(FILE_EXTENSION));
+            log.debug("Loading configuration [%s] from [%s]...", id, p);
             try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
                 props.load(reader);
+                Option.ID.setJdbcxValue(props, id);
             } catch (IOException e) {
-                throw SqlExceptionUtils.clientError(e);
+                throw new IllegalArgumentException("Failed to load configuration", e);
             }
         }
+
         if (props == null) {
-            throw SqlExceptionUtils.clientError(Utils.format("Could not find connection [%s]", id));
+            throw new IllegalArgumentException(
+                    Utils.format("Could not find configuration [category=%s, id=%s]", category, id));
         }
-        final String cid = OPTION_ID.getJdbcxValue(props);
-        final String url = OPTION_URL.getJdbcxValue(props);
-
-        if (!cid.equals(id)) {
-            throw SqlExceptionUtils.clientError(Utils.format(
-                    "Inconsistent connection ID - it's [%s] in configuration file, but [%s] in request", cid, id));
-        } else if (Checker.isNullOrBlank(url)) {
-            throw SqlExceptionUtils.clientError("No connection URL found");
-        }
-
-        log.debug("Connecting to [%s]...", id);
-        Properties newProps = new Properties();
-        newProps.putAll(props);
-        return getConnection(url, newProps, null); // getConnection(url, new Properties(props));
+        return props;
     }
 
     @Override

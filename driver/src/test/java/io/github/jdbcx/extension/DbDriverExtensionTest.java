@@ -27,11 +27,11 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 
-public class SqlDriverExtensionTest extends BaseIntegrationTest {
+public class DbDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })
     public void testQuery() throws SQLException {
         final String address = getClickHouseServer();
-        try (Connection conn = DriverManager.getConnection("jdbcx:sql:ch://" + address);
+        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch://" + address);
                 Statement stmt = conn.createStatement()) {
             Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select 1"));
             try (ResultSet rs = stmt
@@ -43,7 +43,7 @@ public class SqlDriverExtensionTest extends BaseIntegrationTest {
         }
 
         Properties props = new Properties();
-        props.setProperty("jdbcx.sql.ch.server.address", address);
+        props.setProperty("jdbcx.db.ch.server.address", address);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + address, props);
                 Statement stmt = conn.createStatement()) {
             Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select {{sql(: select 1}}"));

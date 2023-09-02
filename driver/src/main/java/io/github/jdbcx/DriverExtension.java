@@ -16,9 +16,11 @@
 package io.github.jdbcx;
 
 import java.sql.Connection;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -28,11 +30,22 @@ import java.util.regex.Pattern;
 
 import io.github.jdbcx.driver.DefaultActivityListener;
 import io.github.jdbcx.driver.DefaultDriverExtension;
+import io.github.jdbcx.interpreter.ConfigManager;
 
 // driver extension:
 // query extension:
 // result extension
 public interface DriverExtension extends Comparable<DriverExtension> {
+    static final String DEFAULT_JDBC_TABLE_TYPE = "TABLE";
+
+    static final List<Field> JDBC_TABLE_FIELDS = Collections
+            .unmodifiableList(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
+                    Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
+                    Field.of("TABLE_TYPE", JDBCType.VARCHAR, false), Field.of("REMARKS", JDBCType.VARCHAR),
+                    Field.of("TYPE_CAT", JDBCType.VARCHAR), Field.of("TYPE_SCHEM", JDBCType.VARCHAR),
+                    Field.of("TYPE_NAME", JDBCType.VARCHAR), Field.of("SELF_REFERENCING_COL_NAME", JDBCType.VARCHAR),
+                    Field.of("REF_GENERATION", JDBCType.VARCHAR)));
+
     static List<String> getMatched(List<String> list, String pattern) {
         if (Utils.containsJdbcWildcard(pattern)) {
             String re = Utils.jdbcNamePatternToRe(pattern);
@@ -56,16 +69,6 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return list;
     }
 
-    static String getName(DriverExtension extension) {
-        if (extension == null) {
-            return Constants.EMPTY_STRING;
-        }
-
-        String className = extension.getClass().getSimpleName();
-        return className.substring(0, className.length() - DriverExtension.class.getSimpleName().length())
-                .toLowerCase(Locale.ROOT);
-    }
-
     static Properties extractProperties(DriverExtension extension, Properties properties) {
         if (properties == null) {
             properties = new Properties();
@@ -83,8 +86,7 @@ public interface DriverExtension extends Comparable<DriverExtension> {
 
         if (extension != null && extension != DefaultDriverExtension.getInstance()) {
             Properties p = extension.getDefaultConfig();
-            final String prefix = new StringBuilder(Option.PROPERTY_PREFIX).append(getName(extension))
-                    .append('.')
+            final String prefix = new StringBuilder(Option.PROPERTY_PREFIX).append(extension.getName()).append('.')
                     .toString();
             final int len = prefix.length();
             for (Entry<Object, Object> entry : properties.entrySet()) {
@@ -103,10 +105,6 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return props;
     }
 
-    default List<String> getAliases() {
-        return Collections.emptyList();
-    }
-
     /**
      * Creates a connection listener.
      *
@@ -119,11 +117,25 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return DefaultActivityListener.getInstance();
     }
 
+    default String getName() {
+        final String className = getClass().getSimpleName();
+        return className.substring(0, className.length() - DriverExtension.class.getSimpleName().length())
+                .toLowerCase(Locale.ROOT);
+    }
+
+    default List<String> getAliases() {
+        return Collections.emptyList();
+    }
+
+    default Properties getConfig(String id) {
+        return ConfigManager.getInstance().getConfig(getName(), id);
+    }
+
     /**
      * Gets configuration for this extension.
      *
-     * @param props optional connection properties to merge into the configuration,
-     *              could be null
+     * @param props optional properties to merge into the configuration, could be
+     *              null
      * @return non-null configuration for this extension
      */
     default Properties getConfig(Properties props) {
@@ -131,9 +143,24 @@ public interface DriverExtension extends Comparable<DriverExtension> {
             return getDefaultConfig();
         }
 
+        Properties defined = new Properties();
+        String id = Option.ID.getValue(props);
+        if (!Checker.isNullOrEmpty(id)) {
+            defined = getConfig(id);
+            String val = Option.ID.getValue(defined);
+            defined.putAll(props);
+            if (val != null) {
+                Option.ID.setValue(defined, val);
+            }
+        }
         Properties config = new Properties(props);
         for (Option option : getOptions(props)) {
-            config.setProperty(option.getName(), option.getDefaultValue());
+            String name = option.getName();
+            Object value = defined.remove(name);
+            config.put(name, value != null ? value : option.getDefaultValue());
+        }
+        if (!defined.isEmpty()) {
+            config.putAll(defined);
         }
         return config;
     }
@@ -143,7 +170,7 @@ public interface DriverExtension extends Comparable<DriverExtension> {
     }
 
     default List<String> getSchemas(String pattern, Properties props) {
-        return Collections.emptyList();
+        return DriverExtension.getMatched(ConfigManager.getInstance().getAllIDs(getName()), pattern);
     }
 
     default ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
@@ -232,6 +259,6 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         } else if (this == o || this.getClass() == o.getClass()) {
             return 0;
         }
-        return getName(this).compareTo(getName(o));
+        return getName().compareTo(o.getName());
     }
 }

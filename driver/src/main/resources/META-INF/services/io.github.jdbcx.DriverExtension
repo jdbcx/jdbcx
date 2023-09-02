@@ -1,11 +1,11 @@
 io.github.jdbcx.driver.HelpDriverExtension
 io.github.jdbcx.extension.BlackholeDriverExtension
 io.github.jdbcx.extension.CodeQLDriverExtension
+io.github.jdbcx.extension.DbDriverExtension
 io.github.jdbcx.extension.PromptDriverExtension
 io.github.jdbcx.extension.PrqlDriverExtension
 io.github.jdbcx.extension.ScriptDriverExtension
 io.github.jdbcx.extension.ShellDriverExtension
-io.github.jdbcx.extension.SqlDriverExtension
-io.github.jdbcx.extension.VarsDriverExtension
+io.github.jdbcx.extension.VarDriverExtension
 io.github.jdbcx.extension.VersionDriverExtension
 io.github.jdbcx.extension.WebDriverExtension
