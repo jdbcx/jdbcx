@@ -98,6 +98,12 @@ public class UtilsTest {
         Assert.assertEquals(Utils.applyVariables("${ }", map), "whitespace");
         Assert.assertEquals(Utils.applyVariables("${a}", map), "A");
         Assert.assertEquals(Utils.applyVariables("${a}${\\$\\{in\\\\ner\\}}${ }${}", map), "Aiwhitespace${}");
+
+        props.clear();
+        props.setProperty("", "nothing");
+        map.put("", "everything");
+        Assert.assertEquals(Utils.applyVariables("${}", props), "nothing");
+        Assert.assertEquals(Utils.applyVariables("${}", map), "everything");
     }
 
     @Test(groups = "unit")

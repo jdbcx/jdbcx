@@ -17,27 +17,27 @@ package io.github.jdbcx.driver;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.interpreter.JdbcConnectionManager;
+import io.github.jdbcx.interpreter.ConfigManager;
+import io.github.jdbcx.interpreter.JdbcInterpreter;
 
-public class FileBasedConnectionManagerTest {
+public class FileBasedConfigManagerTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertNotNull(JdbcConnectionManager.getInstance());
-        Assert.assertEquals(JdbcConnectionManager.getInstance().getClass(), FileBasedJdbcConnectionManager.class);
+        Assert.assertNotNull(ConfigManager.getInstance());
+        Assert.assertEquals(ConfigManager.getInstance().getClass(), FileBasedConfigManager.class);
     }
 
     @Test(groups = { "private" })
     public void testGetConnectionById() throws Exception {
-        JdbcConnectionManager manager = JdbcConnectionManager.getInstance();
+        ConfigManager manager = ConfigManager.getInstance();
         manager.reload(null);
-        try (Connection conn = manager.getConnection("ch-dev");
+        try (Connection conn = JdbcInterpreter.getConnection(null, manager.getConfig("db", "ch-dev"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 5")) {
             Assert.assertTrue(rs.next());
@@ -46,14 +46,15 @@ public class FileBasedConnectionManagerTest {
         }
 
         Properties props = new Properties();
-        JdbcConnectionManager.OPTION_CACHE.setJdbcxValue(props, "true");
-        FileBasedJdbcConnectionManager.OPTION_DIRECTORY.setJdbcxValue(props, "non-existent-directory");
+        ConfigManager.OPTION_CACHE.setJdbcxValue(props, "true");
+        FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, "non-existent-directory");
         manager.reload(props);
-        Assert.assertThrows(SQLException.class, () -> JdbcConnectionManager.getInstance().getConnection("ch-dev"));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> ConfigManager.getInstance().getConfig("db", "ch-dev"));
 
-        FileBasedJdbcConnectionManager.OPTION_DIRECTORY.setJdbcxValue(props, null); // reset to default
+        FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, null); // reset to default
         manager.reload(props);
-        try (Connection conn = manager.getConnection("ch-dev");
+        try (Connection conn = JdbcInterpreter.getConnection(null, manager.getConfig("db", "ch-dev"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 6")) {
             Assert.assertTrue(rs.next());

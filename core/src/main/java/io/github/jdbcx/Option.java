@@ -42,12 +42,11 @@ public final class Option implements Serializable {
         PROPERTY_PREFIX = PROPERTY_JDBCX + ".";
 
         if (Option.PROPERTY_JDBCX.isEmpty() || "jdbc".equals(Option.PROPERTY_JDBCX)) {
-            throw new IllegalStateException(
-                    Utils.format("The JDBCX prefix cannot be empty or \"jdbc\". "
-                            + "Please modify it to a different value using either "
-                            + "the system property \"%s\" or the environment variable \"%s\".",
-                            prefixOption.getSystemProperty(null),
-                            prefixOption.getEnvironmentVariable(null)));
+            throw new IllegalStateException(Utils.format(
+                    "The JDBCX prefix must be a non-empty string not equal to \"jdbc\". "
+                            + "Please change the prefix by setting \"%s\" system property or \"%s\" environment variable.",
+                    prefixOption.getSystemProperty(null),
+                    prefixOption.getEnvironmentVariable(null)));
         }
     }
 
@@ -72,6 +71,10 @@ public final class Option implements Serializable {
     public static final String ERROR_HANDLING_RETURN = "return";
 
     // most common options
+    public static final Option ID = Option.of(new String[] { "id", "ID for looking up configuration" });
+    public static final Option CLASSPATH = Option
+            .of(new String[] { "classpath", "Comma separated classpath for loading classes" });
+
     /**
      * Path to config property file.
      */

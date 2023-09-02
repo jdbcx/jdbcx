@@ -16,21 +16,26 @@
 package io.github.jdbcx.interpreter;
 
 import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ExpandedUrlClassLoader;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.JdbcExecutor;
+import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public class JdbcInterpreter extends AbstractInterpreter {
     public static final Option OPTION_CONFIG_PATH = Option
@@ -38,10 +43,11 @@ public class JdbcInterpreter extends AbstractInterpreter {
     public static final Option OPTION_PROPERTIES = Option
             .of(new String[] { "properties", "Comma separated connection properties" });
 
+    public static final Option OPTION_URL = Option.of(new String[] { "url", "JDBC connection URL" });
+    public static final Option OPTION_DRIVER = Option.of(new String[] { "driver", "JDBC driver class name" });
     public static final List<Option> OPTIONS = Collections
-            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, JdbcConnectionManager.OPTION_MANAGED,
-                    Option.EXEC_TIMEOUT.update().defaultValue("30000").build(), JdbcConnectionManager.OPTION_ID,
-                    JdbcConnectionManager.OPTION_URL, OPTION_PROPERTIES));
+            .unmodifiableList(Arrays.asList(Option.ID, Option.EXEC_ERROR, ConfigManager.OPTION_MANAGED,
+                    Option.EXEC_TIMEOUT.update().defaultValue("30000").build(), OPTION_URL, OPTION_PROPERTIES));
 
     private final String defaultConnectionId;
     private final String defaultConnectionUrl;
@@ -50,15 +56,79 @@ public class JdbcInterpreter extends AbstractInterpreter {
     private final ClassLoader loader;
     private final JdbcExecutor executor;
 
-    @SuppressWarnings("unchecked")
-    protected Connection getConnection(Properties props) throws SQLException {
-        final JdbcConnectionManager manager = JdbcConnectionManager.getInstance();
-        String str = JdbcConnectionManager.OPTION_ID.getValue(props, defaultConnectionId);
-        if (!Checker.isNullOrBlank(str)) {
-            return manager.getConnection(str);
+    static final Driver getDriver(String url, ClassLoader loader) throws SQLException {
+        if (loader == null) {
+            loader = JdbcInterpreter.class.getClassLoader();
         }
 
-        str = Utils.applyVariables(JdbcConnectionManager.OPTION_URL.getValue(props, defaultConnectionUrl), props);
+        Driver d = null;
+        for (Driver newDriver : Utils.load(Driver.class, loader)) {
+            if (newDriver.acceptsURL(url)) {
+                d = newDriver;
+                break;
+            }
+        }
+
+        if (d == null) {
+            d = DriverManager.getDriver(url);
+        }
+        return d;
+    }
+
+    public static final Connection getConnection(String url, Properties props, ClassLoader classLoader)
+            throws SQLException {
+        if (Checker.isNullOrBlank(url)) {
+            url = JdbcInterpreter.OPTION_URL.getJdbcxValue(props);
+        }
+        if (Checker.isNullOrBlank(url)) {
+            throw SqlExceptionUtils.clientError("No connection URL specified");
+        }
+
+        final String classpath = Option.CLASSPATH.getJdbcxValue(props);
+        final Properties filtered = new Properties();
+        for (Entry<Object, Object> entry : props.entrySet()) {
+            String key = (String) entry.getKey();
+            if (!key.startsWith(Option.PROPERTY_PREFIX)) {
+                filtered.put(key, entry.getValue());
+            }
+        }
+        if (Checker.isNullOrBlank(classpath)) {
+            return getDriver(url, classLoader).connect(url, filtered);
+        }
+
+        final String driver = OPTION_DRIVER.getJdbcxValue(props);
+        final ClassLoader loader = ExpandedUrlClassLoader.of(JdbcInterpreter.class, classpath.split(","));
+        if (Checker.isNullOrEmpty(driver)) {
+            for (Driver d : Utils.load(Driver.class, loader)) {
+                if (d.acceptsURL(url)) {
+                    return d.connect(url, filtered);
+                }
+            }
+            throw SqlExceptionUtils.clientError(
+                    Utils.format("No suitable driver found in classpath [%s]. Please specify \"%s\" and try again.",
+                            classpath, OPTION_DRIVER.getJdbcxName()));
+        } else {
+            Driver d = null;
+            try {
+                d = (Driver) loader.loadClass(driver).getConstructor().newInstance();
+                return d.connect(url, filtered);
+            } catch (Exception e) {
+                throw SqlExceptionUtils.clientError(
+                        d == null ? Utils.format("Failed to load driver [%s] due to: %s", driver, e.getMessage())
+                                : Utils.format("Failed to connect to [%s] due to: %s", url, e.getMessage()),
+                        e);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Connection getConnection(Properties props) throws SQLException {
+        String str = Option.ID.getValue(props, defaultConnectionId);
+        if (!Checker.isNullOrBlank(str)) {
+            return getConnection(null, props, loader);
+        }
+
+        str = Utils.applyVariables(OPTION_URL.getValue(props, defaultConnectionUrl), props);
         if (Checker.isNullOrBlank(str)) {
             // log.debug("Reuse current connection since ")
             Supplier<Connection> supplier = (Supplier<Connection>) getContext().get(QueryContext.KEY_CONNECTION);
@@ -69,27 +139,27 @@ public class JdbcInterpreter extends AbstractInterpreter {
             Map<String, String> map = Utils.toKeyValuePairs(
                     Utils.applyVariables(OPTION_PROPERTIES.getValue(props, defaultConnectionProps), props));
             Properties newProps = new Properties(); // new Properties(props);
-            String classpath = JdbcConnectionManager.OPTION_CLASSPATH.getValue(props);
+            String classpath = Option.CLASSPATH.getValue(props);
             if (!Checker.isNullOrBlank(classpath)) {
-                JdbcConnectionManager.OPTION_CLASSPATH.setJdbcxValue(newProps, classpath);
+                Option.CLASSPATH.setJdbcxValue(newProps, classpath);
             }
             newProps.putAll(map);
-            return manager.getConnection(str, newProps, loader);
+            return getConnection(str, newProps, loader);
         }
 
         throw new SQLException(Utils.format("Please specify either \"%s\" or \"%s\" to establish connection",
-                JdbcConnectionManager.OPTION_ID.getName(), JdbcConnectionManager.OPTION_URL.getName()));
+                Option.ID.getName(), OPTION_URL.getName()));
     }
 
     public JdbcInterpreter(QueryContext context, Properties config, ClassLoader loader) {
         super(context);
 
-        this.defaultConnectionId = JdbcConnectionManager.OPTION_ID.getValue(config);
-        this.defaultConnectionUrl = JdbcConnectionManager.OPTION_URL.getValue(config);
+        this.defaultConnectionId = Option.ID.getValue(config);
+        this.defaultConnectionUrl = OPTION_URL.getValue(config);
         this.defaultConnectionProps = OPTION_PROPERTIES.getValue(config);
 
-        if (Boolean.parseBoolean(JdbcConnectionManager.OPTION_MANAGED.getValue(config))) {
-            JdbcConnectionManager.getInstance().reload(config);
+        if (Boolean.parseBoolean(ConfigManager.OPTION_MANAGED.getValue(config))) {
+            ConfigManager.getInstance().reload(config);
         }
 
         this.loader = loader;

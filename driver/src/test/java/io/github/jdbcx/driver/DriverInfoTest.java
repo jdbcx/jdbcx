@@ -107,7 +107,7 @@ public class DriverInfoTest {
         for (Entry<String, DriverExtension> e : new DriverInfo(null, props).getExtensions().entrySet()) {
             Assert.assertEquals(DriverExtension.extractProperties(e.getValue(), props).getProperty("custom.classpath"),
                     "");
-            DriverInfo d = new DriverInfo(Utils.format("jdbcx:%s:", DriverExtension.getName(e.getValue())), props);
+            DriverInfo d = new DriverInfo(Utils.format("jdbcx:%s:", e.getValue().getName()), props);
             Assert.assertEquals(d.extensionProps.getProperty("custom.classpath"), "my-classpath");
             for (Entry<Object, Object> p : props.entrySet()) {
                 Assert.assertEquals(d.mergedInfo.get(p.getKey()), p.getValue());

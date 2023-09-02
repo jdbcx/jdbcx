@@ -144,7 +144,7 @@ public final class Utils {
     }
 
     public static String applyVariables(String template, UnaryOperator<String> applyFunc) {
-        if (template == null) {
+        if (template == null || template.isEmpty()) {
             return Constants.EMPTY_STRING;
         } else if (applyFunc == null || template.indexOf("${") == -1) {
             return template;
@@ -198,8 +198,22 @@ public final class Utils {
         return builder.toString();
     }
 
+    public static String applyVariables(CharSequence template, Map<String, String> variables) {
+        if (template == null || template.length() == 0) {
+            return Constants.EMPTY_STRING;
+        }
+        return applyVariables(template.toString(), variables == null || variables.isEmpty() ? null : variables::get);
+    }
+
     public static String applyVariables(String template, Map<String, String> variables) {
         return applyVariables(template, variables == null || variables.isEmpty() ? null : variables::get);
+    }
+
+    public static String applyVariables(CharSequence template, Properties variables) {
+        if (template == null || template.length() == 0) {
+            return Constants.EMPTY_STRING;
+        }
+        return applyVariables(template.toString(), variables == null ? null : variables::getProperty);
     }
 
     public static String applyVariables(String template, Properties variables) {

@@ -291,7 +291,7 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public boolean supportsMultipleTransactions() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -699,7 +699,7 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         int size = exts.size();
         String[] names = new String[size];
         for (int i = 0; i < size; i++) {
-            names[i] = DriverExtension.getName(exts.get(i));
+            names[i] = exts.get(i).getName();
         }
 
         return new ReadOnlyResultSet(null,
@@ -1031,11 +1031,11 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         for (int i = 0; i < len; i++) {
             DriverExtension ext = exts.get(i);
             List<String> schemas = ext.getSchemas(schemaPattern, conn.manager.extractProperties(ext));
-            if (schemas.isEmpty()) {
+            if (schemas == null || schemas.isEmpty()) {
                 arr[i] = null;
             } else {
                 int size = schemas.size();
-                String extName = DriverExtension.getName(ext);
+                String extName = ext.getName();
                 String[][] ss = new String[size][];
                 for (int j = 0; j < size; j++) {
                     ss[j] = new String[] { schemas.get(j), extName };

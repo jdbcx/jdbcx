@@ -41,6 +41,7 @@ import java.util.Map;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.Value;
 
 public final class ReadOnlyResultSet extends AbstractResultSet {
@@ -257,7 +258,11 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
-        return current().index(columnLabel) + 1;
+        int index = current().index(columnLabel);
+        if (index == -1) {
+            throw SqlExceptionUtils.clientError(Utils.format("Column \"%s\" not found", columnLabel));
+        }
+        return index + 1;
     }
 
     @Override

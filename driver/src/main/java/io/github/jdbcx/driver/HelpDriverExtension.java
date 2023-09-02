@@ -62,7 +62,7 @@ public final class HelpDriverExtension implements DriverExtension {
                 exts.remove(DefaultDriverExtension.getInstance());
                 List<Row> rows = new ArrayList<>(exts.size());
                 for (DriverExtension ext : exts) {
-                    rows.add(Row.of(summaryFields, new StringValue(DriverExtension.getName(ext)),
+                    rows.add(Row.of(summaryFields, new StringValue(ext.getName()),
                             new StringValue(String.join(",", ext.getAliases())),
                             new StringValue(ext.getDescription()),
                             new StringValue(ext.getUsage())));
