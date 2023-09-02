@@ -54,6 +54,10 @@ public final class JsonHelper {
         return j.getAsString();
     }
 
+    public static String encode(Object str) {
+        return gson.toJson(str);
+    }
+
     private JsonHelper() {
     }
 }

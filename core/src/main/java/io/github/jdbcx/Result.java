@@ -238,7 +238,7 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<Reader> of(List<Field> fields, Reader reader, String delimiter) {
-        return new Result<>(fields, Checker.nonNull(reader, InputStream.class.getSimpleName()), reader.getClass(),
+        return new Result<>(fields, Checker.nonNull(reader, Reader.class.getSimpleName()), reader.getClass(),
                 new IterableReader(fields, reader, delimiter));
     }
 

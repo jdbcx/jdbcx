@@ -161,7 +161,7 @@ public final class Option implements Serializable {
             .of(new String[] { "result.string.split", "Whether to split the query result string into a list.", "false",
                     "true" });
     public static final Option RESULT_STRING_SPLIT_CHAR = Option
-            .of(new String[] { "result.string.split",
+            .of(new String[] { "result.string.split.char",
                     "The delimiter character(s) to use when splitting the query result.", "\n" });
     public static final Option RESULT_STRING_SPLIT_BLANK = Option
             .of(new String[] { "result.string.line.blank",

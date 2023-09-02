@@ -57,6 +57,10 @@ public class WebInterpreter extends AbstractInterpreter {
             .of(new String[] { "request.headers", "Comma separated key value pairs" });
     public static final Option OPTION_REQUEST_TEMPLATE = Option
             .of(new String[] { "request.template", "Request template" });
+    public static final Option OPTION_REQUEST_ENCODE = Option
+            .of(new String[] { "request.encode", "Request body encoding", Constants.EMPTY_STRING,
+                    ScriptHelper.ENCODER_BASE64, ScriptHelper.ENCODER_JSON, ScriptHelper.ENCODER_URL,
+                    ScriptHelper.ENCODER_XML });
     public static final Option OPTION_REQUEST_ESCAPE_CHAR = Option
             .of(new String[] { "request.escape.char", "The character that will be used for escaping." });
     public static final Option OPTION_REQUEST_ESCAPE_TARGET = Option
@@ -166,11 +170,16 @@ public class WebInterpreter extends AbstractInterpreter {
                 request = query;
             } else {
                 Properties newProps = new Properties(props);
+                String encoder = OPTION_REQUEST_ENCODE.getValue(props);
                 String escapeTarget = OPTION_REQUEST_ESCAPE_TARGET.getValue(props);
                 String escapeChar = OPTION_REQUEST_ESCAPE_CHAR.getValue(props);
-                newProps.setProperty(Constants.EMPTY_STRING,
-                        Checker.isNullOrEmpty(escapeTarget) || Checker.isNullOrEmpty(escapeChar) ? query
-                                : Utils.escape(query, escapeTarget.charAt(0), escapeChar.charAt(0)));
+                if (!Checker.isNullOrEmpty(encoder)) {
+                    newProps.setProperty(Constants.EMPTY_STRING, ScriptHelper.getInstance().encode(query, encoder));
+                } else {
+                    newProps.setProperty(Constants.EMPTY_STRING,
+                            Checker.isNullOrEmpty(escapeTarget) || Checker.isNullOrEmpty(escapeChar) ? query
+                                    : Utils.escape(query, escapeTarget.charAt(0), escapeChar.charAt(0)));
+                }
                 request = Utils.applyVariables(template, newProps);
             }
 
@@ -181,11 +190,9 @@ public class WebInterpreter extends AbstractInterpreter {
                         executor.getConnectTimeout(props), executor.getSocketTimeout(props), headers, props } });
             } else if (Checker.isNullOrBlank(request)) {
                 input = executor.get(url, props, headers);
-                return Result.of(input, Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
-                        .getBytes(Option.OUTPUT_CHARSET.getValue(props)));
+            } else {
+                input = executor.post(url, request, props, headers);
             }
-
-            input = executor.post(url, request, props, headers);
             return process(request, input, props);
         } catch (SocketTimeoutException e) {
             return handleError(new TimeoutException(e.getMessage()), query, props, input);

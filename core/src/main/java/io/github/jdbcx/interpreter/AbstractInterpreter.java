@@ -18,10 +18,12 @@ package io.github.jdbcx.interpreter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.ErrorHandler;
 import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
@@ -49,19 +51,24 @@ abstract class AbstractInterpreter implements Interpreter {
     protected Result<?> process(String query, InputStream result, Properties props) {
         // TODO check data format first, before splitting it into lines
         final String path = Option.RESULT_JSON_PATH.getValue(props);
-        final String delimiter = Option.RESULT_STRING_SPLIT_CHAR.getValue(props);
-        if (!Checker.isNullOrBlank(path)) {
-            try {
-                return Result.of(JsonHelper.extract(Stream.readAllAsString(result), path));
-            } catch (IOException e) {
-                return handleError(e, query, props, result);
+        final String delimiter = Boolean.parseBoolean(Option.RESULT_STRING_SPLIT.getValue(props))
+                ? Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
+                : Constants.EMPTY_STRING;
+        try {
+            String text = Stream.readAllAsString(result);
+            boolean trim = Boolean.parseBoolean(Option.RESULT_STRING_TRIM.getValue(props));
+            if (!Checker.isNullOrBlank(path)) {
+                String extracted = JsonHelper.extract(text, path);
+                if (trim) {
+                    extracted = extracted.trim();
+                }
+                return Checker.isNullOrEmpty(delimiter) ? Result.of(extracted)
+                        : Result.of(new StringReader(extracted), delimiter);
+            } else if (Checker.isNullOrEmpty(delimiter)) {
+                return Result.of(trim ? text.trim() : text);
             }
-        } else if (Checker.isNullOrBlank(delimiter)) {
-            try {
-                return Result.of(Stream.readAllAsString(result));
-            } catch (IOException e) {
-                return handleError(e, query, props, result);
-            }
+        } catch (IOException e) {
+            return handleError(e, query, props, result);
         }
 
         return Result.of(result, delimiter.getBytes(Charset.forName(Option.OUTPUT_CHARSET.getValue(props))));
@@ -69,19 +76,24 @@ abstract class AbstractInterpreter implements Interpreter {
 
     protected Result<?> process(String query, Reader result, Properties props) {
         final String path = Option.RESULT_JSON_PATH.getValue(props);
-        final String delimiter = Option.RESULT_STRING_SPLIT_CHAR.getValue(props);
-        if (Checker.isNullOrBlank(path)) {
-            try {
-                return Result.of(JsonHelper.extract(Stream.readAllAsString(result), path));
-            } catch (IOException e) {
-                return handleError(e, query, props, result);
+        final String delimiter = Boolean.parseBoolean(Option.RESULT_STRING_SPLIT.getValue(props))
+                ? Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
+                : Constants.EMPTY_STRING;
+        try {
+            String text = Stream.readAllAsString(result);
+            boolean trim = Boolean.parseBoolean(Option.RESULT_STRING_TRIM.getValue(props));
+            if (Checker.isNullOrBlank(path)) {
+                String extracted = JsonHelper.extract(text, path);
+                if (trim) {
+                    extracted = extracted.trim();
+                }
+                return Checker.isNullOrEmpty(delimiter) ? Result.of(extracted)
+                        : Result.of(new StringReader(extracted), delimiter);
+            } else if (Checker.isNullOrEmpty(delimiter)) {
+                return Result.of(trim ? text.trim() : text);
             }
-        } else if (Checker.isNullOrBlank(delimiter)) {
-            try {
-                return Result.of(Stream.readAllAsString(result));
-            } catch (IOException e) {
-                return handleError(e, query, props, result);
-            }
+        } catch (IOException e) {
+            return handleError(e, query, props, result);
         }
 
         return Result.of(result, delimiter);
