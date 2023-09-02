@@ -18,6 +18,19 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.github.jdbcx</groupId>
+            <artifactId>jdbcx-core</artifactId>
+            <version>${revision}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.github.jdbcx</groupId>
+            <artifactId>jdbcx-driver</artifactId>
+            <version>${revision}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <scope>test</scope>
