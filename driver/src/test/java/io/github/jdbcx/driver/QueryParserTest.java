@@ -350,4 +350,25 @@ public class QueryParserTest {
                         Arrays.asList(new ExecutableBlock(1, "var", props, "x=ch-dev ", false),
                                 new ExecutableBlock(3, "web", expectedProps, "my request ", true))));
     }
+
+    @Test(groups = { "unit" })
+    public void testPrePostQueries() {
+        Properties props = new Properties();
+        String str;
+
+        Assert.assertEquals(QueryParser.parse(str = "{{web(pre.query=,post.query=)}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{web(pre.query='',post.query=\"\")}}", props),
+                new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+        Assert.assertEquals(QueryParser.parse(str = "{{web(pre.query=\"db: select 1\",post.query=\"\")}}", props),
+                new ParsedQuery(Arrays.asList("", "", ""),
+                        Arrays.asList(new ExecutableBlock(1, "db", props, "select 1", false),
+                                new ExecutableBlock(2, "web", props, "", true))));
+        Assert.assertEquals(
+                QueryParser.parse(str = "{{web(pre.query=\"db: select 1\",post.query='shell: select 2')}}", props),
+                new ParsedQuery(Arrays.asList("", "", "", ""),
+                        Arrays.asList(new ExecutableBlock(1, "db", props, "select 1", false),
+                                new ExecutableBlock(2, "web", props, "", true),
+                                new ExecutableBlock(3, "shell", props, "select 2", false))));
+    }
 }

@@ -88,7 +88,7 @@ public final class QueryBuilder {
             DriverExtension ext = manager.getExtension(block.getExtensionName());
             Properties p = manager.extractProperties(ext);
             properties[i] = p;
-            p.putAll(context.getCustomVariables());
+            p.putAll(context.getMergedVariables());
             for (Entry<Object, Object> entry : block.getProperties().entrySet()) {
                 String key = Utils.applyVariables(entry.getKey().toString(), p);
                 String val = Utils.applyVariables(entry.getValue().toString(), p);
@@ -103,7 +103,7 @@ public final class QueryBuilder {
                                 ConnectionManager.convertTo(ConnectionManager.describe(ext, p), ResultSet.class));
                         return Collections.emptyList();
                     }
-                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
+                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables()));
                     if (directQuery
                             && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
                         queryResult.setResultSet(ConnectionManager.convertTo(r, ResultSet.class));
@@ -116,8 +116,9 @@ public final class QueryBuilder {
                     results[i] = Result.of(block.getContent());
                 }
             } else {
-                cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables()));
-                results[i] = Result.of(Constants.EMPTY_STRING);
+                try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables()))) {
+                    results[i] = Result.of(Constants.EMPTY_STRING);
+                }
             }
         }
 
@@ -144,7 +145,7 @@ public final class QueryBuilder {
                 parts[blocks[i].getIndex()] = arr[i];
             }
             queries.add(
-                    Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), context.getCustomVariables()));
+                    Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), context.getVariables()));
         }
 
         return Collections.unmodifiableList(new ArrayList<>(queries));

@@ -20,9 +20,11 @@ import java.util.Properties;
 import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
@@ -37,12 +39,23 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
 
     @Override
     public Result<?> onQuery(String query) throws SQLException {
+        final String resultVar = Option.RESULT_VAR.getValue(config);
+        final boolean saveResult = !Checker.isNullOrEmpty(resultVar);
+        final String scope = saveResult ? Option.RESULT_SCOPE.getValue(config) : Constants.SCOPE_QUERY;
         try {
-            final Result<?> result = interpreter.interpret(query, config);
+            final QueryContext context = interpreter.getContext();
 
-            final String resultId = Option.RESULT_ID.getValue(config);
-            if (!Checker.isNullOrEmpty(resultId)) {
-                interpreter.getContext().putResult(resultId, result);
+            if (saveResult && Boolean.parseBoolean(Option.RESULT_REUSE.getValue(config))) {
+                String value = context.getVariableInScope(scope, resultVar);
+                if (value != null) {
+                    return Result.of(Constants.EMPTY_STRING);
+                }
+            }
+
+            final Result<?> result = interpreter.interpret(query, config);
+            if (saveResult) {
+                context.setVariableInScope(scope, resultVar, result.get(String.class));
+                return Result.of(Constants.EMPTY_STRING);
             }
             return result;
         } catch (CompletionException e) {

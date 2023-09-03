@@ -61,7 +61,7 @@ public class WebDriverExtensionTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement()) {
             try (ResultSet rs = stmt
                     .executeQuery("{% var: theme=\u5927\u8BED\u8A00\u6A21\u578B %}\n" +
-                            "{{ web.baidu-llm(result.string.split=true): \u751F\u6210\u4E00\u4EFD\u4E0E${theme}\u6709\u5173\u7684\u5341\u5927\u4E8B\u5B9E\u3001\u7EDF\u8BA1\u6570\u636E\u548C\u8D8B\u52BF\u7684\u6E05\u5355\uFF0C\u5305\u62EC\u5176\u6765\u6E90 }}\n")) {
+                            "{{ web.baidu-llm(pre.query=web.baidu-auth): \u751F\u6210\u4E00\u4EFD\u4E0E${theme}\u6709\u5173\u7684\u5341\u5927\u4E8B\u5B9E\u3001\u7EDF\u8BA1\u6570\u636E\u548C\u8D8B\u52BF\u7684\u6E05\u5355\uFF0C\u5305\u62EC\u5176\u6765\u6E90 }}\n")) {
                 int count = 0;
                 while (rs.next()) {
                     Assert.assertNotNull(rs.getString(1));

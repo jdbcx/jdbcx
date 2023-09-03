@@ -88,7 +88,7 @@ public class DefaultStatement extends DefaultResource implements Statement {
     protected List<String> handleResults(String query) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getCustomVariables());
+            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, queryResult);
             List<String> queries = builder.build();
             if (queries.isEmpty()) {

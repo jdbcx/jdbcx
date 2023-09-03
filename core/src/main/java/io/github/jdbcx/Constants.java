@@ -51,6 +51,10 @@ public final class Constants {
 
     public static final String RE_META_CHARS = "<([{\\^-=$!|]})?*+.>";
 
+    public static final String SCOPE_GLOBAL = "global";
+    public static final String SCOPE_THREAD = "thread";
+    public static final String SCOPE_QUERY = "query";
+
     public static final int DEFAULT_BUFFER_SIZE = 2048;
     public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 

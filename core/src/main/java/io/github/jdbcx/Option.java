@@ -75,6 +75,11 @@ public final class Option implements Serializable {
     public static final Option CLASSPATH = Option
             .of(new String[] { "classpath", "Comma separated classpath for loading classes" });
 
+    public static final Option PRE_QUERY = Option
+            .of(new String[] { "pre.query", "Query must execute before the current one" });
+    public static final Option POST_QUERY = Option
+            .of(new String[] { "post.query", "Query must execute right after the current one" });
+
     /**
      * Path to config property file.
      */
@@ -138,7 +143,14 @@ public final class Option implements Serializable {
 
     public static final Option RESULT_FORMAT = Option
             .of(new String[] { "result.format", "Output format to use for query results." });
-    public static final Option RESULT_ID = Option.of(new String[] { "result.id", "Unique ID of the query result." });
+    public static final Option RESULT_VAR = Option
+            .of(new String[] { "result.var", "Unique variable name of the query result." });
+    public static final Option RESULT_REUSE = Option
+            .of(new String[] { "result.reuse", "Whether to reuse the result, only works when result.var is specified.",
+                    "true", "false" });
+    public static final Option RESULT_SCOPE = Option
+            .of(new String[] { "result.scope", "Scope of the result, only works when result.var is specified.",
+                    Constants.SCOPE_QUERY, Constants.SCOPE_THREAD, Constants.SCOPE_GLOBAL });
     public static final Option RESULT_JSON_PATH = Option
             .of(new String[] { "result.json.path",
                     "The JSON path to extract a value from the JSON query results. The extracted value will be converted to a string and escaped." });

@@ -80,7 +80,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "unit" })
-    public void testCustomVariable() throws Exception {
+    public void testVariable() throws Exception {
         String url = "jdbcx:derby:memory:x;create=true";
         Properties props = new Properties();
         try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
