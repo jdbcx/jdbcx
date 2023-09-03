@@ -40,11 +40,14 @@ public class ScriptInterpreter extends AbstractInterpreter {
 
     public static final String KEY_VARS = "vars";
 
+    public static final Option OPTION_VAR_CONTEXT = Option
+            .of(new String[] { "var.context", "Variable name of the query context", "context" });
     public static final Option OPTION_VAR_HELPER = Option
             .of(new String[] { "var.helper", "Variable name of the helper object", "helper" });
 
     public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
-            OPTION_TIMEOUT, ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR, OPTION_VAR_HELPER));
+            OPTION_TIMEOUT, ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR, OPTION_VAR_CONTEXT,
+            OPTION_VAR_HELPER));
 
     private final ScriptExecutor executor;
 
@@ -54,10 +57,14 @@ public class ScriptInterpreter extends AbstractInterpreter {
 
         OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
 
+        String varContext = OPTION_VAR_CONTEXT.getValue(config);
         String varHelper = OPTION_VAR_HELPER.getValue(config);
 
         Object map = context.get(KEY_VARS);
         Map<String, Object> vars = map instanceof Map ? (Map<String, Object>) map : new HashMap<>();
+        if (!Checker.isNullOrEmpty(varContext)) {
+            vars.put(varContext, context);
+        }
         if (!Checker.isNullOrEmpty(varHelper)) {
             vars.put(varHelper, ScriptHelper.getInstance());
         }

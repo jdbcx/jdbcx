@@ -16,6 +16,8 @@
 package io.github.jdbcx;
 
 import java.io.Serializable;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,12 +29,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class QueryContext implements AutoCloseable, Serializable {
     private static final long serialVersionUID = -7227092865499240252L;
 
-    private static final ThreadLocal<QueryContext> instanceHolder = ThreadLocal.withInitial(QueryContext::newContext);
-
-    static final String PREFIX_RESULT = "result-";
-
     public static final String KEY_CONFIG = "config";
     public static final String KEY_CONNECTION = "connection";
+
+    private static final QueryContext globalContext = new QueryContext(Constants.SCOPE_GLOBAL, null);
+    private static final ThreadLocal<QueryContext> instanceHolder = ThreadLocal
+            .withInitial(QueryContext::newContextForThread);
+
+    static final QueryContext newContextForThread() {
+        return new QueryContext(Constants.SCOPE_THREAD, globalContext);
+    }
+
+    static boolean checkScope(String scope, QueryContext context) {
+        do {
+            if (context.scope.equals(scope)) {
+                return true;
+            }
+        } while ((context = context.parent) != null);
+        return false;
+    }
 
     /**
      * Creates a brand new query context.
@@ -40,7 +55,22 @@ public final class QueryContext implements AutoCloseable, Serializable {
      * @return non-null new query context
      */
     public static final QueryContext newContext() {
-        return new QueryContext();
+        return newContext(null, null);
+    }
+
+    public static final QueryContext newContext(String scope, QueryContext parent) {
+        if (scope == null) {
+            scope = Constants.SCOPE_QUERY;
+        }
+        if (parent == null) {
+            parent = globalContext;
+        }
+        if (checkScope(scope, parent)) {
+            throw new IllegalArgumentException(
+                    Utils.format("Scope \"%s\" has been taken by one of the parent context", scope));
+        }
+
+        return new QueryContext(scope, parent);
     }
 
     /**
@@ -83,11 +113,33 @@ public final class QueryContext implements AutoCloseable, Serializable {
         instanceHolder.remove();
     }
 
-    private final Properties customVars;
+    private final String scope;
+    private final QueryContext parent;
     private final transient Map<String, Object> userObjs;
+    private final Properties vars;
 
-    protected QueryContext() {
-        this.customVars = new Properties();
+    protected List<QueryContext> getChainedContext(boolean currentIsFirst) {
+        LinkedList<QueryContext> list = new LinkedList<>();
+        QueryContext context = this;
+        do {
+            if (currentIsFirst) {
+                list.addLast(context);
+            } else {
+                list.addFirst(context);
+            }
+        } while ((context = context.parent) != null);
+        return list;
+    }
+
+    protected QueryContext(String scope, QueryContext parent) {
+        this.scope = scope;
+        if (parent != null) {
+            this.parent = parent;
+            this.vars = new Properties(parent.vars);
+        } else {
+            this.parent = null;
+            this.vars = new Properties();
+        }
         this.userObjs = new ConcurrentHashMap<>();
     }
 
@@ -103,25 +155,76 @@ public final class QueryContext implements AutoCloseable, Serializable {
         return this.userObjs.put(key, value);
     }
 
-    public boolean hasCustomVariable() {
-        return customVars.size() > 0;
+    public QueryContext getParent() {
+        return parent;
     }
 
-    public Properties getCustomVariables() {
-        return customVars;
+    public String getScope() {
+        return scope;
     }
 
-    public Object getResult(String resultId) {
-        return get(PREFIX_RESULT.concat(resultId));
+    public boolean hasVariable() {
+        return vars.size() > 0 || (parent != null && parent.hasVariable());
     }
 
-    public Object putResult(String resultId, Object rawResult) {
-        return put(PREFIX_RESULT.concat(resultId), rawResult);
+    public Properties getVariables() {
+        return new Properties(vars);
+    }
+
+    public Properties getMergedVariables() {
+        Properties props = new Properties();
+        for (QueryContext context : getChainedContext(false)) {
+            props.putAll(context.vars);
+        }
+        return props;
+    }
+
+    public void setVariable(String name, String value) {
+        vars.setProperty(name, value);
+    }
+
+    public void removeVariable(String name) {
+        vars.remove(name);
+    }
+
+    @SuppressWarnings("resource")
+    public void setVariableInScope(String scope, String name, String value) {
+        QueryContext context = this;
+        do {
+            if (context.scope.equals(scope)) {
+                context.vars.setProperty(name, value);
+                return;
+            }
+        } while ((context = context.parent) != null);
+        throw new IllegalArgumentException(Utils.format("Unknown scope \"\"", scope));
+    }
+
+    public String getVariable(String name) {
+        return vars.getProperty(name);
+    }
+
+    public String getVariable(String name, String defaultValue) {
+        return vars.getProperty(name, defaultValue);
+    }
+
+    public String getVariableInScope(String scope, String name) {
+        return getVariableInScope(scope, name, null);
+    }
+
+    @SuppressWarnings("resource")
+    public String getVariableInScope(String scope, String name, String defaultValue) {
+        QueryContext context = this;
+        do {
+            if (context.scope.equals(scope)) {
+                return context.vars.getProperty(name, defaultValue);
+            }
+        } while ((context = context.parent) != null);
+        throw new IllegalArgumentException(Utils.format("Unknown scope \"\"", scope));
     }
 
     @Override
     public void close() {
-        this.customVars.clear();
         this.userObjs.clear();
+        this.vars.clear();
     }
 }

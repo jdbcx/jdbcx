@@ -41,14 +41,16 @@ public class VarInterpreter extends AbstractInterpreter {
     public Result<String> interpret(String query, Properties props) {
         try {
             if (!Checker.isNullOrBlank(query)) {
-                final Properties conf = getContext().getCustomVariables();
+                final QueryContext context = getContext();
                 final String prefix = OPTION_PREFIX.getValue(props, defaultPrefix);
                 if (Checker.isNullOrEmpty(prefix)) {
-                    conf.putAll(Utils.toKeyValuePairs(query));
+                    for (Entry<String, String> entry : Utils.toKeyValuePairs(query).entrySet()) {
+                        context.setVariable(entry.getKey(), entry.getValue());
+                    }
                 } else {
                     Map<String, String> map = Utils.toKeyValuePairs(query);
                     for (Entry<String, String> entry : map.entrySet()) {
-                        conf.setProperty(prefix.concat(entry.getKey()), entry.getValue());
+                        context.setVariable(prefix.concat(entry.getKey()), entry.getValue());
                     }
                 }
             }

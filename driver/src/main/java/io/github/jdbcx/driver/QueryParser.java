@@ -260,6 +260,9 @@ public final class QueryParser {
                     if (j > beginIndex) {
                         Option.ID.setValue(props, block.substring(beginIndex, j));
                     }
+                    if (j >= len) {
+                        i = j;
+                    }
                     beginIndex = j;
                     scope = 1;
                 } else if (ch == '(') {
@@ -325,19 +328,38 @@ public final class QueryParser {
         return new String[] { extension, script };
     }
 
-    static void addExecutableBlock(StringBuilder builder, String executableBlock, Properties vars, boolean output,
-            List<String> parts, List<ExecutableBlock> blocks) {
-        parts.add(Utils.applyVariables(builder, vars));
-        builder.setLength(0);
-
-        int id = parts.size();
+    static ExecutableBlock parseDependentExecutableBlock(int id, String executableBlock, Properties vars) {
         Properties props = new Properties();
         if (vars != null) {
             props.putAll(vars);
         }
         String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, vars), props);
-        parts.add(Constants.EMPTY_STRING); // placeholder
-        blocks.add(new ExecutableBlock(id, parsed[0], props, parsed[1], output));
+        return new ExecutableBlock(id, parsed[0], props, parsed[1], false);
+    }
+
+    static void addExecutableBlock(StringBuilder builder, String executableBlock, Properties vars, boolean output,
+            List<String> parts, List<ExecutableBlock> blocks) {
+        parts.add(Utils.applyVariables(builder, vars));
+        builder.setLength(0);
+
+        Properties props = new Properties();
+        if (vars != null) {
+            props.putAll(vars);
+        }
+
+        String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, vars), props);
+        String preQuery = (String) props.remove(Option.PRE_QUERY.getName());
+        String postQuery = (String) props.remove(Option.POST_QUERY.getName());
+        if (!Checker.isNullOrEmpty(preQuery)) {
+            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, vars));
+            parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
+        }
+        blocks.add(new ExecutableBlock(parts.size(), parsed[0], props, parsed[1], output));
+        parts.add(Constants.EMPTY_STRING); // placeholder of current query
+        if (!Checker.isNullOrEmpty(postQuery)) {
+            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, vars));
+            parts.add(Constants.EMPTY_STRING); // placeholder of post-query
+        }
     }
 
     /**

@@ -74,7 +74,7 @@ public class WrappedConnection implements Connection {
     protected List<String> handleResults(String query, WrappedStatement stmt) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getCustomVariables());
+            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, stmt.queryResult);
             List<String> queries = builder.build();
             if (queries.isEmpty()) {
@@ -120,7 +120,7 @@ public class WrappedConnection implements Connection {
 
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getCustomVariables());
+            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
             final String[] parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
             DriverExtension defaultExtension = manager.getDefaultExtension();
             Properties props = manager.getExtensionProperties();
@@ -138,7 +138,7 @@ public class WrappedConnection implements Connection {
 
                 Properties p = new Properties(
                         ext == defaultExtension ? props : DriverExtension.extractProperties(ext, originalProps));
-                p.putAll(context.getCustomVariables());
+                p.putAll(context.getMergedVariables());
                 for (Entry<Object, Object> entry : block.getProperties().entrySet()) {
                     String key = Utils.applyVariables(entry.getKey().toString(), p);
                     String val = Utils.applyVariables(entry.getValue().toString(), p);
@@ -148,7 +148,7 @@ public class WrappedConnection implements Connection {
                 if (block.hasOutput()) {
                     try {
                         parts[block.getIndex()] = ConnectionManager.normalize(ConnectionManager.convertTo(
-                                cl.onQuery(Utils.applyVariables(block.getContent(), context.getCustomVariables())),
+                                cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables())),
                                 String.class), p);
                     } catch (SQLWarning e) {
                         ref.set(w = SqlExceptionUtils.consolidate(w, e));
@@ -160,7 +160,7 @@ public class WrappedConnection implements Connection {
             }
 
             final String substitutedQuery = Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts),
-                    context.getCustomVariables());
+                    context.getVariables());
             log.debug("Original Query: [%s]\r\nSubstituted Query: [%s]", query, substitutedQuery);
             return ConnectionManager.convertTo(manager.createDefaultListener(context).onQuery(substitutedQuery),
                     String.class);
