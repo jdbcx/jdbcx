@@ -15,6 +15,11 @@
  */
 package io.github.jdbcx;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -25,6 +30,35 @@ import io.github.jdbcx.extension.BlackholeDriverExtension;
 import io.github.jdbcx.extension.PrqlDriverExtension;
 
 public class DriverExtensionTest {
+    static final class TestDriverExtension implements DriverExtension {
+        private final Map<String, Properties> config;
+        private final List<Option> defaultOptions;
+
+        TestDriverExtension(Map<String, Properties> config, Option... options) {
+            this.config = new HashMap<>();
+            if (config != null) {
+                this.config.putAll(config);
+            }
+            this.defaultOptions = Collections.unmodifiableList(Arrays.asList(options));
+        }
+
+        @Override
+        public Properties getConfig(String id) {
+            Properties props = new Properties();
+            Properties defined = config.get(id);
+            if (defined != null) {
+                props.putAll(defined);
+            }
+            Option.ID.setValue(props, id);
+            return props;
+        }
+
+        @Override
+        public List<Option> getDefaultOptions() {
+            return defaultOptions;
+        }
+    }
+
     @Test(groups = { "unit" })
     public void testGetName() {
         Assert.assertEquals(DefaultDriverExtension.getInstance().getName(), "default");
@@ -55,5 +89,32 @@ public class DriverExtensionTest {
         expected.putAll(ext.getDefaultConfig());
         expected.setProperty("cli.path", "/path/to/prqlc");
         Assert.assertEquals(DriverExtension.extractProperties(ext, props), expected);
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetConfig() {
+        Properties config = new Properties();
+        config.setProperty("x1", "y1");
+        TestDriverExtension test = new TestDriverExtension(Collections.singletonMap("x", config),
+                Option.of(new String[] { "x1", "", "y1", "y11" }), Option.of(new String[] { "x2", "" }));
+
+        Properties props = new Properties();
+        Option.ID.setValue(props, "x");
+
+        Properties expected = new Properties();
+        expected.setProperty("id", "x");
+        expected.setProperty("x1", "y1");
+        expected.setProperty("x2", "");
+        Assert.assertEquals(test.getConfig(props), expected);
+
+        test = new TestDriverExtension(Collections.singletonMap("x", config),
+                Option.of(new String[] { "x1", "" }), Option.of(new String[] { "x2", "", "y2" }));
+        expected.setProperty("x2", "y2");
+        Assert.assertEquals(test.getConfig(props), expected);
+
+        Option.ID.setValue(props, "y");
+        expected.setProperty("id", "y");
+        expected.setProperty("x1", "");
+        Assert.assertEquals(test.getConfig(props), expected);
     }
 }

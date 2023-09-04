@@ -127,6 +127,10 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return Collections.emptyList();
     }
 
+    default boolean hasConfig(String id) {
+        return ConfigManager.getInstance().hasConfig(getName(), id);
+    }
+
     default Properties getConfig(String id) {
         return ConfigManager.getInstance().getConfig(getName(), id);
     }
@@ -147,11 +151,6 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         String id = Option.ID.getValue(props);
         if (!Checker.isNullOrEmpty(id)) {
             defined = getConfig(id);
-            String val = Option.ID.getValue(defined);
-            defined.putAll(props);
-            if (val != null) {
-                Option.ID.setValue(defined, val);
-            }
         }
         Properties config = new Properties(props);
         for (Option option : getOptions(props)) {

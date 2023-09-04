@@ -225,6 +225,14 @@ public class FileBasedConfigManager extends ConfigManager {
     }
 
     @Override
+    public boolean hasConfig(String category, String id) {
+        final String uniqueId = getUniqueId(category, id);
+
+        return managed.get() ? config.containsKey(uniqueId)
+                : Files.exists(path.get().resolve(uniqueId.concat(FILE_EXTENSION)));
+    }
+
+    @Override
     public Properties getConfig(String category, String id) {
         if (Checker.isNullOrEmpty(category) || Checker.isNullOrEmpty(id)) {
             throw new IllegalArgumentException("Non-empty category and id are required");
@@ -244,7 +252,10 @@ public class FileBasedConfigManager extends ConfigManager {
             log.debug("Loading configuration [%s] from [%s]...", id, p);
             try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
                 props.load(reader);
-                Option.ID.setJdbcxValue(props, id);
+                props.remove(Option.ID.getJdbcxName());
+                if (props.getProperty(Option.ID.getName()) != null) {
+                    Option.ID.setValue(props, id);
+                }
             } catch (IOException e) {
                 throw new IllegalArgumentException("Failed to load configuration", e);
             }

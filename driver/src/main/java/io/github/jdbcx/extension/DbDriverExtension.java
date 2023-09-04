@@ -53,7 +53,9 @@ public class DbDriverExtension implements DriverExtension {
 
     @Override
     public Connection getConnection(String url, Properties props) throws SQLException {
-        return JdbcInterpreter.getConnection(url, props, loader);
+        return hasConfig(url)
+                ? JdbcInterpreter.getConnectionByConfig(getConfig(url), loader)
+                : JdbcInterpreter.getConnectionByUrl(url, props, loader);
     }
 
     @Override
@@ -73,7 +75,7 @@ public class DbDriverExtension implements DriverExtension {
             try {
                 Properties newProps = new Properties(props);
                 newProps.putAll(manager.getConfig(category, id));
-                Connection conn = JdbcInterpreter.getConnection(null, newProps, loader);
+                Connection conn = JdbcInterpreter.getConnectionByUrl(null, newProps, loader);
                 String catalog = null;
                 String schema = null;
                 try { // NOSONAR

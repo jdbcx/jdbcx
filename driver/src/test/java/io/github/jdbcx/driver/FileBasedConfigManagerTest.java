@@ -37,7 +37,7 @@ public class FileBasedConfigManagerTest {
     public void testGetConnectionById() throws Exception {
         ConfigManager manager = ConfigManager.getInstance();
         manager.reload(null);
-        try (Connection conn = JdbcInterpreter.getConnection(null, manager.getConfig("db", "ch-dev"), null);
+        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "ch-dev"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 5")) {
             Assert.assertTrue(rs.next());
@@ -54,7 +54,7 @@ public class FileBasedConfigManagerTest {
 
         FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, null); // reset to default
         manager.reload(props);
-        try (Connection conn = JdbcInterpreter.getConnection(null, manager.getConfig("db", "ch-dev"), null);
+        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "ch-dev"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 6")) {
             Assert.assertTrue(rs.next());
