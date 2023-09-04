@@ -8,6 +8,93 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 
 ![image](https://user-images.githubusercontent.com/4270380/257034477-a5e1fe1a-bb1c-4478-addc-43fbdf4e4d07.png)
 
+
+## Features
+<table>
+<tr>
+<td> Feature </td> <td> Examples </td>
+</tr>
+<tr>
+<td> Chained query </td>
+<td>
+
+```sql
+-- check out ~/.jdbcx/web/baidu-*.properties for details
+{{ web.baidu-llm(pre.query=web.baidu-auth): what's your name? }}
+```
+
+</td>
+</tr>
+<tr>
+<td> Dynamic query </td>
+<td>
+
+```sql
+-- https://clickhouse.com/docs/en/sql-reference/aggregate-functions/parametric-functions#retention
+SELECT
+    uid,
+    retention({{ script: "date='" + ['2020-01-01','2020-01-02','2020-01-03'].join("',date='") + "'" }}) AS r
+FROM retention_test
+WHERE date IN ({{ script: "'" + ['2020-01-03','2020-01-02','2020-01-01'].join("','") + "'" }})
+GROUP BY uid
+ORDER BY uid ASC
+```
+
+</td>
+</tr>
+<tr>
+<td> Multi-language query </td>
+<td>
+
+```sql
+{% var: num=3 %}
+select {{ script: ${num} - 2 }} one,
+    {{ shell: echo 2 }} two,
+    {{ db.ch-play: select ${num} }} three
+```
+
+</td>
+</tr>
+<tr>
+<td> Query substitution </td>
+<td>
+
+```sql
+{% var: func=toYear, sdate=2023-01-01 %}
+SELECT ${func}(create_date) AS d, count(1) AS c
+FROM my_table
+WHERE create_date >= '${sdate}'
+GROUP BY d
+```
+
+</td>
+</tr>
+<tr>
+<td> Scripting </td>
+<td>
+
+```sql
+-- runtime inspection
+{{ script: helper.table(
+  // fields
+  ['connection_class_loader', 'current_class_loader', 'context_class_loader'],
+  // rows
+  [
+    [
+	  Packages.io.github.jdbcx.WrappedDriver.__javaObject__.getClassLoader(),
+      helper.getClass().getClassLoader(),
+      java.lang.Thread.currentThread().getContextClassLoader()
+    ]
+  ]
+)
+}}
+```
+
+</td>
+</tr>
+</table>
+
+
 ## Quick Start
 
 Getting started with JDBCX is easy.
@@ -63,27 +150,29 @@ It is recommended to create a [property file](https://en.wikipedia.org/wiki/.pro
   #jdbcx.shell.cli.path=wsl -- /bin/bash -c
   ```
 
-JDBCX also supports simplified connection strings like `jdbcx:sql:<name>` for predefined connections.
+JDBCX also supports simplified connection strings like `jdbcx:db:<name>` for predefined connections.
 
 To use this:
 
-1. Create a properties file under `~/.jdbcx/connections` to define your connection.
+1. Create a properties file under `~/.jdbcx/db` to define your connection.
     For example:
     ```properties
-    # ~/.jdbcx/connections/my-connection.properties on macOS/Linux
-    # %HOMEPATH%\.jdbcx\connections\my-connection.properties on Windows
-    jdbcx.id=duckdb-local
+    # ~/.jdbcx/db/my-connection.properties on macOS/Linux
+    # %HOMEPATH%\.jdbcx\db\my-connection.properties on Windows
     jdbcx.classpath=/path/to/duckdb/jdbc/driver
     jdbcx.driver=org.duckdb.DuckDBDriver
     jdbcx.url=jdbc:duckdb:
     ```
-2. Reference the connection in your code `jdbcx:sql:my-connection`
+2. Reference the connection in your code `jdbcx:db:my-connection`
 3. You can also reference named connections directly in your queries:
     ```sql
-    {{ sql(id=my-connection): SELECT * FROM table }}
+    {{ db(id=my-connection): SELECT * FROM table }}
+
+    -- or dot notation
+    {{ db.my-connection: SELECT * FROM table }}
     ```
 
-See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/connections) for more details on configuring named connections.
+See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/) for more details.
 
 
 ## Usage
@@ -98,7 +187,7 @@ See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/co
 #
 # "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
+    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
 #
@@ -135,7 +224,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
 # SQL
 #
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ sql(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ sql(id=ch-play): select 2 }}' as two"
+    "jdbcx:duckdb:" "select '{{ db(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two"
 ```
 
 ### Command Line
@@ -202,10 +291,9 @@ Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165),
 | --- | ----------------------------------------- | ----------------------------------- |
 | 1   | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
 | 2   | Scripting does not work on DBeaver        | use JDK instead of JRE              |
-| 3   | Requires additional JDBC driver to work   | -                                   |
-| 4   | Connection pooling is not supported       | -                                   |
-| 5   | Multi-ResultSet is not fully supported    | -                                   |
-| 6   | Nested query is not supported             | -                                   |
+| 3   | Connection pooling is not supported       | -                                   |
+| 4   | Multi-ResultSet is not fully supported    | -                                   |
+| 5   | Nested query is not supported             | -                                   |
 
 ## Performance
 
