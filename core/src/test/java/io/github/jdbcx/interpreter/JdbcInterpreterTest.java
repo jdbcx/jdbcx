@@ -20,16 +20,32 @@ import java.sql.SQLException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.clickhouse.jdbc.ClickHouseDriver;
+
 public class JdbcInterpreterTest {
     @Test(groups = { "unit" })
-    public void testGetDriver() throws SQLException {
-        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriver(null, null));
-        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriver("jdbc:unknown:driver", null));
+    public void testGetDriverByClass() throws SQLException {
+        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByClass(null, null));
+        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByClass("some.unknown.Driver", null));
         Assert.assertThrows(SQLException.class,
-                () -> JdbcInterpreter.getDriver(null, getClass().getClassLoader()));
+                () -> JdbcInterpreter.getDriverByClass(null, getClass().getClassLoader()));
 
-        Assert.assertNotNull(JdbcInterpreter.getDriver("jdbc:ch://localhost", null), "Should have driver");
-        Assert.assertNotNull(JdbcInterpreter.getDriver("jdbc:ch://localhost", getClass().getClassLoader()),
+        Assert.assertNotNull(JdbcInterpreter.getDriverByClass(ClickHouseDriver.class.getName(), null),
+                "Should have driver");
+        Assert.assertNotNull(
+                JdbcInterpreter.getDriverByClass(ClickHouseDriver.class.getName(), getClass().getClassLoader()),
+                "Should have driver");
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetDriverByUrl() throws SQLException {
+        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByUrl(null, null));
+        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByUrl("jdbc:unknown:driver", null));
+        Assert.assertThrows(SQLException.class,
+                () -> JdbcInterpreter.getDriverByUrl(null, getClass().getClassLoader()));
+
+        Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", null), "Should have driver");
+        Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", getClass().getClassLoader()),
                 "Should have driver");
     }
 }

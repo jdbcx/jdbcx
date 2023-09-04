@@ -45,18 +45,29 @@ public class JdbcInterpreter extends AbstractInterpreter {
 
     public static final Option OPTION_URL = Option.of(new String[] { "url", "JDBC connection URL" });
     public static final Option OPTION_DRIVER = Option.of(new String[] { "driver", "JDBC driver class name" });
-    public static final List<Option> OPTIONS = Collections
-            .unmodifiableList(Arrays.asList(Option.ID, Option.EXEC_ERROR, ConfigManager.OPTION_MANAGED,
-                    Option.EXEC_TIMEOUT.update().defaultValue("30000").build(), OPTION_URL, OPTION_PROPERTIES));
+    public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
+            ConfigManager.OPTION_MANAGED, Option.EXEC_TIMEOUT.update().defaultValue("30000").build()));
 
-    private final String defaultConnectionId;
     private final String defaultConnectionUrl;
     private final String defaultConnectionProps;
 
     private final ClassLoader loader;
     private final JdbcExecutor executor;
 
-    static final Driver getDriver(String url, ClassLoader loader) throws SQLException {
+    static final Driver getDriverByClass(String driver, ClassLoader loader) throws SQLException {
+        if (loader == null) {
+            loader = JdbcInterpreter.class.getClassLoader();
+        }
+
+        try {
+            return (Driver) loader.loadClass(driver).getConstructor().newInstance();
+        } catch (Exception e) {
+            throw SqlExceptionUtils
+                    .clientError(Utils.format("Failed to load driver [%s] due to: %s", driver, e.getMessage()), e);
+        }
+    }
+
+    static final Driver getDriverByUrl(String url, ClassLoader loader) throws SQLException {
         if (loader == null) {
             loader = JdbcInterpreter.class.getClassLoader();
         }
@@ -75,16 +86,15 @@ public class JdbcInterpreter extends AbstractInterpreter {
         return d;
     }
 
-    public static final Connection getConnection(String url, Properties props, ClassLoader classLoader)
+    public static final Connection getConnectionByUrl(String url, Properties props, ClassLoader classLoader)
             throws SQLException {
         if (Checker.isNullOrBlank(url)) {
-            url = JdbcInterpreter.OPTION_URL.getJdbcxValue(props);
+            url = OPTION_URL.getValue(props);
         }
         if (Checker.isNullOrBlank(url)) {
             throw SqlExceptionUtils.clientError("No connection URL specified");
         }
 
-        final String classpath = Option.CLASSPATH.getJdbcxValue(props);
         final Properties filtered = new Properties();
         for (Entry<Object, Object> entry : props.entrySet()) {
             String key = (String) entry.getKey();
@@ -92,14 +102,50 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 filtered.put(key, entry.getValue());
             }
         }
-        if (Checker.isNullOrBlank(classpath)) {
-            return getDriver(url, classLoader).connect(url, filtered);
+        filtered.remove(OPTION_URL.getName());
+
+        final String classpath = (String) filtered.remove(Option.CLASSPATH.getName());
+        if (!Checker.isNullOrBlank(classpath)) {
+            classLoader = ExpandedUrlClassLoader.of(JdbcInterpreter.class, classpath.split(","));
+        } else if (classLoader == null) {
+            classLoader = JdbcInterpreter.class.getClassLoader();
         }
 
-        final String driver = OPTION_DRIVER.getJdbcxValue(props);
-        final ClassLoader loader = ExpandedUrlClassLoader.of(JdbcInterpreter.class, classpath.split(","));
+        final String driver = (String) filtered.remove(OPTION_DRIVER.getName());
+        return (Checker.isNullOrBlank(driver) ? getDriverByUrl(url, classLoader)
+                : getDriverByClass(driver, classLoader)).connect(url, filtered);
+    }
+
+    public static final Connection getConnectionByConfig(Properties config, ClassLoader classLoader)
+            throws SQLException {
+        final String classpath = Option.CLASSPATH.getJdbcxValue(config);
+        final String url = OPTION_URL.getJdbcxValue(config);
+        final String driver = OPTION_DRIVER.getJdbcxValue(config);
+        final String properties = OPTION_PROPERTIES.getJdbcxValue(config);
+
+        if (Checker.isNullOrEmpty(url)) {
+            throw SqlExceptionUtils.clientError("No connection URL defined");
+        }
+
+        final Properties filtered = new Properties();
+        for (Entry<Object, Object> entry : config.entrySet()) {
+            String key = (String) entry.getKey();
+            if (!key.startsWith(Option.PROPERTY_PREFIX)) {
+                filtered.put(key, entry.getValue());
+            }
+        }
+        if (!Checker.isNullOrEmpty(properties)) {
+            filtered.putAll(Utils.toKeyValuePairs(properties));
+        }
+
+        if (!Checker.isNullOrBlank(classpath)) {
+            classLoader = ExpandedUrlClassLoader.of(JdbcInterpreter.class, classpath.split(","));
+        } else if (classLoader == null) {
+            classLoader = JdbcInterpreter.class.getClassLoader();
+        }
+
         if (Checker.isNullOrEmpty(driver)) {
-            for (Driver d : Utils.load(Driver.class, loader)) {
+            for (Driver d : Utils.load(Driver.class, classLoader)) {
                 if (d.acceptsURL(url)) {
                     return d.connect(url, filtered);
                 }
@@ -110,7 +156,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
         } else {
             Driver d = null;
             try {
-                d = (Driver) loader.loadClass(driver).getConstructor().newInstance();
+                d = (Driver) classLoader.loadClass(driver).getConstructor().newInstance();
                 return d.connect(url, filtered);
             } catch (Exception e) {
                 throw SqlExceptionUtils.clientError(
@@ -123,9 +169,9 @@ public class JdbcInterpreter extends AbstractInterpreter {
 
     @SuppressWarnings("unchecked")
     protected Connection getConnection(Properties props) throws SQLException {
-        String str = Option.ID.getValue(props, defaultConnectionId);
+        String str = OPTION_URL.getJdbcxValue(props);
         if (!Checker.isNullOrBlank(str)) {
-            return getConnection(null, props, loader);
+            return getConnectionByConfig(props, loader);
         }
 
         str = Utils.applyVariables(OPTION_URL.getValue(props, defaultConnectionUrl), props);
@@ -144,7 +190,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 Option.CLASSPATH.setJdbcxValue(newProps, classpath);
             }
             newProps.putAll(map);
-            return getConnection(str, newProps, loader);
+            return getConnectionByUrl(str, newProps, loader);
         }
 
         throw new SQLException(Utils.format("Please specify either \"%s\" or \"%s\" to establish connection",
@@ -154,7 +200,6 @@ public class JdbcInterpreter extends AbstractInterpreter {
     public JdbcInterpreter(QueryContext context, Properties config, ClassLoader loader) {
         super(context);
 
-        this.defaultConnectionId = Option.ID.getValue(config);
         this.defaultConnectionUrl = OPTION_URL.getValue(config);
         this.defaultConnectionProps = OPTION_PROPERTIES.getValue(config);
 

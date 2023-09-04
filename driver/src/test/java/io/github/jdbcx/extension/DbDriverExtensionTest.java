@@ -26,6 +26,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.WrappedDriver;
 
 public class DbDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })
@@ -52,6 +53,44 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getInt(1), 3);
                 Assert.assertFalse(rs.next(), "Should have only one row");
             }
+        }
+    }
+
+    @Test(groups = { "private" })
+    public void testConnectById() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver driver = new WrappedDriver();
+        try (Connection conn = DriverManager.getConnection("jdbcx:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt
+                        .executeQuery("{{ db(url='jdbc:ch:https://explorer@play.clickhouse.com:443'): select 1 }}")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("{{ db(id=ch-play): select 1 }}")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("{{ db.ch-play: select 1 }}")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch-play", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select 1")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next(), "Should have only one row");
         }
     }
 }

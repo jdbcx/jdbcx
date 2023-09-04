@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
 
@@ -54,6 +55,12 @@ public class ConfigManager {
     }
 
     protected final String getUniqueId(String category, String id) {
+        if (category == null) {
+            category = Constants.EMPTY_STRING;
+        }
+        if (id == null) {
+            id = Constants.EMPTY_STRING;
+        }
         return new StringBuilder(category.length() + id.length() + 1).append(category).append('/').append(id)
                 .toString();
     }
@@ -63,6 +70,10 @@ public class ConfigManager {
 
     public List<String> getAllIDs(String category) { // NOSONAR
         return Collections.emptyList();
+    }
+
+    public boolean hasConfig(String category, String id) {
+        return false;
     }
 
     public Properties getConfig(String category, String id) {
