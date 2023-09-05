@@ -87,7 +87,7 @@ public abstract class AbstractDriver implements Driver, DriverAction {
                 Properties extProps = ext == driverInfo.extension ? driverInfo.extensionProps
                         : DriverExtension.extractProperties(ext, info);
                 Connection conn = ext.getConnection(tailored, extProps);
-                return conn != null ? conn
+                return conn != null ? new WrappedConnection(conn, url)
                         : new DefaultConnection(extensions, ext, url, extProps, driverInfo.normalizedInfo,
                                 driverInfo.mergedInfo);
             }

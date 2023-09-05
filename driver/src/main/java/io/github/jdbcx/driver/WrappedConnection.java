@@ -59,11 +59,21 @@ public class WrappedConnection implements Connection {
 
     private final AtomicReference<SQLWarning> warning;
 
-    protected WrappedConnection(Connection conn) {
-        DriverInfo info = HelpDriverExtension.ActivityListener.defaultDriverInfo;
-        this.manager = new ConnectionManager(info.getExtensions(), info.extension, conn, Constants.EMPTY_STRING,
-                info.extensionProps, info.normalizedInfo, info.mergedInfo);
-        this.warning = new AtomicReference<>();
+    protected WrappedConnection(Connection conn) throws SQLException {
+        this(conn, conn.getMetaData().getURL());
+    }
+
+    protected WrappedConnection(Connection conn, String url) {
+        if (conn instanceof WrappedConnection) {
+            WrappedConnection wrappedConn = (WrappedConnection) conn;
+            this.manager = wrappedConn.manager;
+            this.warning = wrappedConn.warning;
+        } else {
+            DriverInfo info = HelpDriverExtension.ActivityListener.defaultDriverInfo;
+            this.manager = new ConnectionManager(info.getExtensions(), info.extension, conn, url, info.extensionProps,
+                    info.normalizedInfo, info.mergedInfo);
+            this.warning = new AtomicReference<>();
+        }
     }
 
     protected WrappedConnection(DriverInfo info) throws SQLException {
