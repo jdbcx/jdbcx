@@ -79,8 +79,8 @@ public class WebInterpreter extends AbstractInterpreter {
             .unmodifiableList(
                     Arrays.asList(Option.EXEC_ERROR, OPTION_BASE_URL, OPTION_URL_TEMPLATE, OPTION_REQUEST_HEADERS,
                             OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_TEMPLATE_FILE, OPTION_REQUEST_ESCAPE_CHAR,
-                            OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT, WebExecutor.OPTION_PROXY,
-                            WebExecutor.OPTION_SOCKET_TIMEOUT));
+                            OPTION_REQUEST_ENCODE, OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT,
+                            WebExecutor.OPTION_PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT));
 
     private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(
             Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),
@@ -95,7 +95,7 @@ public class WebInterpreter extends AbstractInterpreter {
     static final Map<String, String> getHeaders(Properties config) {
         Map<String, String> headers = new HashMap<>(Utils
                 .toKeyValuePairs(Utils.applyVariables(OPTION_REQUEST_HEADERS.getValue(config), config)));
-        String secret = OPTION_AUTH_BEARER_TOKEN.getValue(config);
+        String secret = Utils.applyVariables(OPTION_AUTH_BEARER_TOKEN.getValue(config), config);
         if (!Checker.isNullOrBlank(secret)) { // recommended
             headers.put(HEADER_AUTHORIZATION, AUTH_SCHEME_BEARER.concat(secret));
         } else { // less secure
@@ -183,11 +183,11 @@ public class WebInterpreter extends AbstractInterpreter {
                 request = Utils.applyVariables(template, newProps);
             }
 
-            final String method = Checker.isNullOrEmpty(request) ? "GET" : "POST";
-
             if (executor.getDryRun(props)) {
-                return Result.of(dryRunFields, new Object[][] { { url, method, request,
-                        executor.getConnectTimeout(props), executor.getSocketTimeout(props), headers, props } });
+                return Result.of(dryRunFields,
+                        new Object[][] { { url, Checker.isNullOrBlank(request) ? "GET" : "POST", request,
+                                executor.getConnectTimeout(props), executor.getSocketTimeout(props), headers,
+                                props } });
             } else if (Checker.isNullOrBlank(request)) {
                 input = executor.get(url, props, headers);
             } else {

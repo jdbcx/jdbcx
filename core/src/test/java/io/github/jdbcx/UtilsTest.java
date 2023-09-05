@@ -17,6 +17,7 @@ package io.github.jdbcx;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -187,5 +188,32 @@ public class UtilsTest {
         Assert.assertEquals(Utils.skipMultiLineComment(args, 20, args.length()),
                 args.indexOf("*/", 21) + 2);
         Assert.assertEquals(Utils.skipMultiLineComment(args, args.lastIndexOf("*/") + 1, args.length()), -1);
+    }
+
+    @Test(groups = { "unit" })
+    public void testSplitByChar() {
+        Assert.assertEquals(Utils.split(null, '\0'), Collections.emptyList());
+        Assert.assertEquals(Utils.split("", '\0'), Collections.singletonList(""));
+        Assert.assertEquals(Utils.split(" ", ' '), Arrays.asList(""));
+
+        Assert.assertEquals(Utils.split(" ", '\0'), Collections.singletonList(" "));
+        Assert.assertEquals(Utils.split("a\0\0b", '\0'), Arrays.asList("a", "", "b"));
+        Assert.assertEquals(Utils.split(",,,a,c,,b,,,", ','), Arrays.asList("", "", "", "a", "c", "", "b", "", ""));
+    }
+
+    @Test(groups = { "unit" })
+    public void testSplitByString() {
+        Assert.assertEquals(Utils.split(null, null), Collections.emptyList());
+        Assert.assertEquals(Utils.split("", null), Collections.singletonList(""));
+        Assert.assertEquals(Utils.split(" ", null), Collections.singletonList(" "));
+        Assert.assertEquals(Utils.split(null, " "), Collections.emptyList());
+        Assert.assertEquals(Utils.split("", " "), Collections.singletonList(""));
+
+        Assert.assertEquals(Utils.split("12", "123"), Collections.singletonList("12"));
+        Assert.assertEquals(Utils.split(" ", ""), Collections.singletonList(" "));
+        Assert.assertEquals(Utils.split("121", "21"), Collections.singletonList("1"));
+        Assert.assertEquals(Utils.split("1,2,1", ","), Arrays.asList("1", "2", "1"));
+        Assert.assertEquals(Utils.split(",,1,2,,1,,,", ","), Arrays.asList("", "", "1", "2", "", "1", "", ""));
+        Assert.assertEquals(Utils.split(",,1,2,,1,,,", ",,"), Arrays.asList("", "1,2", "1", ","));
     }
 }

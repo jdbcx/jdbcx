@@ -20,6 +20,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -28,7 +31,10 @@ import io.burt.jmespath.Expression;
 import io.burt.jmespath.JmesPath;
 import io.burt.jmespath.gson.GsonRuntime;
 import io.github.jdbcx.Cache;
+import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Row;
+import io.github.jdbcx.Utils;
 
 public final class JsonHelper {
     private static final Gson gson = new Gson();
@@ -36,15 +42,59 @@ public final class JsonHelper {
 
     private static final Cache<String, Expression<JsonElement>> cache = Cache.create(100, 0L, jmesPath::compile);
 
-    public static String extract(InputStream input, Charset charset, String path) throws IOException {
-        return extract(new InputStreamReader(input, charset != null ? charset : Constants.DEFAULT_CHARSET), path);
+    public static List<Row> extract(InputStream input, Charset charset, String path, String delimiter, boolean trim)
+            throws IOException {
+        return extract(new InputStreamReader(input, charset != null ? charset : Constants.DEFAULT_CHARSET), path,
+                delimiter, trim);
     }
 
-    public static String extract(Reader input, String path) throws IOException {
+    public static List<Row> extract(Reader input, String path, String delimiter, boolean trim) throws IOException {
         final Expression<JsonElement> compiledPath = cache.get(path);
         try (Reader reader = input) {
             JsonElement json = compiledPath.search(gson.fromJson(reader, JsonElement.class));
-            return json.getAsString();
+            final List<Row> rows;
+            if (json.isJsonNull()) {
+                rows = Collections.singletonList(Row.of(Constants.EMPTY_STRING));
+            } else if (json.isJsonArray()) {
+                List<Row> list = new LinkedList<>();
+                for (JsonElement e : json.getAsJsonArray()) {
+                    if (e.isJsonNull()) {
+                        list.add(Row.of(Constants.EMPTY_STRING));
+                    } else if (e.isJsonPrimitive()) {
+                        String s = e.getAsString();
+                        if (trim) {
+                            s = s.trim();
+                            if (s.isEmpty()) {
+                                continue;
+                            }
+                        }
+                        list.add(Row.of(s));
+                    } else {
+                        list.add(Row.of(gson.toJson(e)));
+                    }
+                }
+                rows = Collections.unmodifiableList(list);
+            } else if (json.isJsonPrimitive()) {
+                String s = json.getAsString();
+                if (Checker.isNullOrEmpty(delimiter)) {
+                    rows = Collections.singletonList(Row.of(trim ? s.trim() : s));
+                } else {
+                    List<Row> list = new LinkedList<>();
+                    for (String splitted : Utils.split(s, delimiter)) {
+                        if (trim) {
+                            splitted = splitted.trim();
+                            if (splitted.isEmpty()) {
+                                continue;
+                            }
+                        }
+                        list.add(Row.of(splitted));
+                    }
+                    rows = Collections.unmodifiableList(list);
+                }
+            } else {
+                rows = Collections.singletonList(Row.of(gson.toJson(json)));
+            }
+            return rows;
         }
     }
 

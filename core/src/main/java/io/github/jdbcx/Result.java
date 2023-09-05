@@ -158,16 +158,25 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<Object[]> of(List<Field> fields, Object[] arr) {
+        if (fields == null || fields.isEmpty()) {
+            fields = DEFAULT_FIELDS;
+        }
         IterableArray wrapper = new IterableArray(fields, arr);
         return new Result<>(fields, arr, arr.getClass(), wrapper);
     }
 
     public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) {
+        if (fields == null || fields.isEmpty()) {
+            fields = DEFAULT_FIELDS;
+        }
         IterableWrapper wrapper = new IterableWrapper(fields, it);
         return new Result<>(fields, it, it.getClass(), wrapper);
     }
 
     public static Result<?> of(List<Field> fields, Row... rows) {
+        if (fields == null || fields.isEmpty()) {
+            fields = DEFAULT_FIELDS;
+        }
         return rows != null && rows.length > 0 ? new Result<>(fields, rows, rows.getClass(), Arrays.asList(rows))
                 : new Result<>(fields, null, Void.class, Collections.emptyList());
     }
@@ -229,6 +238,9 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<InputStream> of(List<Field> fields, InputStream input, byte[] delimiter) {
+        if (fields == null || fields.isEmpty()) {
+            fields = DEFAULT_FIELDS;
+        }
         return new Result<>(fields, Checker.nonNull(input, InputStream.class.getSimpleName()), input.getClass(),
                 new IterableInputStream(fields, input, delimiter));
     }
@@ -238,6 +250,9 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<Reader> of(List<Field> fields, Reader reader, String delimiter) {
+        if (fields == null || fields.isEmpty()) {
+            fields = DEFAULT_FIELDS;
+        }
         return new Result<>(fields, Checker.nonNull(reader, Reader.class.getSimpleName()), reader.getClass(),
                 new IterableReader(fields, reader, delimiter));
     }
@@ -315,6 +330,40 @@ public final class Result<T> implements AutoCloseable {
                 } catch (SQLException e) {
                     str = (handler != null ? handler : defaultErrorHandler).handle(e);
                 }
+            } else if (Iterable.class.isAssignableFrom(valueType)) {
+                StringBuilder builder = new StringBuilder();
+                for (Object obj : ((Iterable<?>) rawValue)) {
+                    if (obj instanceof Row) {
+                        List<Value> values = ((Row) obj).values();
+                        for (Value v : values) {
+                            builder.append(v.asString()).append(',');
+                        }
+                        if (!values.isEmpty()) {
+                            builder.setLength(builder.length() - 1);
+                        }
+                    } else if (obj instanceof Value) {
+                        builder.append(((Value) obj).asString());
+                    } else {
+                        builder.append(obj);
+                    }
+                    builder.append('\n');
+                }
+                if (builder.length() > 0) {
+                    builder.setLength(builder.length() - 1);
+                }
+                str = builder.toString();
+            } else if (Row.class.isAssignableFrom(valueType)) {
+                StringBuilder builder = new StringBuilder();
+                List<Value> values = ((Row) rawValue).values();
+                for (Value v : values) {
+                    builder.append(v.asString()).append(',');
+                }
+                if (!values.isEmpty()) {
+                    builder.setLength(builder.length() - 1);
+                }
+                str = builder.toString();
+            } else if (Value.class.isAssignableFrom(valueType)) {
+                str = ((Value) rawValue).asString();
             } else {
                 str = String.valueOf(rawValue);
             }

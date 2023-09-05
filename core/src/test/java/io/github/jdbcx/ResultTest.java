@@ -26,6 +26,8 @@ import java.util.Collections;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.data.DefaultRow;
+
 public class ResultTest {
     @Test(groups = "unit")
     public void testBuilder() {
@@ -180,5 +182,19 @@ public class ResultTest {
         Assert.assertEquals(r.get(), null);
         Assert.assertEquals(r.type(), Row.class);
         Assert.assertEquals(r.get(ResultSet.class).next(), false);
+
+        r = Result.of(Row.of("a"));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        int count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.size(), 1);
+            Assert.assertEquals(row.value(0).asString(), "a");
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+        Assert.assertEquals(r.get(Row.class).size(), 1);
+        Assert.assertEquals(r.get(Row.class).value(0).asString(), "a");
+        Assert.assertEquals(r.type(), DefaultRow.class);
+        Assert.assertEquals(r.get(String.class), "a");
     }
 }

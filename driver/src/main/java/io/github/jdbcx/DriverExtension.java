@@ -152,6 +152,8 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         if (!Checker.isNullOrEmpty(id)) {
             defined = getConfig(id);
         }
+
+        // ensures the configured properties won't be overrided
         Properties config = new Properties(props);
         for (Option option : getOptions(props)) {
             String name = option.getName();

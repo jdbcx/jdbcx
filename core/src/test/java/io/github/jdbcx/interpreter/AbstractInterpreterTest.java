@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.io.StringReader;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -105,5 +106,31 @@ public class AbstractInterpreterTest {
         Assert.assertEquals(i.handleError(new Exception("1"), null, props, null).get(), "1");
         Assert.assertEquals(i.handleError(new Exception("2"), "", props, null).get(), "2");
         Assert.assertEquals(i.handleError(new Exception("3"), "my query", props, null).get(), "3");
+    }
+
+    @Test(groups = { "unit" })
+    public void testProcessJsonResult() {
+        final TestInterpreter i = new TestInterpreter(QueryContext.newContext());
+        Properties props = new Properties();
+        Option.RESULT_JSON_PATH.setValue(props, "value");
+        int count = 0;
+        Result<?> result = i.process("test", new StringReader("{}"), props);
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asString(), "");
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+        Assert.assertEquals(result.get(String.class), "");
+
+        Option.RESULT_STRING_TRIM.setValue(props, "true");
+        count = 0;
+        result = i.process("test", new StringReader("{\"value\": [\" 1\", \"2 \", \"\"]}"), props);
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+        Assert.assertEquals(result.get(String.class), "1\n2");
     }
 }
