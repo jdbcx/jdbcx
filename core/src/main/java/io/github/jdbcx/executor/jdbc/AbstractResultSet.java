@@ -36,14 +36,18 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractResultSet implements ResultSet {
     protected final Statement stmt;
 
+    protected final AtomicReference<SQLWarning> warning;
     protected volatile boolean closed;
 
     protected AbstractResultSet(Statement stmt) {
         this.stmt = stmt;
+
+        this.warning = new AtomicReference<>();
         this.closed = false;
     }
 
@@ -84,6 +88,8 @@ public abstract class AbstractResultSet implements ResultSet {
     @Override
     public void clearWarnings() throws SQLException {
         ensureOpen();
+
+        warning.set(null);
     }
 
     @Override
@@ -132,7 +138,7 @@ public abstract class AbstractResultSet implements ResultSet {
     public SQLWarning getWarnings() throws SQLException {
         ensureOpen();
 
-        return null;
+        return warning.get();
     }
 
     @Override

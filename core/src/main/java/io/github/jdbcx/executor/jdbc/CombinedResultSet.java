@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.RowId;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
@@ -46,7 +47,6 @@ public class CombinedResultSet extends AbstractResultSet {
     private int nextIndex;
     private ResultSet current;
     private int rowNumber;
-    private boolean isClosed;
 
     protected ResultSet current() throws SQLException {
         if (getNextResult() == null) {
@@ -95,11 +95,15 @@ public class CombinedResultSet extends AbstractResultSet {
     }
 
     public CombinedResultSet(ResultSet... results) {
+        this(results, null);
+    }
+
+    public CombinedResultSet(ResultSet[] results, SQLWarning warning) {
         super(null);
 
         this.nextIndex = 0;
         this.rowNumber = 0;
-        this.isClosed = false;
+        this.warning.set(warning);
         if (results == null || results.length == 0) {
             this.results = new ResultSet[0];
             this.current = null;
@@ -110,11 +114,15 @@ public class CombinedResultSet extends AbstractResultSet {
     }
 
     public CombinedResultSet(Collection<ResultSet> results) {
+        this(results, null);
+    }
+
+    public CombinedResultSet(Collection<ResultSet> results, SQLWarning warning) {
         super(null);
 
         this.nextIndex = 0;
         this.rowNumber = 0;
-        this.isClosed = false;
+        this.warning.set(warning);
         if (results == null || results.isEmpty()) {
             this.results = new ResultSet[0];
             this.current = null;
@@ -161,7 +169,7 @@ public class CombinedResultSet extends AbstractResultSet {
                 }
             }
         }
-        isClosed = true;
+        super.close();
         if (ex != null) {
             throw ex;
         }
@@ -554,11 +562,6 @@ public class CombinedResultSet extends AbstractResultSet {
     @Override
     public RowId getRowId(String columnLabel) throws SQLException {
         return current().getRowId(columnLabel);
-    }
-
-    @Override
-    public boolean isClosed() throws SQLException {
-        return isClosed;
     }
 
     @Override
