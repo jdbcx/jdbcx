@@ -54,7 +54,7 @@ public class ScriptHelperTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
     public void testTable() {
         Result<?> result = helper.table(null);
-        Assert.assertEquals(result.fields(), Collections.emptyList());
+        Assert.assertEquals(result.fields(), Collections.singletonList(Field.DEFAULT));
         Assert.assertEquals(result.rows(), Collections.emptyList());
 
         result = helper.table(new Object[] { 1, null, 2 });

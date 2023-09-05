@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -844,6 +845,59 @@ public final class Utils {
         }
 
         return -1;
+    }
+
+    public static List<String> split(String str, char delimiter) {
+        if (str == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> list = new LinkedList<>();
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0, len = str.length(); i < len; i++) {
+            char ch = str.charAt(i);
+            if (ch == delimiter) {
+                list.add(builder.toString());
+                builder.setLength(0);
+            } else {
+                builder.append(ch);
+            }
+        }
+
+        if (list.isEmpty()) {
+            return Collections.singletonList(str);
+        } else if (builder.length() > 0) {
+            list.add(builder.toString());
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    public static List<String> split(String str, String delimiter) {
+        if (str == null) {
+            return Collections.emptyList();
+        } else if (Checker.isNullOrEmpty(delimiter)) {
+            return Collections.singletonList(str);
+        }
+
+        final int dlen = delimiter.length();
+        final int len = str.length();
+        if (dlen > len) {
+            return Collections.singletonList(str);
+        }
+
+        List<String> list = new LinkedList<>();
+        int cursor = 0;
+        do {
+            int index = str.indexOf(delimiter, cursor);
+            if (index == -1) {
+                list.add(str.substring(cursor));
+                break;
+            } else {
+                list.add(str.substring(cursor, index));
+                cursor = index + dlen;
+            }
+        } while (cursor < len);
+        return Collections.unmodifiableList(list);
     }
 
     /**

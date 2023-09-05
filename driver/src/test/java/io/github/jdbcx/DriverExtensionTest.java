@@ -97,6 +97,7 @@ public class DriverExtensionTest {
         config.setProperty("x1", "y1");
         TestDriverExtension test = new TestDriverExtension(Collections.singletonMap("x", config),
                 Option.of(new String[] { "x1", "", "y1", "y11" }), Option.of(new String[] { "x2", "" }));
+        Assert.assertEquals(test.getConfig("y"), Collections.singletonMap("id", "y"));
 
         Properties props = new Properties();
         Option.ID.setValue(props, "x");
@@ -116,5 +117,31 @@ public class DriverExtensionTest {
         expected.setProperty("id", "y");
         expected.setProperty("x1", "");
         Assert.assertEquals(test.getConfig(props), expected);
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetConfigOverriding() {
+        Properties config = new Properties();
+        config.setProperty("x1", "y1");
+        config.setProperty("x2", "y2");
+        config.setProperty("x3", "y3");
+        TestDriverExtension test = new TestDriverExtension(Collections.singletonMap("x", config),
+                Option.of(new String[] { "x1", "" }), Option.of(new String[] { "x2", "" }));
+
+        Properties expected = new Properties();
+        expected.putAll(config);
+        expected.setProperty("id", "x");
+        Assert.assertEquals(test.getConfig("x"), expected);
+
+        Properties props = new Properties();
+        Option.ID.setValue(props, "y");
+        Assert.assertEquals(test.getConfig("y"), Collections.singletonMap("id", "y"));
+
+        Option.ID.setValue(props, "x");
+        props.setProperty("x1", "");
+        props.setProperty("x2", "y22");
+        props.setProperty("x4", "y4");
+        Assert.assertEquals(test.getConfig(props), expected);
+        Assert.assertEquals(test.getConfig(props).getProperty("x4"), "y4");
     }
 }

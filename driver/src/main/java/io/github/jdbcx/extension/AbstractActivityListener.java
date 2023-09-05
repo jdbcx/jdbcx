@@ -48,14 +48,15 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
             if (saveResult && Boolean.parseBoolean(Option.RESULT_REUSE.getValue(config))) {
                 String value = context.getVariableInScope(scope, resultVar);
                 if (value != null) {
-                    return Result.of(Constants.EMPTY_STRING);
+                    return Result.of(value);
                 }
             }
 
             final Result<?> result = interpreter.interpret(query, config);
             if (saveResult) {
-                context.setVariableInScope(scope, resultVar, result.get(String.class));
-                return Result.of(Constants.EMPTY_STRING);
+                String value = result.get(String.class);
+                context.setVariableInScope(scope, resultVar, value);
+                return Result.of(value);
             }
             return result;
         } catch (CompletionException e) {

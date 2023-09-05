@@ -51,6 +51,38 @@ public class WebDriverExtensionTest extends BaseIntegrationTest {
             Assert.assertEquals(rs.getString("request"), "select '1\\\"2\\\"3'");
             Assert.assertFalse(rs.next(), "Should have only one row");
         }
+
+        props.clear();
+        props.setProperty("jdbcx.web.request.encode", "json");
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch:" + url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("request"), "select '1\"\\\"2\\\"\"3'");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        // now again without connection properties
+        props.clear();
+        query = "{{ web(base.url='" + url
+                + "',request.template=\"select '1${}3'\", request.encode=json, exec.dryrun=true): \"2\"}}";
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch:" + url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("request"), "select '1\"\\\"2\\\"\"3'");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        query = "{{ web(base.url='" + url
+                + "',request.template=\"select '1${}3'\", request.escape.target=\\\", request.escape.char=\\\\, exec.dryrun=true): \"2\"}}";
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch:" + url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("request"), "select '1\\\"2\\\"3'");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
     }
 
     @Test(groups = { "private" })
