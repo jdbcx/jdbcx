@@ -63,6 +63,7 @@ public final class ConnectionManager implements AutoCloseable {
                     Field.of("choices"), Field.of("system_property"), Field.of("environment_variable")));
 
     public static final Version DRIVER_VERSION = Version.of(Utils.getVersion());
+
     public static final String JDBC_PREFIX = "jdbc:";
     public static final String JDBCX_PREFIX = Option.PROPERTY_JDBCX + ":";
 
@@ -142,6 +143,8 @@ public final class ConnectionManager implements AutoCloseable {
     private final Properties normalizedProps;
     private final Properties originalProps;
 
+    private final ClassLoader classLoader;
+
     ConnectionManager(DriverInfo info) throws SQLException {
         this(info.getExtensions(), info.extension, info.driver.connect(info.actualUrl, info.normalizedInfo),
                 info.actualUrl, info.extensionProps, info.normalizedInfo, info.mergedInfo);
@@ -164,6 +167,10 @@ public final class ConnectionManager implements AutoCloseable {
         this.props = extensionProps;
         this.normalizedProps = normalizedProps;
         this.originalProps = originalProps;
+
+        this.classLoader = DriverInfo.getCustomClassLoader(
+                Utils.normalizePath(originalProps.getProperty(Option.CUSTOM_CLASSPATH.getJdbcxName(),
+                        Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX))));
     }
 
     @Override
@@ -173,7 +180,9 @@ public final class ConnectionManager implements AutoCloseable {
 
     public Connection createConnection() {
         try {
-            return DriverManager.getConnection(url, normalizedProps);
+            return Utils.startsWith(url, JDBC_PREFIX, true)
+                    ? DriverInfo.findSuitableDriver(url, normalizedProps, classLoader).connect(url, normalizedProps)
+                    : DriverManager.getConnection(url, normalizedProps);
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -217,7 +226,7 @@ public final class ConnectionManager implements AutoCloseable {
 
     public List<DriverExtension> getMatchedExtensions(String pattern) throws SQLException {
         final List<DriverExtension> list;
-        if (pattern == null) {
+        if (pattern == null || (pattern.length() == 1 && pattern.charAt(0) == '%')) {
             list = extList;
         } else if (Utils.containsJdbcWildcard(pattern)) {
             list = new ArrayList<>(extList.size());

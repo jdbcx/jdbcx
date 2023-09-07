@@ -24,6 +24,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.driver.impl.DefaultConnection;
 
 final class DefaultDriver implements Driver, DriverAction {
@@ -31,9 +32,7 @@ final class DefaultDriver implements Driver, DriverAction {
 
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        return url != null && url.length() >= ConnectionManager.JDBCX_PREFIX.length()
-                && url.substring(0, ConnectionManager.JDBCX_PREFIX.length())
-                        .equalsIgnoreCase(ConnectionManager.JDBCX_PREFIX);
+        return Utils.startsWith(url, ConnectionManager.JDBCX_PREFIX, true);
     }
 
     @Override

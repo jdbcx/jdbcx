@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.driver.impl.DefaultConnection;
 
 /**
@@ -60,18 +61,17 @@ public abstract class AbstractDriver implements Driver, DriverAction {
 
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        return url != null && url.length() >= ConnectionManager.JDBCX_PREFIX.length()
-                && url.substring(0, ConnectionManager.JDBCX_PREFIX.length())
-                        .equalsIgnoreCase(ConnectionManager.JDBCX_PREFIX);
+        return Utils.startsWith(url, ConnectionManager.JDBCX_PREFIX, true);
     }
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
         final DriverInfo driverInfo = getDriverInfo(url, info);
         if (driverInfo.driver instanceof InvalidDriver) {
-            String tailored = driverInfo.normalizedUrl.startsWith(ConnectionManager.JDBCX_PREFIX)
-                    ? driverInfo.normalizedUrl.substring(ConnectionManager.JDBCX_PREFIX.length())
-                    : driverInfo.normalizedUrl;
+            String tailored = driverInfo.normalizedUrl;
+            if (Utils.startsWith(tailored, ConnectionManager.JDBCX_PREFIX, true)) {
+                tailored = tailored.substring(ConnectionManager.JDBCX_PREFIX.length());
+            }
             int index = tailored.indexOf(':');
             String extName;
             if (index == -1) {

@@ -519,23 +519,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>java9</id>
-                        <phase>none</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <release>9</release>
-                            <jdkToolchain>
-                                <version>9</version>
-                            </jdkToolchain>
-                            <compileSourceRoots>
-                                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
-                            </compileSourceRoots>
-                            <multiReleaseOutput>true</multiReleaseOutput>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>java11</id>
                         <phase>none</phase>
                         <goals>
@@ -782,28 +765,6 @@
             </properties>
         </profile>
         <profile>
-            <id>compile-java9</id>
-            <activation>
-                <jdk>[9,)</jdk>
-                <property>
-                    <name>!j8</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>java9</id>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>compile-java11</id>
             <activation>
                 <jdk>[11,)</jdk>
@@ -877,10 +838,6 @@
                     <plugin>
                         <artifactId>maven-compiler-plugin</artifactId>
                         <executions>
-                            <execution>
-                                <id>java9</id>
-                                <phase>compile</phase>
-                            </execution>
                             <execution>
                                 <id>java11</id>
                                 <phase>compile</phase>
@@ -1088,10 +1045,6 @@
                     <plugin>
                         <artifactId>maven-compiler-plugin</artifactId>
                         <executions>
-                            <execution>
-                                <id>java9</id>
-                                <phase>compile</phase>
-                            </execution>
                             <execution>
                                 <id>java11</id>
                                 <phase>compile</phase>

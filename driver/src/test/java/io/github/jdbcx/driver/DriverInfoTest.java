@@ -27,7 +27,6 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.extension.BlackholeDriverExtension;
 import io.github.jdbcx.extension.PrqlDriverExtension;
 
 public class DriverInfoTest {
@@ -71,10 +70,7 @@ public class DriverInfoTest {
         Assert.assertTrue(DriverInfo.getDriverExtension("1", null) == DriverInfo.getDriverExtension("2", null));
 
         Map<String, DriverExtension> extensions = new HashMap<>();
-        extensions.put("blackhole", new BlackholeDriverExtension());
         extensions.put("prql", new PrqlDriverExtension());
-        Assert.assertEquals(DriverInfo.getDriverExtension("JDBCX:blackhole:mysql://localhost", extensions).getClass(),
-                BlackholeDriverExtension.class);
         Assert.assertEquals(DriverInfo.getDriverExtension("jdbcX:prql:mysql://localhost", extensions).getClass(),
                 PrqlDriverExtension.class);
     }
@@ -82,7 +78,7 @@ public class DriverInfoTest {
     @Test(groups = { "unit" })
     public void testActualUrl() {
         Assert.assertEquals(new DriverInfo("jdbcx:mysql:localhost", null).actualUrl, "jdbc:mysql:localhost");
-        Assert.assertEquals(new DriverInfo("jdbcx:blackhole:mysql:localhost", null).actualUrl, "jdbc:mysql:localhost");
+        Assert.assertEquals(new DriverInfo("jdbcx:web:mysql:localhost", null).actualUrl, "jdbc:mysql:localhost");
     }
 
     @Test(groups = { "unit" })

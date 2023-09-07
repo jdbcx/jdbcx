@@ -133,9 +133,10 @@ final class DriverInfo {
 
         DriverExtension ext = null;
         if (url != null) {
-            int index = url.indexOf(':', ConnectionManager.JDBCX_PREFIX.length());
+            int prefixLength = ConnectionManager.JDBCX_PREFIX.length();
+            int index = url.indexOf(':', prefixLength);
             if (index > 0) {
-                String extName = url.substring(ConnectionManager.JDBCX_PREFIX.length(), index);
+                String extName = url.substring(prefixLength, index);
                 ext = extensions.get(extName);
             }
         }
@@ -184,19 +185,16 @@ final class DriverInfo {
      * @return normalized URL
      */
     static String normalizeUrl(DriverExtension extension, String url) {
-        if (Checker.isNullOrEmpty(url) || !url.startsWith(ConnectionManager.JDBCX_PREFIX)) { // invalid
+        if (!Utils.startsWith(url, ConnectionManager.JDBCX_PREFIX, true)) { // invalid
             return url;
         }
 
-        if (extension == DefaultDriverExtension.getInstance()) {
-            return ConnectionManager.JDBC_PREFIX.concat(url.substring(ConnectionManager.JDBCX_PREFIX.length()));
+        int index = ConnectionManager.JDBCX_PREFIX.length();
+        if (extension != DefaultDriverExtension.getInstance()) {
+            index += extension.getName().length() + 1;
         }
 
-        String className = extension.getClass().getSimpleName();
-        String extName = className.substring(0,
-                className.length() - DriverExtension.class.getSimpleName().length());
-        return ConnectionManager.JDBC_PREFIX
-                .concat(url.substring(ConnectionManager.JDBCX_PREFIX.length() + extName.length() + 1));
+        return ConnectionManager.JDBC_PREFIX.concat(url.substring(index));
     }
 
     Map<String, DriverExtension> getExtensions() {
@@ -320,9 +318,8 @@ final class DriverInfo {
             }
         }
 
-        final String customClassPath = Utils
-                .normalizePath(info.getProperty(Option.PROPERTY_PREFIX.concat(Option.CUSTOM_CLASSPATH.getName()),
-                        Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)));
+        final String customClassPath = Utils.normalizePath(info.getProperty(Option.CUSTOM_CLASSPATH.getJdbcxName(),
+                Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)));
         this.customClassLoader = getCustomClassLoader(customClassPath);
         this.extension = getDriverExtension(this.normalizedUrl, getExtensions());
         this.actualUrl = normalizeUrl(this.extension, this.normalizedUrl);

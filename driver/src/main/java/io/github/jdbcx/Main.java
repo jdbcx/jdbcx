@@ -26,7 +26,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
@@ -34,6 +33,9 @@ import java.util.Properties;
 import io.github.jdbcx.executor.Stream;
 
 public final class Main {
+    static final String OUTPUT_FORMAT_TSV = "TSV";
+    static final String OUTPUT_FORMAT_TSV_WITH_HEADER = "TSVWithHeaders";
+
     private static void println() {
         System.out.println(); // NOSONAR
     }
@@ -72,6 +74,7 @@ public final class Main {
         println("  loopCount\tNumber of times to repeat the same query, defaults to 1");
         println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
         println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
+        println("  outputFormat\tOutput data format(TSV or TSVWithHeaders), defaults to TSV");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -89,7 +92,7 @@ public final class Main {
         return label;
     }
 
-    static long execute(String url, Properties props, String fileOrQuery, boolean verbose)
+    static long execute(String url, Properties props, String fileOrQuery, String outputFormat, boolean verbose)
             throws IOException, SQLException {
         final long startTime = verbose ? System.nanoTime() : 0L;
 
@@ -102,37 +105,48 @@ public final class Main {
         try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
             long rows = 0L;
             String operation = null;
+            final char tab = '\t';
+            final char quote = '"';
             if (stmt.execute(fileOrQuery)) {
                 // only check the first result set
                 try (ResultSet rs = stmt.getResultSet()) {
-                    if (verbose) {
+                    if (verbose || Utils.startsWith(outputFormat, OUTPUT_FORMAT_TSV, true)) {
+                        StringBuilder builder = new StringBuilder();
                         ResultSetMetaData md = rs.getMetaData();
                         int len = md.getColumnCount();
-                        StringBuilder builder = new StringBuilder();
-                        for (int i = 1; i <= len; i++) {
-                            builder.append('|').append(' ').append(getColumnLabel(md, i)).append(' ');
+                        if (OUTPUT_FORMAT_TSV_WITH_HEADER.equalsIgnoreCase(outputFormat)) {
+                            for (int i = 1; i <= len; i++) {
+                                String label = getColumnLabel(md, i);
+                                if (label.indexOf(tab) != -1 || label.indexOf(quote) != -1) {
+                                    builder.append(quote).append(Utils.escape(label, quote, quote)).append(quote)
+                                            .append(tab);
+                                } else {
+                                    builder.append(label).append(tab);
+                                }
+                            }
+                            if (builder.length() > 0) {
+                                builder.setLength(builder.length() - 1);
+                            }
+                            println(builder.toString());
                         }
-                        if (builder.length() > 0) {
-                            builder.append('|');
-                        }
-                        println(builder.toString());
-                        char[] chars = new char[builder.length()];
-                        Arrays.fill(chars, '-');
-                        String line = new String(chars);
-                        println(line);
 
                         while (rs.next()) {
                             builder.setLength(0);
                             for (int i = 1; i <= len; i++) {
-                                builder.append('|').append(' ').append(rs.getObject(i)).append(' ');
+                                String value = String.valueOf(rs.getObject(i));
+                                if (value.indexOf(tab) != -1 || value.indexOf(quote) != -1) {
+                                    builder.append(quote).append(Utils.escape(value, quote, quote)).append(quote)
+                                            .append(tab);
+                                } else {
+                                    builder.append(value).append(tab);
+                                }
                             }
                             if (builder.length() > 0) {
-                                builder.append('|');
+                                builder.setLength(builder.length() - 1);
                             }
                             println(builder.toString());
                             rows++;
                         }
-                        println(line);
 
                         operation = "Read";
                     } else {
@@ -168,6 +182,7 @@ public final class Main {
         final long loopCount = Long.getLong("loopCount", 1L);
         final long loopInterval = Long.getLong("loopInterval", 0L);
         final boolean noProperties = Boolean.parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
+        final String outputFormat = System.getProperty("outputFormat", OUTPUT_FORMAT_TSV);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
@@ -176,7 +191,7 @@ public final class Main {
         boolean failed = false;
         do {
             final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), fileOrQuery,
-                    verbose);
+                    outputFormat, verbose);
             failed = failed || rows < 1L;
             count++;
             if (loopInterval > 0L) {

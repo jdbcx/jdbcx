@@ -900,6 +900,19 @@ public final class Utils {
         return Collections.unmodifiableList(list);
     }
 
+    public static boolean startsWith(String str, String test, boolean ignoreCase) {
+        if (str == null || test == null) {
+            return false;
+        } else if (!ignoreCase) {
+            return str.startsWith(test);
+        } else if (test.isEmpty()) {
+            return true;
+        }
+
+        final int length = test.length();
+        return str.length() >= length && str.substring(0, length).equalsIgnoreCase(test);
+    }
+
     /**
      * Waits until the flag turns to {@code true} or timed out.
      *
