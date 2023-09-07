@@ -26,7 +26,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.driver.DefaultDriverExtension;
-import io.github.jdbcx.extension.BlackholeDriverExtension;
 import io.github.jdbcx.extension.PrqlDriverExtension;
 
 public class DriverExtensionTest {
@@ -62,7 +61,6 @@ public class DriverExtensionTest {
     @Test(groups = { "unit" })
     public void testGetName() {
         Assert.assertEquals(DefaultDriverExtension.getInstance().getName(), "default");
-        Assert.assertEquals(new BlackholeDriverExtension().getName(), "blackhole");
         Assert.assertEquals(new PrqlDriverExtension().getName(), "prql");
     }
 

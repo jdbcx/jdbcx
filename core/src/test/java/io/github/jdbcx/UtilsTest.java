@@ -216,4 +216,27 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split(",,1,2,,1,,,", ","), Arrays.asList("", "", "1", "2", "", "1", "", ""));
         Assert.assertEquals(Utils.split(",,1,2,,1,,,", ",,"), Arrays.asList("", "1,2", "1", ","));
     }
+
+    @Test(groups = { "unit" })
+    public void testStartsWith() {
+        Assert.assertEquals(Utils.startsWith(null, null, true), false);
+        Assert.assertEquals(Utils.startsWith(null, null, false), false);
+        Assert.assertEquals(Utils.startsWith(null, "", true), false);
+        Assert.assertEquals(Utils.startsWith(null, "", false), false);
+        Assert.assertEquals(Utils.startsWith("", null, true), false);
+        Assert.assertEquals(Utils.startsWith("", null, false), false);
+
+        Assert.assertEquals(Utils.startsWith("", "a", true), false);
+        Assert.assertEquals(Utils.startsWith("", "a", false), false);
+        Assert.assertEquals(Utils.startsWith("A", "ab", true), false);
+        Assert.assertEquals(Utils.startsWith("a", "ab", false), false);
+
+        Assert.assertEquals(Utils.startsWith("", "", true), true);
+        Assert.assertEquals(Utils.startsWith("", "", false), true);
+        Assert.assertEquals(Utils.startsWith("3", "", true), true);
+        Assert.assertEquals(Utils.startsWith("3", "", false), true);
+
+        Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", true), true);
+        Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", false), false);
+    }
 }

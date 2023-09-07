@@ -19,8 +19,15 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 <td>
 
 ```sql
--- check out ~/.jdbcx/web/baidu-*.properties for details
-{{ web.baidu-llm(pre.query=web.baidu-auth): what's your name? }}
+-- ask a question(check out ~/.jdbcx/web/baidu-*.properties for details)
+{{ web.baidu-llm(pre.query=web.baidu-auth): who are you? }}
+
+-- get messages of a chat(see ~/.jdbcx/web/ms365-*.properties for details)
+{{ web.ms365-graph(
+	pre.query=web.ms365-auth,
+	result.json.path=value,
+	ms365.api="chats/<URL encoded chat ID>/messages?$top=50")
+}}
 ```
 
 </td>
@@ -74,6 +81,16 @@ GROUP BY d
 <td>
 
 ```sql
+-- benchmark on ClickHouse
+select a[1] `CPU%`, a[2] `MEM(KB)`, a[3] `Elapsed Time(s)`,
+	a[4] `CPU Time(s)`, a[5] `User Time(s)`, a[6] `Switches`,
+	a[7] `Waits`, a[8] `File Inputs`, a[9] `File Outputs`, a[10] `Swaps`
+from (
+select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true): 
+/bin/time -f '%P,%M,%e,%S,%U,%c,%w,%I,%O,%W' du -sh . > /dev/null
+}}') a
+)
+
 -- runtime inspection
 {{ script: helper.table(
   // fields
@@ -81,7 +98,7 @@ GROUP BY d
   // rows
   [
     [
-	  Packages.io.github.jdbcx.WrappedDriver.__javaObject__.getClassLoader(),
+      Packages.io.github.jdbcx.WrappedDriver.__javaObject__.getClassLoader(),
       helper.getClass().getClassLoader(),
       java.lang.Thread.currentThread().getContextClassLoader()
     ]
@@ -186,17 +203,17 @@ See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/) 
 # Mixed
 #
 # "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
 #
 # PRQL
 #
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+docker run --rm -it jdbcx/jdbcx \
     "jdbcx:derby:memory:x;create=true" "{{ prql: from SYS.SYSTABLES }}"
 # or change the default query language to PRQL
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+docker run --rm -it jdbcx/jdbcx \
     "jdbcx:prql:derby:memory:x;create=true" "from SYS.SYSTABLES"
 
 
@@ -206,7 +223,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ script: conn.getClass()}}'"
 # or change the default language to shell
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true" jdbcx/jdbcx \
+docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DoutputFormat=TSVWithHeaders" jdbcx/jdbcx \
     "jdbcx:script:derby:memory:x;create=true" "helper.format('SELECT * FROM %s.%s', 'SYS', 'SYSTABLES')"
 
 
@@ -223,7 +240,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
 #
 # SQL
 #
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ db(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two"
 ```
 
@@ -237,7 +254,7 @@ wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/l
         | cut -d : -f 2,3 | tr -d \")
 
 # Try direct connect
-java -Dverbose=true -jar jdbcx.jar 'jdbcx:shell' 'echo Yes'
+java -jar jdbcx.jar 'jdbcx:shell' 'echo Yes'
 
 # Download Apache Derby embedded database and its JDBC driver
 wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.14.2.0/derby-10.14.2.0.jar
@@ -247,16 +264,16 @@ wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
     https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 # SQL
-java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
+java -Djdbcx.custom.classpath=. -jar jdbcx.jar \
     'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'
 
 # Scripting
-java -Djdbcx.custom.classpath=. -Dverbose=true -jar jdbcx.jar \
+java -Djdbcx.custom.classpath=. -jar jdbcx.jar \
     'jdbcx:script:derby:memory:x;create=true' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
 
 # PRQL
 cargo install prqlc
-java -Djdbcx.custom.classpath=. -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -Dverbose=true -jar jdbcx.jar \
+java -Djdbcx.custom.classpath=. -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -jar jdbcx.jar \
     'jdbcx:prql:derby:memory:x;create=true' 'from `SYS.SYSTABLES`'
 
 # Together on a database in cloud
@@ -268,7 +285,7 @@ helper.format(
 	helper.escapeSingleQuote(helper.cli("~/.cargo/bin/prqlc", "-h"))
 )
 EOF
-java -Djdbcx.custom.classpath=`pwd` -Dverbose=true -jar jdbcx.jar \
+java -Djdbcx.custom.classpath=`pwd` -jar jdbcx.jar \
     'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js
 ```
 

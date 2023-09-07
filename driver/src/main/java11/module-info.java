@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.extension;
+module io.github.jdbcx.core.driver {
+    provides io.github.jdbcx.interpreter.ConfigManager with io.github.jdbcx.driver.FileBasedConfigManager;
 
-import io.github.jdbcx.DriverExtension;
+    requires transitive io.github.jdbcx.core;
 
-public class BlackholeDriverExtension implements DriverExtension {
-    @Override
-    public String getDescription() {
-        return "Extension for testing purpose, do NOT use!";
-    }
+    requires static java.logging;
+    requires static com.google.gson;
+    requires static org.slf4j;
 
-    @Override
-    public String getUsage() {
-        return "{{ blackhole }}";
-    }
+    uses io.github.jdbcx.LoggerFactory;
 }

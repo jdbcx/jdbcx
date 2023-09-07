@@ -20,7 +20,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -54,7 +53,7 @@ public class DbDriverExtension implements DriverExtension {
 
     @Override
     public List<String> getAliases() {
-        return Collections.unmodifiableList(Arrays.asList("sql", "jdbc"));
+        return Collections.singletonList("sql");
     }
 
     @Override

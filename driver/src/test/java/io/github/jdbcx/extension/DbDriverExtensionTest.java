@@ -78,10 +78,23 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
     public void testConnectById() throws SQLException {
         Properties props = new Properties();
         WrappedDriver driver = new WrappedDriver();
+        String[] queries = new String[] { "{{ db: select 1}}", "select {{ db: select 1}}", "{{ script: 1 }}",
+                "select 1", "select {{ script: 1}}" };
+        String url = "jdbcx:ch://" + getClickHouseServer();
+        try (Connection conn = driver.connect(url, props);
+                Statement stmt = conn.createStatement()) {
+            for (String query : queries) {
+                try (ResultSet rs = stmt.executeQuery(query)) {
+                    Assert.assertTrue(rs.next(), "Should have at least one row");
+                    Assert.assertEquals(rs.getInt(1), 1);
+                    Assert.assertFalse(rs.next(), "Should have only one row");
+                }
+            }
+        }
+
         try (Connection conn = DriverManager.getConnection("jdbcx:db:ch-play", props);
                 Statement stmt = conn.createStatement()) {
-            for (String query : new String[] { "select {{ db: select 1}}", "{{ script: 1 }}", "select 1",
-                    "select {{ script: 1}}" }) {
+            for (String query : queries) {
                 try (ResultSet rs = stmt.executeQuery(query)) {
                     Assert.assertTrue(rs.next(), "Should have at least one row");
                     Assert.assertEquals(rs.getInt(1), 1);

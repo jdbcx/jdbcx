@@ -39,12 +39,12 @@ final class InvalidDriver implements Driver {
         final String customClasspath = Option.CUSTOM_CLASSPATH.getValue(this.props);
         final String errorMessage;
         if (Checker.isNullOrEmpty(customClasspath)) {
-            errorMessage = Utils.format("Connection not established due to missing driver. "
-                    + "Please set \"%s\" property to driver directory path.",
+            errorMessage = Utils.format("Unable to connect to [%s] due to missing driver. "
+                    + "Please set \"%s\" property to driver directory path.", url,
                     Option.CUSTOM_CLASSPATH.getSystemProperty(Option.PROPERTY_PREFIX));
         } else {
-            errorMessage = Utils.format("Connection failed due to missing driver in directory \"%s\". "
-                    + "Please update \"%s\" property to the driver directory path.", customClasspath,
+            errorMessage = Utils.format("Unable to connect to [%s] due to missing driver in directory \"%s\". "
+                    + "Please update \"%s\" property to the driver directory path.", url, customClasspath,
                     Option.CUSTOM_CLASSPATH.getSystemProperty(Option.PROPERTY_PREFIX));
         }
         throw new SQLException(errorMessage);

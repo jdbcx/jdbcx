@@ -112,8 +112,15 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         final String driver = (String) filtered.remove(OPTION_DRIVER.getName());
-        return (Checker.isNullOrBlank(driver) ? getDriverByUrl(url, classLoader)
-                : getDriverByClass(driver, classLoader)).connect(url, filtered);
+        try {
+            return (Checker.isNullOrBlank(driver) ? getDriverByUrl(url, classLoader)
+                    : getDriverByClass(driver, classLoader)).connect(url, filtered);
+        } catch (SQLException e) {
+            SQLException ex = SqlExceptionUtils
+                    .clientError(Utils.format("Failed to connect to [%s] due to: %s", url, e.getMessage()));
+            ex.setNextException(e);
+            throw ex;
+        }
     }
 
     public static final Connection getConnectionByConfig(Properties config, ClassLoader classLoader)
