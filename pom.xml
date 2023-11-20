@@ -92,7 +92,7 @@
         <congocc.version>0.0.1</congocc.version>
         <databend.version>0.0.8</databend.version>
         <!-- stay with 10.14.2.0 for JDK 8 -->
-        <derby.version>10.14.2.0</derby.version>
+        <derby.version>10.17.1.0</derby.version>
         <dnsjava.version>3.5.2</dnsjava.version>
         <duckdb.version>0.8.1</duckdb.version>
         <graphql.version>20.4</graphql.version>
