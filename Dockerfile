@@ -53,6 +53,8 @@ RUN apt-get update \
     && wget -nv -O /app/drivers/rhino.LICENSE \
         https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
     && wget -nv -P /app/drivers/ \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.11/slf4j-api-2.0.11.jar \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.11/slf4j-simple-2.0.11.jar \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
         https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar \
         https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.9.2/duckdb_jdbc-0.9.2.jar \
