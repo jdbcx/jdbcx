@@ -28,7 +28,7 @@ import io.github.jdbcx.WrappedDriver;
 public class QueryBuilderTest {
     @Test(groups = { "unit" })
     public void testBuild() throws SQLException {
-        String url = "jdbcx:derby:memory:x;create=true";
+        String url = "jdbcx:sqlite::memory:";
         Properties props = new Properties();
         try (WrappedConnection conn = (WrappedConnection) new WrappedDriver().connect(url, props);
                 WrappedStatement stmt = conn.createStatement()) {

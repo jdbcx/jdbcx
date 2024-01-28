@@ -20,6 +20,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Properties;
@@ -45,18 +47,22 @@ public class BaseIntegrationTest {
     private static final String CLICKHOUSE_SERVICE = "clickhouse";
     private static final int CLICKHOUSE_PORT = 8123;
 
-    private static final Option DATABEND_SERVER = Option
-            .of(new String[] { "databend.server", "Databend server address", "" });
-    private static final String DATABEND_SERVICE = "databend";
-    private static final int DATABEND_PORT = 8000;
+    private static final Option POSTGRESQL_SERVER = Option
+            .of(new String[] { "postgresql.server", "PostgreSQL server address", "" });
+    private static final String POSTGRESQL_SERVICE = "postgresql";
+    private static final int POSTGRESQL_PORT = 5432;
 
     private static final Option PROXY_SERVER = Option.of(new String[] { "proxy.server", "Proxy server address", "" });
     private static final String PROXY_SERVICE = "toxiproxy";
     private static final int PROXY_PORT = 8474; // control port
 
+    private static final Option SERVER_URL = Option.of(new String[] { "server.url", "JDBCX server url", "" });
+
     private static final String clickhouseServer;
-    private static final String databendServer;
+    private static final String postgresqlServer;
     private static final String proxyServer;
+
+    private static final String serverUrl;
 
     static {
         Properties props = new Properties();
@@ -68,11 +74,37 @@ public class BaseIntegrationTest {
 
         clickhouseServer = CLICKHOUSE_SERVER.getValue(props,
                 CLICKHOUSE_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
-        databendServer = DATABEND_SERVER.getValue(props,
-                DATABEND_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+        postgresqlServer = POSTGRESQL_SERVER.getValue(props,
+                POSTGRESQL_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
         proxyServer = PROXY_SERVER.getValue(props, PROXY_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
 
-        if (!Checker.isNullOrEmpty(clickhouseServer) && !Checker.isNullOrEmpty(databendServer)
+        String url = SERVER_URL.getValue(props, SERVER_URL.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+        if (Checker.isNullOrEmpty(url)) {
+            // https://java.testcontainers.org/features/networking/#exposing-host-ports-to-the-container?
+            try {
+                InetAddress localHost = InetAddress.getLocalHost();
+                url = localHost.getHostAddress();
+                for (InetAddress addr : InetAddress.getAllByName(localHost.getHostName())) {
+                    if (addr.isSiteLocalAddress()) { // RFC 1918
+                        url = addr.getHostAddress();
+                        break;
+                    }
+                }
+            } catch (UnknownHostException e) { // should never happen
+                throw new ExceptionInInitializerError(e);
+            }
+            if ("127.0.0.1".equals(url)) {
+                // wild guess since host.docker.internal does not work on Linux by default
+                url = "172.17.0.1";
+            }
+            serverUrl = Utils.format("http://%s:%s%s", Option.SERVER_HOST.getValue(props, url),
+                    Option.SERVER_PORT.getValue(props, Option.SERVER_PORT.getEffectiveDefaultValue("8080")),
+                    Option.SERVER_CONTEXT.getValue(props, Option.SERVER_CONTEXT.getEffectiveDefaultValue("/")));
+        } else {
+            serverUrl = url;
+        }
+
+        if (!Checker.isNullOrEmpty(clickhouseServer) && !Checker.isNullOrEmpty(postgresqlServer)
                 && !Checker.isNullOrEmpty(proxyServer)) {
             containers = null;
         } else {
@@ -85,11 +117,12 @@ public class BaseIntegrationTest {
                     e.printStackTrace();
                 }
             }
+
             containers = new DockerComposeContainer<>(file)
                     .withExposedService(CLICKHOUSE_SERVICE, CLICKHOUSE_PORT,
                             Wait.forHttp("/ping").forStatusCode(200).withStartupTimeout(Duration.ofSeconds(30)))
-                    .withExposedService(DATABEND_SERVICE, DATABEND_PORT,
-                            Wait.forHttp("/").forStatusCode(200).withStartupTimeout(Duration.ofSeconds(30)))
+                    .withExposedService(POSTGRESQL_SERVICE, POSTGRESQL_PORT,
+                            Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)))
                     .withExposedService(PROXY_SERVICE, CLICKHOUSE_PORT)
                     .withExposedService(PROXY_SERVICE, PROXY_PORT,
                             Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)))
@@ -104,11 +137,11 @@ public class BaseIntegrationTest {
         return clickhouseServer;
     }
 
-    public static String getDeclaredDatabendServer() {
-        if (Checker.isNullOrEmpty(databendServer)) {
-            return new StringBuilder(DATABEND_SERVICE).append(':').append(DATABEND_PORT).toString();
+    public static String getDeclaredPostgreSqlServer() {
+        if (Checker.isNullOrEmpty(postgresqlServer)) {
+            return new StringBuilder(POSTGRESQL_SERVICE).append(':').append(POSTGRESQL_PORT).toString();
         }
-        return databendServer;
+        return postgresqlServer;
     }
 
     public static String getClickHouseServer() {
@@ -119,12 +152,12 @@ public class BaseIntegrationTest {
         return clickhouseServer;
     }
 
-    public static String getDatabendServer() {
-        if (Checker.isNullOrEmpty(databendServer)) {
-            return new StringBuilder(containers.getServiceHost(DATABEND_SERVICE, DATABEND_PORT)).append(':')
-                    .append(containers.getServicePort(DATABEND_SERVICE, DATABEND_PORT)).toString();
+    public static String getPostgreSqlServer() {
+        if (Checker.isNullOrEmpty(postgresqlServer)) {
+            return new StringBuilder(containers.getServiceHost(POSTGRESQL_SERVICE, POSTGRESQL_PORT)).append(':')
+                    .append(containers.getServicePort(POSTGRESQL_SERVICE, POSTGRESQL_PORT)).toString();
         }
-        return databendServer;
+        return postgresqlServer;
     }
 
     public static String getProxyControlServer() {
@@ -143,10 +176,14 @@ public class BaseIntegrationTest {
         return proxyServer;
     }
 
+    public static String getServerUrl() {
+        return serverUrl;
+    }
+
     @BeforeSuite(groups = { "integration" })
     public static void beforeSuite() {
         if (containers != null) {
-            for (String service : new String[] { CLICKHOUSE_SERVICE, DATABEND_SERVICE, PROXY_SERVICE }) {
+            for (String service : new String[] { CLICKHOUSE_SERVICE, POSTGRESQL_SERVICE, PROXY_SERVICE }) {
                 Optional<ContainerState> state = containers.getContainerByServiceName(service);
                 if (state.isPresent() && state.get().isRunning()) {
                     return;

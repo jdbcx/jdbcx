@@ -38,23 +38,24 @@ public class PrqlDriverExtensionTest {
         props.setProperty("jdbcx.prql.cli.path", "~/tests/prqlc8");
         // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
         // props.setProperty("jdbcx.prql.compile.target", "mssql");
-        // try (Connection conn = DriverManager.getConnection("jdbcx:prql:derby:memory:x;create=true", props);
-        //         Statement stmt = conn.createStatement();
-        //         ResultSet rs = stmt.executeQuery("from `SYS.SYSTABLES`\ntake 3")) {
-        //     Assert.assertTrue(rs.next(), "Should have at least one row");
-        //     Assert.assertTrue(rs.getString(1).length() > 0, "Should have content");
+        // try (Connection conn =
+        // DriverManager.getConnection("jdbcx:prql:sqlite::memory:", props);
+        // Statement stmt = conn.createStatement();
+        // ResultSet rs = stmt.executeQuery("from `SYS.SYSTABLES`\ntake 3")) {
+        // Assert.assertTrue(rs.next(), "Should have at least one row");
+        // Assert.assertTrue(rs.getString(1).length() > 0, "Should have content");
         // }
         props.setProperty("jdbcx.prql.exec.error", "throw");
         props.setProperty("jdbcx.script.exec.error", "throw");
         props.setProperty("jdbcx.shell.exec.error", "throw");
-        try (Connection conn = DriverManager.getConnection("jdbcx:prql:derby:memory:x;create=true", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:prql:sqlite::memory:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertTrue(rs.getString(1).length() > 0, "Should have content");
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbcx:derby:memory:x;create=true", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:sqlite::memory:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
                         .executeQuery("select '{% prql: from `SYS.SYSTABLES` %}' as v, TABLENAME from SYS.SYSTABLES")) {
@@ -63,7 +64,7 @@ public class PrqlDriverExtensionTest {
             Assert.assertTrue(rs.getString(2).length() > 0, "Should have content");
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbcx:derby:memory:x;create=true", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:sqlite::memory:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
                         .executeQuery(

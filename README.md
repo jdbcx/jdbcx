@@ -210,11 +210,9 @@ docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
 #
 # PRQL
 #
-docker run --rm -it jdbcx/jdbcx \
-    "jdbcx:derby:memory:x;create=true" "{{ prql: from SYS.SYSTABLES }}"
+docker run --rm -it jdbcx/jdbcx "jdbcx:sqlite::memory:" "{{ prql: from sqlite_schema }}"
 # or change the default query language to PRQL
-docker run --rm -it jdbcx/jdbcx \
-    "jdbcx:prql:derby:memory:x;create=true" "from SYS.SYSTABLES"
+docker run --rm -it jdbcx/jdbcx "jdbcx:prql:sqlite::memory:" "from sqlite_schema"
 
 
 #
@@ -224,7 +222,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
     "jdbcx:duckdb:" "select '{{ script: conn.getClass()}}'"
 # or change the default language to shell
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DoutputFormat=TSVWithHeaders" jdbcx/jdbcx \
-    "jdbcx:script:derby:memory:x;create=true" "helper.format('SELECT * FROM %s.%s', 'SYS', 'SYSTABLES')"
+    "jdbcx:script:sqlite::memory:" "helper.format('SELECT * FROM %s.%s', 'SYS', 'SYSTABLES')"
 
 
 #
@@ -256,25 +254,24 @@ wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/l
 # Try direct connect
 java -jar jdbcx.jar 'jdbcx:shell' 'echo Yes'
 
-# Download Apache Derby embedded database and its JDBC driver
-wget https://repo1.maven.org/maven2/org/apache/derby/derby/10.14.2.0/derby-10.14.2.0.jar
+# Download SQLite embedded database and its JDBC driver
+wget https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar
 
 # Download JavaScript engine
 wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
     https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 # SQL
-java -Djdbcx.custom.classpath=. -jar jdbcx.jar \
-    'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'
+java -Djdbcx.custom.classpath=. -jar jdbcx.jar 'jdbcx:sqlite::memory:' 'select 1'
 
 # Scripting
 java -Djdbcx.custom.classpath=. -jar jdbcx.jar \
-    'jdbcx:script:derby:memory:x;create=true' 'helper.format("SELECT * FROM %s.%s", "SYS", "SYSTABLES")'
+    'jdbcx:script:sqlite::memory:' 'helper.format("SELECT %s, %s", "1", "2")'
 
 # PRQL
 cargo install prqlc
 java -Djdbcx.custom.classpath=. -Djdbcx.prql.cli.path=~/.cargo/bin/prqlc -jar jdbcx.jar \
-    'jdbcx:prql:derby:memory:x;create=true' 'from `SYS.SYSTABLES`'
+    'jdbcx:prql:sqlite::memory:' 'from `sqlite_schema`'
 
 # Together on a database in cloud
 wget https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar

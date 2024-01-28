@@ -32,7 +32,7 @@ public class HelpDriverExtensionTest {
     public void testQuery() throws SQLException {
         WrappedDriver d = new WrappedDriver();
         Properties props = new Properties();
-        try (Connection conn = DriverManager.getConnection("jdbcx:prql:derby:memory:x;create=true", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:prql:sqlite::memory:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("{{ help }}")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
