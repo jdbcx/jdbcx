@@ -22,7 +22,6 @@ import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.Properties;
 import java.util.concurrent.TimeoutException;
@@ -70,27 +69,32 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         Assert.assertNotNull(d.connect(null, new Properties()));
         Assert.assertNotNull(d.connect("", null));
 
-        try (Connection c = d.connect("jdbc:derby:memory:x;create=true", null)) {
+        try (Connection c = d.connect("jdbc:sqlite::memory:", null)) {
             Assert.assertNotNull(c);
         }
 
-        try (Connection c = d.connect("jdbcx:derby:memory:x;create=true", null)) {
+        try (Connection c = d.connect("jdbc:sqlite::memory:", null)) {
             Assert.assertNotNull(c);
         }
     }
 
     @Test(groups = { "unit" })
     public void testVariable() throws Exception {
-        String url = "jdbcx:derby:memory:x;create=true";
+        String url = "jdbcx:sqlite::memory:";
         Properties props = new Properties();
         try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
             try (ResultSet rs = stmt.executeQuery(
-                    "{% vars: db=SYS1, tbl='SYS1TABLES' %}select * {{ vars(prefix='x.'): db=SYS, tbl=SYSTABLES }}from ${x.db}.${x.tbl}")) {
-                Assert.assertTrue(rs.next());
+                    "select * from sqlite_schema")) {
+                Assert.assertFalse(rs.next());
             }
 
             try (ResultSet rs = stmt.executeQuery(
-                    "{% vars: m=true %}select '{{ shell(result.string.trim=${m}): echo ${m}}}' a from SYS.SYSTABLES")) {
+                    "{% vars: first=sqlite1, second='schema1' %}select * {{ vars(prefix='x.'): first=sqlite, second=schema }}from ${x.first}_${x.second}")) {
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery(
+                    "{% vars: m=true %}select '{{ shell(result.string.trim=${m}): echo ${m}}}' a")) {
                 while (rs.next()) {
                     Assert.assertEquals(rs.getString(1), "true");
                 }
@@ -100,17 +104,16 @@ public class WrappedDriverTest extends BaseIntegrationTest {
 
     @Test(groups = { "unit" })
     public void testErrorHandling() throws Exception {
-        String url = "jdbcx:script:derby:memory:x;create=true";
+        String url = "jdbcx:script:sqlite::memory:";
         WrappedDriver d = new WrappedDriver();
         Assert.assertNotNull(d.getPropertyInfo(url, null));
-        int tables = 0;
         try (Connection conn = d.connect(url, null);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("helper.format('select * from %s.%s', 'SYS', 'SYSTABLES')")) {
-            while (rs.next()) {
-                tables++;
-            }
-            Assert.assertTrue(tables > 0, "Should have at least one table in the database");
+                ResultSet rs = stmt.executeQuery("helper.format('SELECT 1 AS %s, 2 AS %s', 'a', 'b')")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row in result");
+            Assert.assertEquals(rs.getInt("a"), 1);
+            Assert.assertEquals(rs.getInt("b"), 2);
+            Assert.assertFalse(rs.next(), "Should have ONLY one row in result");
         }
 
         try (Connection conn = d.connect(url, null); Statement stmt = conn.createStatement();) {
@@ -119,12 +122,10 @@ public class WrappedDriverTest extends BaseIntegrationTest {
 
         try (Connection conn = d.connect(url, null);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
-            int count = 0;
-            while (rs.next()) {
-                count++;
-            }
-            Assert.assertEquals(count, tables);
+                ResultSet rs = stmt.executeQuery("select '3'")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row in result");
+            Assert.assertEquals(rs.getString(1), "3");
+            Assert.assertFalse(rs.next(), "Should have ONLY one row in result");
         }
 
         Properties props = new Properties();
@@ -133,31 +134,30 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
         }
         try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
-            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select * from SYS.SYSTABLES"));
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select 1"));
         }
 
         props = new Properties();
         props.setProperty("jdbcx.script.exec.error", "warn");
         try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
-            Assert.assertThrows(SQLSyntaxErrorException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
+            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
         }
 
         props = new Properties();
         props.setProperty("jdbcx.shell.exec.error", "warn");
-        try (Connection conn = DriverManager.getConnection("jdbcx:shell:derby:memory:x;create=true", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:shell:sqlite::memory:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
+                ResultSet rs = stmt.executeQuery("select * from sqlite_schema")) {
             Assert.assertNotNull(stmt.getWarnings(), "Should have SQLWarning");
+            Assert.assertFalse(rs.next(), "Should NOT have any result");
         }
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from SYS.SYSTABLES")) {
+                ResultSet rs = stmt.executeQuery("select 5")) {
             Assert.assertNotNull(stmt.getWarnings(), "Should have SQLWarning");
-            int count = 0;
-            while (rs.next()) {
-                count++;
-            }
-            Assert.assertEquals(count, tables);
+            Assert.assertTrue(rs.next(), "Should have at least one row in result");
+            Assert.assertEquals(rs.getInt(1), 5);
+            Assert.assertFalse(rs.next(), "Should have ONLY one row in result");
         }
     }
 
@@ -181,10 +181,10 @@ public class WrappedDriverTest extends BaseIntegrationTest {
 
         // props.setProperty("jdbcx.custom.classpath", "~/Backup");
         // props.setProperty("jdbcx.prql.cli.path", "~/.cargo/bin/prqlc");
-        // try (Connection conn = d.connect("jdbcx:prql:derby:memory:x;create=true",
+        // try (Connection conn = d.connect("jdbcx:prql:sqlite::memory:",
         // props);
         // Statement stmt = conn.createStatement();
-        // ResultSet rs = stmt.executeQuery("from `SYS.SYSTABLES`")) {
+        // ResultSet rs = stmt.executeQuery("from `sqlite_schema`")) {
         // int count = 0;
         // while (rs.next()) {
         // count++;
@@ -282,8 +282,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         WrappedDriver d = new WrappedDriver();
 
         final String address = getClickHouseServer();
-        try (Connection conn = d.connect("jdbcx:derby:memory:x;create=true", props);
-                Statement stmt = conn.createStatement()) {
+        try (Connection conn = d.connect("jdbcx:sqlite::memory:", props); Statement stmt = conn.createStatement()) {
             try (ResultSet rs = stmt
                     .executeQuery("{{sql(url='jdbc:ch://" + address + "'): select * from numbers(7)}}")) {
                 int counter = 0;

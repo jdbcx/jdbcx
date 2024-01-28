@@ -78,7 +78,7 @@ public final class Main {
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
-        println("  -  %s 'jdbcx:derby:memory:x;create=true' 'select * from SYS.SYSTABLES'",
+        println("  -  %s 'jdbcx:sqlite::memory:' 'select 1'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);

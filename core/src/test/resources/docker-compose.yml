@@ -3,16 +3,20 @@
 # Any changes made to this file should be propagated to class BaseIntegrationTest.
 #
 
+# https://hub.docker.com/_/postgres
+postgresql:
+  image: postgres:16.1
+  environment:
+    POSTGRES_HOST_AUTH_METHOD: "trust"
+
 # https://hub.docker.com/r/clickhouse/clickhouse-server/
 clickhouse:
-  image: clickhouse/clickhouse-server:22.8
-# https://hub.docker.com/r/datafuselabs/databend
-databend:
-  image: datafuselabs/databend:v1.2.40-nightly
+  image: clickhouse/clickhouse-server:23.8
   links:
-    - clickhouse
+    - postgresql
+
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
-  image: ghcr.io/shopify/toxiproxy:2.5.0
+  image: zhicwu/toxiproxy:2.7.0
   links:
     - clickhouse

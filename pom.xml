@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
     xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
@@ -74,43 +73,37 @@
 
         <ccc.src.dir>${project.build.directory}/generated-sources/ccc</ccc.src.dir>
 
-        <annotations-api.version>6.0.53</annotations-api.version>
-        <apache.httpclient.version>5.2.1</apache.httpclient.version>
-        <arrow.version>12.0.1</arrow.version>
-        <avro.version>1.11.2</avro.version>
+        <arrow.version>15.0.0</arrow.version>
+        <avro.version>1.11.3</avro.version>
         <brotli.version>0.1.2</brotli.version>
-        <brotli4j.version>1.11.0</brotli4j.version>
-        <caffeine.version>3.1.6</caffeine.version>
+        <brotli4j.version>1.15.0</brotli4j.version>
+        <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <compress.version>1.22</compress.version>
+        <compress.version>1.25.0</compress.version>
         <!--
             wget https://parsers.org/download/congocc.jar
-            mvn install:install-file -Dfile=congocc.jar \
-                -DgroupId=org.parsers -DartifactId=congocc \
-                -Dversion=0.0.1 -Dpackaging=jar
+            mvn install:install-file -Dfile=congocc.jar \ -DgroupId=org.parsers -DartifactId=congocc \ -Dversion=0.0.1 -Dpackaging=jar
         -->
         <congocc.version>0.0.1</congocc.version>
-        <databend.version>0.0.8</databend.version>
-        <!-- stay with 10.14.2.0 for JDK 8 -->
-        <derby.version>10.14.2.0</derby.version>
-        <dnsjava.version>3.5.2</dnsjava.version>
-        <duckdb.version>0.8.1</duckdb.version>
-        <graphql.version>20.4</graphql.version>
-        <groovy.version>4.0.13</groovy.version>
+        <dnsjava.version>3.5.3</dnsjava.version>
+        <duckdb.version>0.9.2</duckdb.version>
+        <graphql.version>21.3</graphql.version>
+        <groovy.version>4.0.18</groovy.version>
         <gson.version>2.10.1</gson.version>
-        <jctools.version>4.0.1</jctools.version>
-        <jmespath.version>0.5.1</jmespath.version>
+        <jctools.version>4.0.2</jctools.version>
+        <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
-        <msgpack.version>0.9.3</msgpack.version>
-        <mysql.version>8.1.0</mysql.version>
-        <postgresql.version>42.6.0</postgresql.version>
+        <msgpack.version>0.9.8</msgpack.version>
+        <mysql.version>8.3.0</mysql.version>
+        <postgresql.version>42.7.1</postgresql.version>
+        <sqlite.version>3.45.0.0</sqlite.version>
         <rhino.version>1.7.14</rhino.version>
-        <roaring-bitmap.version>0.9.47</roaring-bitmap.version>
-        <slf4j.version>2.0.7</slf4j.version>
-        <snappy.version>1.1.10.1</snappy.version>
+        <roaring-bitmap.version>1.0.1</roaring-bitmap.version>
+        <slf4j.version>2.0.11</slf4j.version>
+        <snappy.version>1.1.10.5</snappy.version>
         <xz.version>1.9</xz.version>
-        <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <testcontainers.version>1.18.3</testcontainers.version>
+        <zstd-jni.version>1.5.5-11</zstd-jni.version>
+        <testcontainers.version>1.19.3</testcontainers.version>
         <!-- stay 7.5 for JDK 8 support -->
         <testng.version>7.5.1</testng.version>
 
@@ -118,33 +111,33 @@
 
         <antrun-plugin.version>3.1.0</antrun-plugin.version>
         <assembly-plugin.version>3.6.0</assembly-plugin.version>
-        <clean-plugin.version>3.3.1</clean-plugin.version>
-        <compiler-plugin.version>3.11.0</compiler-plugin.version>
+        <clean-plugin.version>3.3.2</clean-plugin.version>
+        <compiler-plugin.version>3.12.1</compiler-plugin.version>
         <deploy-plugin.version>3.1.1</deploy-plugin.version>
-        <enforcer-plugin.version>3.3.0</enforcer-plugin.version>
-        <exec-plugin.version>3.1.0</exec-plugin.version>
-        <failsafe-plugin.version>3.1.2</failsafe-plugin.version>
-        <flatten-plugin.version>1.5.0</flatten-plugin.version>
-        <!-- stay with 4.9.9 as higher version does not work -->
+        <enforcer-plugin.version>3.4.1</enforcer-plugin.version>
+        <exec-plugin.version>3.1.1</exec-plugin.version>
+        <failsafe-plugin.version>3.2.5</failsafe-plugin.version>
+        <flatten-plugin.version>1.6.0</flatten-plugin.version>
+        <!-- stay with 4.9.9 for JDK8 and its higher version does not work -->
         <git-plugin.version>4.9.9</git-plugin.version>
         <gpg-plugin.version>3.1.0</gpg-plugin.version>
-        <helper-plugin.version>3.4.0</helper-plugin.version>
-        <jacoco-plugin.version>0.8.10</jacoco-plugin.version>
+        <helper-plugin.version>3.5.0</helper-plugin.version>
+        <jacoco-plugin.version>0.8.11</jacoco-plugin.version>
         <jar-plugin.version>3.3.0</jar-plugin.version>
-        <javadoc-plugin.version>3.5.0</javadoc-plugin.version>
-        <license-plugin.version>4.2</license-plugin.version>
-        <native-plugin.version>0.9.20</native-plugin.version>
+        <javadoc-plugin.version>3.6.3</javadoc-plugin.version>
+        <license-plugin.version>4.3</license-plugin.version>
+        <native-plugin.version>0.9.28</native-plugin.version>
         <notice-plugin.version>2.0.0</notice-plugin.version>
         <os-plugin.version>1.7.1</os-plugin.version>
         <resources-plugin.version>3.3.1</resources-plugin.version>
-        <shade-plugin.version>3.5.0</shade-plugin.version>
+        <shade-plugin.version>3.5.1</shade-plugin.version>
         <source-plugin.version>3.3.0</source-plugin.version>
         <staging-plugin.version>1.6.13</staging-plugin.version>
-        <surefire-plugin.version>3.1.2</surefire-plugin.version>
+        <surefire-plugin.version>3.2.5</surefire-plugin.version>
         <toolchains-plugin.version>3.1.0</toolchains-plugin.version>
-        <versions-plugin.version>2.16.0</versions-plugin.version>
+        <versions-plugin.version>2.16.2</versions-plugin.version>
 
-        <minJdk>1.8</minJdk>
+        <minJdk>8</minJdk>
         <skipTests>false</skipTests>
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
@@ -165,11 +158,6 @@
                 <artifactId>clickhouse-jdbc</artifactId>
                 <classifier>http</classifier>
                 <version>${clickhouse.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.databend</groupId>
-                <artifactId>databend-jdbc</artifactId>
-                <version>${databend.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -197,19 +185,14 @@
                 <version>${mysql.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.derby</groupId>
-                <artifactId>derby</artifactId>
-                <version>${derby.version}</version>
+                <groupId>org.xerial</groupId>
+                <artifactId>sqlite-jdbc</artifactId>
+                <version>${sqlite.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-jsr223</artifactId>
                 <version>${groovy.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.tomcat</groupId>
-                <artifactId>annotations-api</artifactId>
-                <version>${annotations-api.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.codehaus.janino</groupId>

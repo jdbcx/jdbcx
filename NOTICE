@@ -18,12 +18,10 @@ under the License.
 
 This project includes:
   Apache Commons Compress under Apache-2.0
-  Apache Derby Database Engine and Embedded JDBC Driver under Apache 2
   Apache Groovy under The Apache Software License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
-  databend-jdbc under Apache License 2.0
   docker-java-api under The Apache Software License, Version 2.0
   docker-java-transport under The Apache Software License, Version 2.0
   docker-java-transport-zerodep under The Apache Software License, Version 2.0
@@ -51,7 +49,8 @@ This project includes:
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0
   SLF4J API Module under MIT License
-  SLF4J Simple Binding under MIT License
+  SLF4J Simple Provider under MIT License
+  SQLite JDBC under The Apache Software License, Version 2.0
   Testcontainers :: Toxiproxy under MIT
   Testcontainers Core under MIT
   testng under Apache License, Version 2.0

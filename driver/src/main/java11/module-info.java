@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-module io.github.jdbcx.core.driver {
+module io.github.jdbcx.driver {
     provides io.github.jdbcx.interpreter.ConfigManager with io.github.jdbcx.driver.FileBasedConfigManager;
 
     requires transitive io.github.jdbcx.core;
