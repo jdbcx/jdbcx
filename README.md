@@ -288,16 +288,13 @@ java -Djdbcx.custom.classpath=`pwd` -jar jdbcx.jar \
 
 ### DBeaver
 
-Due to [dbeaver/dbeaver#19165](https://github.com/dbeaver/dbeaver/issues/19165), you have to edit existing driver settings by adding `jdbcx-driver` jar file. Alternatively, you may follow instructions below to setup a new database driver.
+Since DBeaver 23.2.1, you can create JDBCX connection just like any other DB connection:
 
-1. `Database` -> `Driver Manager` -> `New` or `Edit`
-   ![image](https://user-images.githubusercontent.com/4270380/251389086-e42d2828-cc68-4306-8595-d300ed1527af.png)
+1. `Database` -> `New Database Connection`
+    ![image](https://github.com/jdbcx/jdbcx/assets/4270380/75929b8a-709a-4ece-9c25-c760d882cec0)
 
-   - **Driver:** `io.github.jdbcx.WrappedDriver`
-   - **URL Template:** `jdbcx:[ext:]xxx://{host}[:{port}][/{database}]`
-
-2. `Database` -> `New Database Connection` -> select `JDBCX` and click `Next` -> specify `URL` and switch to `Driver Properties` tab to make changes as needed
-   ![image](https://user-images.githubusercontent.com/4270380/251389733-52d8318c-f00a-4f37-8635-72388c91130d.png)
+2. Select `JDBCX`, download driver if you haven't, and then click `Next`
+    ![image](https://github.com/jdbcx/jdbcx/assets/4270380/9b624cec-c434-40a8-93b2-a6555359dca8)
 
 ## Known Issues
 
