@@ -22,11 +22,11 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 -- ask a question(check out ~/.jdbcx/web/baidu-*.properties for details)
 {{ web.baidu-llm(pre.query=web.baidu-auth): who are you? }}
 
--- get messages of a chat(see ~/.jdbcx/web/ms365-*.properties for details)
-{{ web.ms365-graph(
-	pre.query=web.ms365-auth,
+-- get messages of a chat(see ~/.jdbcx/web/m365-*.properties for details)
+{{ web.m365-graph(
+	pre.query=web.m365-auth,
 	result.json.path=value,
-	ms365.api="chats/<URL encoded chat ID>/messages?$top=50")
+	m365.api="chats/<URL encoded chat ID>/messages?$top=50")
 }}
 ```
 
@@ -204,7 +204,7 @@ See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/) 
 #
 # "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
 docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two, {{ script: 1+2 }} as three"
+    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db.ch-play(exec.timeout=0): select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
 #
@@ -222,7 +222,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
     "jdbcx:duckdb:" "select '{{ script: conn.getClass()}}'"
 # or change the default language to shell
 docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DoutputFormat=TSVWithHeaders" jdbcx/jdbcx \
-    "jdbcx:script:sqlite::memory:" "helper.format('SELECT * FROM %s.%s', 'SYS', 'SYSTABLES')"
+    "jdbcx:script:sqlite::memory:" "helper.format('SELECT 1 %s, 2 %s', 'one', 'two')"
 
 
 #
@@ -239,7 +239,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
 # SQL
 #
 docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ db(id=ch-altinity,exec.timeout=0): select 1 }}' as one, '{{ db(id=ch-play): select 2 }}' as two"
+    "jdbcx:duckdb:" "select '{{ db.ch-altinity(exec.timeout=0): select 1 }}' as one, '{{ db.ch-play(exec.timeout=0): select 2 }}' as two"
 ```
 
 ### Command Line
@@ -254,8 +254,10 @@ wget -O jdbcx.jar $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/l
 # Try direct connect
 java -jar jdbcx.jar 'jdbcx:shell' 'echo Yes'
 
-# Download SQLite embedded database and its JDBC driver
-wget https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar
+# Download SQLite JDBC driver and its dependency
+wget https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar \
+    https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.11/slf4j-api-2.0.11.jar \
+    https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.11/slf4j-simple-2.0.11.jar
 
 # Download JavaScript engine
 wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
@@ -283,7 +285,7 @@ helper.format(
 )
 EOF
 java -Djdbcx.custom.classpath=`pwd` -jar jdbcx.jar \
-    'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js
+    'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true&compress=0' @my.js
 ```
 
 ### DBeaver
