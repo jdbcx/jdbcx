@@ -85,7 +85,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: Build & Test Docker Image
         run: |
-          docker buildx build --build-arg JDBCX_VERSION=latest --platform linux/amd64,linux/arm64 -t jdbcx:ci . \
+          docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
           && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{prql:3}}'
 
   test-jdk17-linux:
