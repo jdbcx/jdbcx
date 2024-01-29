@@ -93,7 +93,7 @@ jobs:
           build-args: JDBCX_VERSION=latest
           tags: jdbcx:ci
       - name: Test Docker Image
-        run: docker run --rm -it jdbcx:ci 'jdbcx:sqlite::memory:' 'select 1'
+        run: docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{prql:3}}'
 
   test-jdk17-linux:
     needs: compile
