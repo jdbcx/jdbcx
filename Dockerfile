@@ -39,20 +39,27 @@ RUN apt-get update \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
     && apt-get clean \
-	&& rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
+    && rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
+
+# Use custom configuration
+COPY --chown=${JDBCX_USER_NAME}:${JDBCX_USER_NAME} docker/ /
 
 WORKDIR /app
 
-# Use custom configuration
-COPY --from=jdk /min-jre /app/openjdk
-COPY --chown=${JDBCX_USER_NAME}:${JDBCX_USER_NAME} docker/ /
+COPY --from=jdk /min-jre ./openjdk
+
+# Download JDBCX conditionally
+RUN if [ -f jdbcx-driver-*.jar ]; then echo "Skip downloading"; \
+    elif [ "${JDBCX_VERSION}" = "latest" ]; then wget -O jdbcx-driver-${JDBCX_VERSION}.jar \
+        $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
+        | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
+        | cut -d : -f 2,3 | tr -d \"); \
+    else wget -nv https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
+        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
+        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE; fi
 
 RUN chmod +x /*.sh \
-    && wget -nv \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE \
-    && ln -s jdbcx-driver-${JDBCX_VERSION}.jar jdbcx.jar \
+    && ln -s jdbcx-driver-*.jar jdbcx.jar \
     && wget -nv -O ./drivers/duckdb.LICENSE https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
     && wget -nv -O ./drivers/mysql-connector-j.LICENSE \
         https://raw.githubusercontent.com/mysql/mysql-connector-j/release/8.x/LICENSE \
