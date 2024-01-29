@@ -38,40 +38,49 @@ RUN apt-get update \
     && echo 13 > /etc/timezone \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
-    && mkdir -p /app/drivers \
-    && chown -R jdbcx:jdbcx /app \
-    && wget -nv -P /app \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
+
+# Use custom configuration
+COPY --chown=${JDBCX_USER_NAME}:${JDBCX_USER_NAME} docker/ /
+
+WORKDIR /app
+
+COPY --from=jdk /min-jre ./openjdk
+
+# Download JDBCX conditionally
+RUN if [ -f jdbcx-driver-*.jar ]; then echo "Skip downloading"; \
+    elif [ "${JDBCX_VERSION}" = "latest" ]; then wget -O jdbcx-driver-${JDBCX_VERSION}.jar \
+        $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
+        | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
+        | cut -d : -f 2,3 | tr -d \"); \
+    else wget -nv https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
         https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
-        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE \
-    && ln -s /app/jdbcx-driver-${JDBCX_VERSION}.jar /app/jdbcx.jar \
-    && wget -nv -O /app/drivers/duckdb.LICENSE https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
-    && wget -nv -O /app/drivers/mysql-connector-j.LICENSE \
+        https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE; fi
+
+RUN chmod +x /*.sh \
+    && ln -s jdbcx-driver-*.jar jdbcx.jar \
+    && wget -nv -O ./drivers/duckdb.LICENSE https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
+    && wget -nv -O ./drivers/mysql-connector-j.LICENSE \
         https://raw.githubusercontent.com/mysql/mysql-connector-j/release/8.x/LICENSE \
-    && wget -nv -O /app/drivers/pgjdbc.LICENSE \
+    && wget -nv -O ./drivers/pgjdbc.LICENSE \
         https://raw.githubusercontent.com/pgjdbc/pgjdbc/master/LICENSE \
-    && wget -nv -O /app/drivers/rhino.LICENSE \
+    && wget -nv -O ./drivers/rhino.LICENSE \
         https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
-    && wget -nv -P /app/drivers/ \
-        https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.11/slf4j-api-2.0.11.jar \
-        https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.11/slf4j-simple-2.0.11.jar \
+    && wget -nv -P ./drivers/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
         https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar \
         https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.9.2/duckdb_jdbc-0.9.2.jar \
         https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar \
         https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.11/slf4j-api-2.0.11.jar \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.11/slf4j-simple-2.0.11.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
-        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar \
-    && apt-get clean \
-	&& rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
-
-# Use custom configuration
-COPY --from=jdk /min-jre /app/openjdk
-COPY --chown=root:root docker/ /
-
-RUN chmod +x /*.sh
+        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
 
 USER jdbcx
+
+RUN ./openjdk/bin/java -Dverbose=true -DnoProperties=true -jar jdbcx.jar 'jdbcx:duckdb:' 'install httpfs' || true
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
@@ -79,5 +88,3 @@ VOLUME [ "/app/drivers" ]
 
 # bridge server
 EXPOSE 8080
-
-WORKDIR /app

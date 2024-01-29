@@ -55,6 +55,39 @@ jobs:
       - name: Build and install libraries
         run: mvn --batch-mode --show-version --strict-checksums --threads 2 -Dmaven.wagon.rto=30000 -Dj8 install
 
+  test-docker:
+    needs: compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Check out PR
+        run: |
+          git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
+            origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
+        if: github.event.inputs.pr != ''
+      - name: Install JDK 8 and Maven
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: 8
+          cache: "maven"
+      - name: Build and install libraries
+        run: |
+          mvn --batch-mode --show-version --strict-checksums -Dj8 -DskipTests package \
+          && mv -fv driver/target/jdbcx-driver-*-SNAPSHOT.jar docker/app/.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build & Test Docker Image
+        run: |
+          docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
+          && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{prql:3}}'
+
   test-jdk17-linux:
     needs: compile
     strategy:

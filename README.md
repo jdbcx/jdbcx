@@ -204,7 +204,7 @@ See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/) 
 #
 # "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
 docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db.ch-play(exec.timeout=0): select 2 }}' as two, {{ script: 1+2 }} as three"
+    "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db.ch-play: select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
 #
@@ -239,7 +239,7 @@ docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdb
 # SQL
 #
 docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
-    "jdbcx:duckdb:" "select '{{ db.ch-altinity(exec.timeout=0): select 1 }}' as one, '{{ db.ch-play(exec.timeout=0): select 2 }}' as two"
+    "jdbcx:duckdb:" "select '{{ db.ch-altinity: select 1 }}' as one, '{{ db.ch-play: select 2 }}' as two"
 ```
 
 ### Command Line
