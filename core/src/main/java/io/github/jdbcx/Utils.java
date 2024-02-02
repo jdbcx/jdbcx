@@ -233,12 +233,25 @@ public final class Utils {
     }
 
     /**
-     * Converts given string to key value pairs.
+     * Converts given string to key value pairs. Same as
+     * {@code toKeyValuePairs(str, ',', true)}.
      * 
      * @param str string
      * @return non-null key value pairs
      */
     public static Map<String, String> toKeyValuePairs(String str) {
+        return toKeyValuePairs(str, ',', true);
+    }
+
+    /**
+     * Converts given string to key value paris.
+     *
+     * @param str           string
+     * @param delimiter     delimiter maong key value pairs
+     * @param notUrlEncoded whether the key and value are URL encoded or not
+     * @return non-null key value pairs
+     */
+    public static Map<String, String> toKeyValuePairs(String str, char delimiter, boolean notUrlEncoded) {
         if (str == null || str.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -248,7 +261,7 @@ public final class Utils {
         StringBuilder builder = new StringBuilder();
         for (int i = 0, len = str.length(); i < len; i++) {
             char ch = str.charAt(i);
-            if (ch == '\\' && i + 1 < len) {
+            if (notUrlEncoded && ch == '\\' && i + 1 < len) {
                 ch = str.charAt(++i);
                 builder.append(ch);
                 continue;
@@ -260,9 +273,15 @@ public final class Utils {
                 }
             } else if (ch == '=' && key == null) {
                 key = builder.toString().trim();
+                if (!notUrlEncoded) {
+                    key = decode(key);
+                }
                 builder.setLength(0);
-            } else if (ch == ',' && key != null) {
+            } else if (ch == delimiter && key != null) {
                 String value = builder.toString().trim();
+                if (!notUrlEncoded) {
+                    value = decode(value);
+                }
                 builder.setLength(0);
                 if (!key.isEmpty() && !value.isEmpty()) {
                     map.put(key, value);

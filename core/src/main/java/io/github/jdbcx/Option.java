@@ -189,11 +189,12 @@ public final class Option implements Serializable {
             .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
                     "stream" });
 
+    public static final Option SERVER_URL = Option.of(new String[] { "server.url", "Server url" });
     public static final Option SERVER_HOST = Option.of(new String[] { "server.host", "Server host" });
     public static final Option SERVER_PORT = Option.of("server.port", "Server port", "8080");
     public static final Option SERVER_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
-    public static final Option SERVER_CONTEXT = Option.of("server.context", "Server web context starts with backslash",
-            "/");
+    public static final Option SERVER_CONTEXT = Option.of("server.context",
+            "Server web context starts and ends with backslash", "/");
 
     public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert",
             "Path to the client SSL/TLS certificate file to use for authenticated requests." });
