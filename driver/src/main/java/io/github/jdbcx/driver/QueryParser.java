@@ -417,17 +417,29 @@ public final class QueryParser {
                 if (nextChar == ch && !escaped) { // executable block with output: {{ ... }}
                     int index = indexOf(query, i + 1, "}}", escapeChar);
                     if (index > 0) {
+                        int endIndex = index;
                         for (int k = index; k < len; k++) { // be greedy
                             if (query.charAt(k) == '}') {
                                 index++;
+                                endIndex = index - 2;
                             } else {
                                 break;
+                            }
+                        }
+                        if (endIndex == index) {
+                            endIndex -= 2;
+                            for (int k = endIndex - 1; k > i; k--) {
+                                if (Character.isWhitespace(query.charAt(k))) {
+                                    endIndex = k;
+                                } else {
+                                    break;
+                                }
                             }
                         }
                         if (query.charAt(i + 1) == '-') {
                             log.debug("Skip executable block: %s", query.substring(i - 1, index));
                         } else {
-                            addExecutableBlock(builder, query.substring(i + 1, index - 2), vars, true, parts, blocks);
+                            addExecutableBlock(builder, query.substring(i + 1, endIndex), vars, true, parts, blocks);
                         }
                         i = index - 1;
                     } else {
@@ -436,11 +448,30 @@ public final class QueryParser {
                     }
                 } else if (nextChar == '%' && !escaped) { // executable block: {% ... %}
                     int index = indexOf(query, i + 1, "%}", escapeChar);
+                    int endIndex = index;
+                    for (int k = index; k < len; k++) { // be greedy
+                        if (query.charAt(k) == '%') {
+                            index++;
+                            endIndex = index - 2;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (endIndex == index) {
+                        endIndex -= 2;
+                        for (int k = endIndex - 1; k > i; k--) {
+                            if (Character.isWhitespace(query.charAt(k))) {
+                                endIndex = k;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
                     if (index > 0) {
                         if (query.charAt(i + 1) == '-') {
                             log.debug("Skip executable block: %s", query.substring(i - 1, index));
                         } else {
-                            addExecutableBlock(builder, query.substring(i + 1, index - 2), vars, false, parts, blocks);
+                            addExecutableBlock(builder, query.substring(i + 1, endIndex), vars, false, parts, blocks);
                         }
                         i = index - 1;
                     } else {

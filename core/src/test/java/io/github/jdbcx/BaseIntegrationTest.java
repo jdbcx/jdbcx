@@ -56,8 +56,6 @@ public class BaseIntegrationTest {
     private static final String PROXY_SERVICE = "toxiproxy";
     private static final int PROXY_PORT = 8474; // control port
 
-    private static final Option SERVER_URL = Option.of(new String[] { "server.url", "JDBCX server url", "" });
-
     private static final String clickhouseServer;
     private static final String postgresqlServer;
     private static final String proxyServer;
@@ -78,7 +76,8 @@ public class BaseIntegrationTest {
                 POSTGRESQL_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
         proxyServer = PROXY_SERVER.getValue(props, PROXY_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
 
-        String url = SERVER_URL.getValue(props, SERVER_URL.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+        String url = Option.SERVER_URL.getValue(props,
+                Option.SERVER_URL.getEffectiveDefaultValue(Constants.EMPTY_STRING));
         if (Checker.isNullOrEmpty(url)) {
             // https://java.testcontainers.org/features/networking/#exposing-host-ports-to-the-container?
             try {

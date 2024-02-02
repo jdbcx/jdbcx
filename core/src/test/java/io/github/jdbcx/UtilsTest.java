@@ -148,6 +148,16 @@ public class UtilsTest {
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type=application/json,Authorization=Bear 1234 5"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json , Authorization = Bear 1234 5 "),
                 expected);
+
+        expected.clear();
+        expected.put("a 1", "b ");
+        expected.put("c", "3");
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);
+
+        expected.clear();
+        expected.put("a%201", "b%20");
+        expected.put("c", "3");
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', true), expected);
     }
 
     @Test(groups = { "unit" })

@@ -22,6 +22,7 @@ import java.util.Properties;
 
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.interpreter.VarInterpreter;
 
@@ -35,6 +36,11 @@ public class VarDriverExtension implements DriverExtension {
     @Override
     public List<String> getAliases() {
         return Collections.singletonList("vars");
+    }
+
+    @Override
+    public List<Option> getDefaultOptions() {
+        return VarInterpreter.OPTIONS;
     }
 
     @Override

@@ -23,15 +23,18 @@ import org.testng.annotations.Test;
 public class ExecutableBlockTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ExecutableBlock(0, null, null, null, false));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ExecutableBlock(0, "", null, null, false));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ExecutableBlock(0, null, null, null, false));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ExecutableBlock(0, "", null, null, false));
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, "", new Properties(), null, false));
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, new Properties(), null, false));
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, new Properties(), "", false));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ExecutableBlock(0, null, null, "", false));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ExecutableBlock(0, null, null, "", false));
 
         ExecutableBlock block = new ExecutableBlock(-1, "ex", new Properties(), "...", true);
         Assert.assertEquals(block, new ExecutableBlock(-1, "ex", new Properties(), "...", true));
@@ -45,5 +48,25 @@ public class ExecutableBlockTest {
         Properties props = new Properties();
         props.setProperty("a", "c");
         Assert.assertEquals(block, new ExecutableBlock(-1, "ex", props, "...", true));
+    }
+
+    @Test(groups = { "unit" })
+    public void testSameAs() {
+        Properties props = new Properties();
+        ExecutableBlock block = new ExecutableBlock(1, "b1", props, "...", true);
+        Assert.assertFalse(block.sameAs(new ExecutableBlock(1, "b2", props, "...", true)),
+                "Should be false since extension is different");
+        Assert.assertFalse(block.sameAs(new ExecutableBlock(1, "b1", props, ". .", true)),
+                "Should be false since content is different");
+        Assert.assertFalse(block.sameAs(new ExecutableBlock(1, "b1", props, "...", false)),
+                "Should be false since output is different");
+
+        Assert.assertTrue(block.sameAs(new ExecutableBlock(2, "b1", props, "...", true)),
+                "Should be true because index does not matter");
+        Assert.assertTrue(block.sameAs(new ExecutableBlock(1, "b1", new Properties(), "...", true)),
+                "Should be true because properties do not matter");
+        props.setProperty("a", "b");
+        Assert.assertTrue(block.sameAs(new ExecutableBlock(1, "b1", new Properties(), "...", true)),
+                "Should be true because properties do not matter");
     }
 }

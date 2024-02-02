@@ -64,6 +64,16 @@ public final class ExecutableBlock {
         return content;
     }
 
+    public boolean sameAs(ExecutableBlock block) {
+        if (this == block) {
+            return true;
+        } else if (block == null) {
+            return false;
+        }
+
+        return output == block.output && extension.equals(block.extension) && content.equals(block.content);
+    }
+
     public boolean hasNoArguments() {
         return props.isEmpty() && Checker.isNullOrBlank(content, true);
     }

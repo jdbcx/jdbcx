@@ -15,6 +15,9 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
@@ -27,14 +30,23 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 
 public class VarInterpreter extends AbstractInterpreter {
-    static final Option OPTION_PREFIX = Option.of(new String[] { "prefix", "Prefix of variable", "" });
+    public static final Option OPTION_DELIMITER = Option
+            .of(new String[] { "delimiter", "Character used to separate variables.", "," });
+    public static final Option OPTION_PREFIX = Option.of(new String[] { "prefix", "Prefix of variable name.", "" });
 
-    private final String defaultPrefix;
+    public static final List<Option> OPTIONS = Collections
+            .unmodifiableList(Arrays.asList(OPTION_DELIMITER, OPTION_PREFIX));
+
+    final char defaultDelimiter;
+    final String defaultPrefix;
 
     public VarInterpreter(QueryContext context, Properties config) {
         super(context);
 
-        defaultPrefix = OPTION_PREFIX.getValue(config);
+        String value = OPTION_DELIMITER.getValue(config);
+        defaultDelimiter = Checker.isNullOrEmpty(value) ? ',' : value.charAt(0);
+        value = OPTION_PREFIX.getValue(config);
+        defaultPrefix = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value.trim();
     }
 
     @Override
@@ -44,7 +56,8 @@ public class VarInterpreter extends AbstractInterpreter {
                 final QueryContext context = getContext();
                 final String prefix = OPTION_PREFIX.getValue(props, defaultPrefix);
                 if (Checker.isNullOrEmpty(prefix)) {
-                    for (Entry<String, String> entry : Utils.toKeyValuePairs(query).entrySet()) {
+                    for (Entry<String, String> entry : Utils.toKeyValuePairs(query, defaultDelimiter, true)
+                            .entrySet()) {
                         context.setVariable(entry.getKey(), entry.getValue());
                     }
                 } else {

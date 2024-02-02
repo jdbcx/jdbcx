@@ -21,8 +21,10 @@ import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
@@ -82,9 +84,26 @@ public final class QueryBuilder {
         final int len = blocks.length;
         final Result<?>[] results = new Result[len];
         final Properties[] properties = new Properties[len];
+        final Map<Integer, List<Integer>> cachedIndices = new HashMap<>();
 
         for (int i = 0; i < len; i++) {
             ExecutableBlock block = blocks[i];
+            int sameBlockIndex = -1;
+            for (int k = 0; k < i; k++) {
+                if (blocks[k].sameAs(block)) {
+                    sameBlockIndex = k;
+                    break;
+                }
+            }
+            if (sameBlockIndex >= 0) {
+                List<Integer> list = cachedIndices.get(sameBlockIndex);
+                if (list == null) {
+                    list = new ArrayList<>();
+                    cachedIndices.put(sameBlockIndex, list);
+                }
+                list.add(i);
+                continue;
+            }
             DriverExtension ext = manager.getExtension(block.getExtensionName());
             Properties p = manager.extractProperties(ext);
             properties[i] = p;
@@ -126,6 +145,9 @@ public final class QueryBuilder {
         exploded.add(new String[len]);
         for (int i = 0; i < len; i++) {
             Result<?> r = results[i];
+            if (r == null) {
+                continue;
+            }
             String[][] mo = exploded.toArray(new String[0][]);
             exploded.clear();
             for (Row row : r.rows()) {
@@ -134,6 +156,12 @@ public final class QueryBuilder {
                     String[] e = mo[ji]; // 😀
                     String[] newParts = Arrays.copyOf(e, len);
                     newParts[i] = val;
+                    List<Integer> list = cachedIndices.get(i);
+                    if (list != null) {
+                        for (Integer k : list) {
+                            newParts[k] = val;
+                        }
+                    }
                     exploded.add(newParts);
                 }
             }

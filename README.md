@@ -38,11 +38,12 @@ JDBCX enhances the JDBC driver by supporting additional data formats, compressio
 
 ```sql
 -- https://clickhouse.com/docs/en/sql-reference/aggregate-functions/parametric-functions#retention
+{% var(delimiter=;): dates=['2020-01-01','2020-01-02','2020-01-03'] %}
 SELECT
     uid,
-    retention({{ script: "date='" + ['2020-01-01','2020-01-02','2020-01-03'].join("',date='") + "'" }}) AS r
+    retention({{ script: "date='" + ${dates}.join("',date='") + "'" }}) AS r
 FROM retention_test
-WHERE date IN ({{ script: "'" + ['2020-01-03','2020-01-02','2020-01-01'].join("','") + "'" }})
+WHERE date IN ({{ script: "'" + ${dates}.join("','") + "'" }})
 GROUP BY uid
 ORDER BY uid ASC
 ```
@@ -67,10 +68,10 @@ select {{ script: ${num} - 2 }} one,
 <td>
 
 ```sql
-{% var: func=toYear, sdate=2023-01-01 %}
+{% var: func=toYear, sdate='2023-01-01' %}
 SELECT ${func}(create_date) AS d, count(1) AS c
 FROM my_table
-WHERE create_date >= '${sdate}'
+WHERE create_date >= ${sdate}
 GROUP BY d
 ```
 
