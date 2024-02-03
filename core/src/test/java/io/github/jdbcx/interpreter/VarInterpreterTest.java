@@ -15,16 +15,20 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.util.Collections;
 import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Field;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 
 public class VarInterpreterTest {
     @Test(groups = { "unit" })
-    public void testInterpret() {
+    public void testConstructor() {
         QueryContext context = QueryContext.newContext();
         Properties config = new Properties();
 
@@ -41,5 +45,51 @@ public class VarInterpreterTest {
         interpreter = new VarInterpreter(context, config);
         Assert.assertEquals(interpreter.defaultDelimiter, ';');
         Assert.assertEquals(interpreter.defaultPrefix, "Prefix_");
+    }
+
+    @Test(groups = { "unit" })
+    public void testInterpret() {
+        QueryContext context = QueryContext.newContext();
+        Properties config = new Properties();
+
+        VarInterpreter interpreter = new VarInterpreter(context, config);
+        Result<?> result = interpreter.interpret(" a = 1, b = '2', c-d=['a\\,b'] ", config);
+        Assert.assertEquals(result.fields(), Collections.singletonList(Field.DEFAULT));
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.fields(), result.fields());
+            Assert.assertEquals(r.values().size(), 1);
+            Assert.assertEquals(r.value(0).asString(), "");
+        }
+        Properties vars = new Properties();
+        vars.setProperty("a", "1");
+        vars.setProperty("b", "'2'");
+        vars.setProperty("c-d", "['a,b']");
+        Assert.assertEquals(context.getVariable("a"), vars.getProperty("a"));
+        Assert.assertEquals(context.getVariable("b"), vars.getProperty("b"));
+        Assert.assertEquals(context.getVariable("c-d"), vars.getProperty("c-d"));
+        Assert.assertEquals(context.getMergedVariables(), vars);
+
+        String prefix = "1-2-3";
+        context = QueryContext.newContext();
+        VarInterpreter.OPTION_DELIMITER.setValue(config, ";");
+        VarInterpreter.OPTION_PREFIX.setValue(config, prefix);
+
+        interpreter = new VarInterpreter(context, config);
+        result = interpreter.interpret("a=[1,'2',3];b='c'", config);
+        Assert.assertEquals(result.fields(), Collections.singletonList(Field.DEFAULT));
+        Assert.assertEquals(result.fields(), Collections.singletonList(Field.DEFAULT));
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.fields(), result.fields());
+            Assert.assertEquals(r.values().size(), 1);
+            Assert.assertEquals(r.value(0).asString(), "");
+        }
+        vars = new Properties();
+        String keya = prefix + "a";
+        String keyb = prefix + "b";
+        vars.setProperty(keya, "[1,'2',3]");
+        vars.setProperty(keyb, "'c'");
+        Assert.assertEquals(context.getVariable(keya), vars.getProperty(keya));
+        Assert.assertEquals(context.getVariable(keyb), vars.getProperty(keyb));
+        Assert.assertEquals(context.getMergedVariables(), vars);
     }
 }
