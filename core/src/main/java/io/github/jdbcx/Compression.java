@@ -141,6 +141,13 @@ public enum Compression {
         return fromFileExtension(ext, null);
     }
 
+    /**
+     * Get compression based on given file extension.
+     *
+     * @param ext             file extension without dot prefix
+     * @param defaultCompress default compression
+     * @return {@code defaultCompress} if file extension is unknown
+     */
     public static Compression fromFileExtension(String ext, Compression defaultCompress) {
         Compression compression = defaultCompress;
 
@@ -157,12 +164,21 @@ public enum Compression {
         return compression;
     }
 
+    /**
+     * Get compression based on given magic number.
+     *
+     * @param bytes magic number
+     * @return compression, could be null
+     */
     public static Compression fromMagicNumber(byte[] bytes) {
         Compression compression = null;
 
         int len = bytes != null ? bytes.length : 0;
         if (len > 0) {
-            outer_loop: for (Compression c : values()) {
+            outer_loop: for (Compression c : values()) {// NOSONAR
+                if (!c.hasMagicNumber()) {
+                    continue;
+                }
                 byte[] m = c.magicBytes;
                 int l = m.length;
                 if (l > 0 && l <= len) {

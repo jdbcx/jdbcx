@@ -104,9 +104,16 @@ public enum Format {
             ext = file.substring(index + 1);
         }
 
-        return fromFileExtension(ext, null);
+        return fromFileExtension(ext, null); // NOSONAR
     }
 
+    /**
+     * Get format based on given file extension.
+     *
+     * @param ext           file extension without dot prefix
+     * @param defaultFormat default format
+     * @return {@code defaultFormat} if file extension is unknown
+     */
     public static Format fromFileExtension(String ext, Format defaultFormat) {
         Format format = defaultFormat;
 
