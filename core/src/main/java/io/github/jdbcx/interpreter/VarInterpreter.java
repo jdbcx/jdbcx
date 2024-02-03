@@ -61,7 +61,7 @@ public class VarInterpreter extends AbstractInterpreter {
                         context.setVariable(entry.getKey(), entry.getValue());
                     }
                 } else {
-                    Map<String, String> map = Utils.toKeyValuePairs(query);
+                    Map<String, String> map = Utils.toKeyValuePairs(query, defaultDelimiter, true);
                     for (Entry<String, String> entry : map.entrySet()) {
                         context.setVariable(prefix.concat(entry.getKey()), entry.getValue());
                     }
