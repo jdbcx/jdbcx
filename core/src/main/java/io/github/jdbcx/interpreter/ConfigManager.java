@@ -46,7 +46,8 @@ public class ConfigManager {
                     "Whether to load configuration into cache and use background thread to monitor changes" });
     public static final Option OPTION_ALIAS = Option.of(new String[] { "alias", "Comma separated aliases" });
     public static final Option OPTION_MANAGED = Option
-            .of(new String[] { "manage", "Whether all the configuration are managed", "false", "true" });
+            .of(new String[] { "manage", "Whether all the configuration are managed", Constants.FALSE_EXPR,
+                    Constants.TRUE_EXPR });
 
     private static final ConfigManager instance = Utils.getService(ConfigManager.class, new ConfigManager());
 

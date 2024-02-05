@@ -52,22 +52,40 @@ public class FormatTest {
 
     @Test(groups = { "unit" })
     public void testFromMimeType() {
-        Assert.assertEquals(Format.fromMimeType(null), defaultFormat);
-        Assert.assertEquals(Format.fromMimeType(""), defaultFormat);
-        Assert.assertEquals(Format.fromMimeType("*/csv"), defaultFormat);
-        Assert.assertEquals(Format.fromMimeType("*/*"), defaultFormat);
-        Assert.assertEquals(Format.fromMimeType("text/*"), defaultFormat);
-        Assert.assertEquals(Format.fromMimeType("unknown"), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType(null, null), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("", null), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("*/csv", null), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("*/*", null), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("text/*", null), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("unknown", null), defaultFormat);
+
+        final Format format = Format.BSON;
+        Assert.assertEquals(Format.fromMimeType(null, format), format);
+        Assert.assertEquals(Format.fromMimeType("", format), format);
+        Assert.assertEquals(Format.fromMimeType("*/csv", format), format);
+        Assert.assertEquals(Format.fromMimeType("*/*", format), format);
+        Assert.assertEquals(Format.fromMimeType("text/*", format), defaultFormat);
+        Assert.assertEquals(Format.fromMimeType("unknown", format), format);
 
         for (Format f : Format.values()) {
-            Assert.assertEquals(Format.fromMimeType(f.mimeType()), f);
+            Assert.assertEquals(Format.fromMimeType(f.mimeType(), null), f);
+            Assert.assertEquals(Format.fromMimeType(f.mimeType(), format), f);
         }
 
-        Assert.assertEquals(Format.fromMimeType("Application/JSON"), Format.JSON);
-        Assert.assertEquals(Format.fromMimeType("application/bson;q=0.6,text/csv;q=0.4"), Format.BSON);
-        Assert.assertEquals(Format.fromMimeType("text/csv"), Format.CSV);
+        Assert.assertEquals(Format.fromMimeType("Application/JSON", null), Format.JSON);
+        Assert.assertEquals(Format.fromMimeType("application/bson;q=0.6,text/csv;q=0.4", null), Format.BSON);
+        Assert.assertEquals(Format.fromMimeType("text/csv", null), Format.CSV);
         Assert.assertEquals(
-                Format.fromMimeType("text/html, application/unknown, application/vnd.apache.parquet;q=0.9, image/webp"),
+                Format.fromMimeType("text/html, application/unknown, application/vnd.apache.parquet;q=0.9, image/webp",
+                        null),
+                Format.PARQUET);
+
+        Assert.assertEquals(Format.fromMimeType("Application/JSON", format), Format.JSON);
+        Assert.assertEquals(Format.fromMimeType("application/bson;q=0.6,text/csv;q=0.4", format), Format.BSON);
+        Assert.assertEquals(Format.fromMimeType("text/csv", format), Format.CSV);
+        Assert.assertEquals(
+                Format.fromMimeType("text/html, application/unknown, application/vnd.apache.parquet;q=0.9, image/webp",
+                        format),
                 Format.PARQUET);
     }
 }

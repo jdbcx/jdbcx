@@ -54,6 +54,8 @@ public class WebExecutor extends AbstractExecutor {
     public static final Option OPTION_CONNECT_TIMEOUT = Option
             .of(new String[] { "connect.timeout",
                     "Connect timeout in milliseconds, a negative number or zero disables timeout", "5000" });
+    public static final Option OPTION_FOLLOW_REDIRECT = Option
+            .of(new String[] { "follow.redirect", "Whether follow redirect or not", Constants.TRUE_EXPR });
     public static final Option OPTION_PROXY = Option.of(new String[] { "proxy", "Proxy server address" });
     public static final Option OPTION_SOCKET_TIMEOUT = Option
             .of(new String[] { "socket.timeout",
@@ -96,6 +98,7 @@ public class WebExecutor extends AbstractExecutor {
     }
 
     private final String defaultConnectTimeout;
+    private final String defaultFollowRedirect;
     private final String defaultSocketTimeout;
     private final String defaultProxy;
 
@@ -149,13 +152,23 @@ public class WebExecutor extends AbstractExecutor {
         return p;
     }
 
-    protected HttpURLConnection openConnection(URL url, Properties config, Map<?, ?> headers) throws IOException {
+    public WebExecutor(Properties props) {
+        super(props);
+
+        this.defaultConnectTimeout = OPTION_CONNECT_TIMEOUT.getValue(props);
+        this.defaultFollowRedirect = OPTION_FOLLOW_REDIRECT.getValue(props);
+        this.defaultSocketTimeout = OPTION_SOCKET_TIMEOUT.getValue(props, String.valueOf(defaultTimeout));
+        this.defaultProxy = OPTION_PROXY.getValue(props);
+    }
+
+    public HttpURLConnection openConnection(URL url, Properties config, Map<?, ?> headers) throws IOException {
         final int execTimeout = getTimeout(config);
         final int connectTimeout = Integer.parseInt(OPTION_CONNECT_TIMEOUT.getValue(config, defaultConnectTimeout));
         final int socketTimeout = Integer.parseInt(OPTION_SOCKET_TIMEOUT.getValue(config, defaultSocketTimeout));
+        final boolean followRedirect = Boolean
+                .parseBoolean(OPTION_FOLLOW_REDIRECT.getValue(config, defaultFollowRedirect));
 
         final HttpURLConnection conn = (HttpURLConnection) url.openConnection(getProxy(config));
-
         if (headers != null) {
             for (Entry<?, ?> header : headers.entrySet()) {
                 Object key = header.getKey();
@@ -176,7 +189,7 @@ public class WebExecutor extends AbstractExecutor {
             conn.setReadTimeout(execTimeout > 0 ? Math.min(socketTimeout, execTimeout) : socketTimeout);
         }
         conn.setAllowUserInteraction(false);
-        conn.setInstanceFollowRedirects(true);
+        conn.setInstanceFollowRedirects(followRedirect);
         conn.setUseCaches(false);
         conn.setDoInput(true);
         if (conn instanceof HttpsURLConnection) {
@@ -194,14 +207,6 @@ public class WebExecutor extends AbstractExecutor {
 
         setBasicAuth(conn, url.getUserInfo());
         return conn;
-    }
-
-    public WebExecutor(Properties props) {
-        super(props);
-
-        this.defaultConnectTimeout = OPTION_CONNECT_TIMEOUT.getValue(props);
-        this.defaultSocketTimeout = OPTION_SOCKET_TIMEOUT.getValue(props, String.valueOf(defaultTimeout));
-        this.defaultProxy = OPTION_PROXY.getValue(props);
     }
 
     public int getConnectTimeout(Properties props) {

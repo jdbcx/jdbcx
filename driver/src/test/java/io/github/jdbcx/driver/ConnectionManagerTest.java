@@ -20,6 +20,7 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
 
 public class ConnectionManagerTest {
@@ -32,12 +33,12 @@ public class ConnectionManagerTest {
         Assert.assertEquals(ConnectionManager.normalize(str, props), str);
         Option.RESULT_STRING_TRIM.setValue(props);
         Assert.assertEquals(ConnectionManager.normalize(str, props), str);
-        Option.RESULT_STRING_TRIM.setValue(props, "true");
+        Option.RESULT_STRING_TRIM.setValue(props, Constants.TRUE_EXPR);
         Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim());
 
         Option.RESULT_STRING_ESCAPE.setValue(props);
         Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim());
-        Option.RESULT_STRING_ESCAPE.setValue(props, "true");
+        Option.RESULT_STRING_ESCAPE.setValue(props, Constants.TRUE_EXPR);
         Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "\\'"));
         Option.RESULT_STRING_ESCAPE_CHAR.setValue(props);
         Assert.assertEquals(ConnectionManager.normalize(str, props), str.trim().replace("'", "\\'"));

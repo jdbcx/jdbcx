@@ -22,6 +22,7 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
 
 public class QueryParserTest {
@@ -215,10 +216,10 @@ public class QueryParserTest {
 
         props.clear();
         props.setProperty("my.option", "trim");
-        props.setProperty("my.preference", "true");
+        props.setProperty("my.preference", Constants.TRUE_EXPR);
         expected.clear();
         expected.putAll(props);
-        expected.setProperty("result.string.trim", "true");
+        expected.setProperty("result.string.trim", Constants.TRUE_EXPR);
         Assert.assertEquals(QueryParser.parseExecutableBlock(
                 str = " shell\r\n\t(\nresult.string.${my.option} = '${my.preference}' ) :\nfrom `test.test1` | take 10 ",
                 props), new String[] { "shell", "from `test.test1` | take 10 " });

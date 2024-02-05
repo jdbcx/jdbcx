@@ -69,7 +69,8 @@ public class CommandLineExecutor extends AbstractExecutor {
             "The full command line or path specifying the command to execute.", "");
     public static final Option OPTION_CLI_STDERR_REDIRECT = Option
             .of(new String[] { "cli.stderr.redirect",
-                    "Whether to redirect standard error (stderr) to standard output (stdout).", "false", "true" });
+                    "Whether to redirect standard error (stderr) to standard output (stdout).", Constants.FALSE_EXPR,
+                    Constants.TRUE_EXPR });
     public static final Option OPTION_CLI_TEST_ARGS = Option.of("cli.test.args",
             "Arguments to pass to the command line to validate correctness and existence.", "");
     public static final Option OPTION_DOCKER_PATH = Option.of("docker.path",
