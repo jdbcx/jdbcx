@@ -27,6 +27,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Constants;
 
 public class ShellDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "private" })
@@ -65,7 +66,7 @@ public class ShellDriverExtensionTest extends BaseIntegrationTest {
         final String query = "select '{{ shell: echo 12 }}'";
         final String address = getClickHouseServer();
         Properties props = new Properties();
-        props.setProperty("jdbcx.shell.result.string.trim", "true");
+        props.setProperty("jdbcx.shell.result.string.trim", Constants.TRUE_EXPR);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + address, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {

@@ -61,12 +61,17 @@ public enum Format {
     /**
      * Get preferred data format based on given MIME types.
      *
-     * @param mimeTypes acceptable MIME types, for example:
-     *                  {@code text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, *_/_*;q=0.8}
+     * @param mimeTypes     acceptable MIME types, for example:
+     *                      {@code text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, *_/_*;q=0.8}
+     * @param defaultFormat optional default format, {@code null} is same as
+     *                      {@link #TSV}
      * @return non-null data format
      */
-    public static Format fromMimeType(String mimeTypes) {
-        final Format defaultFormat = TSV;
+    public static Format fromMimeType(String mimeTypes, Format defaultFormat) {
+        if (defaultFormat == null) {
+            defaultFormat = TSV;
+        }
+
         for (String part : Utils.split(mimeTypes, ',')) {
             for (String str : Utils.split(part.trim(), ';')) {
                 String type = str.trim().toLowerCase(Locale.ROOT);

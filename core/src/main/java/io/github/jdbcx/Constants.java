@@ -44,6 +44,9 @@ public final class Constants {
 
     public static final String EMPTY_STRING = "";
 
+    public static final String FALSE_EXPR = Boolean.FALSE.toString();
+    public static final String TRUE_EXPR = Boolean.TRUE.toString();
+
     public static final String NULL_EXPR = "NULL";
     public static final String NAN_EXPR = "NaN";
     public static final String INF_EXPR = "Inf";

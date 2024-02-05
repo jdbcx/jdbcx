@@ -23,6 +23,7 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.interpreter.ConfigManager;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
@@ -46,7 +47,7 @@ public class FileBasedConfigManagerTest {
         }
 
         Properties props = new Properties();
-        ConfigManager.OPTION_CACHE.setJdbcxValue(props, "true");
+        ConfigManager.OPTION_CACHE.setJdbcxValue(props, Constants.TRUE_EXPR);
         FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, "non-existent-directory");
         manager.reload(props);
         Assert.assertThrows(IllegalArgumentException.class,

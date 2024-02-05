@@ -96,7 +96,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             try (ResultSet rs = stmt.executeQuery(
                     "{% vars: m=true %}select '{{ shell(result.string.trim=${m}): echo ${m}}}' a")) {
                 while (rs.next()) {
-                    Assert.assertEquals(rs.getString(1), "true");
+                    Assert.assertEquals(rs.getString(1), Constants.TRUE_EXPR);
                 }
             }
         }

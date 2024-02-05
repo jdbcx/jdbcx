@@ -21,6 +21,9 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class OptionTest {
+    static enum Dummy {
+    }
+
     @Test(groups = { "unit" })
     public void testBuilder() {
         Assert.assertNotNull(Option.builder(), "Builder should never be null");
@@ -69,6 +72,29 @@ public class OptionTest {
         Assert.assertEquals(option.getDescription(), "desc");
         Assert.assertEquals(option.getDefaultValue(), "x");
         Assert.assertEquals(option.getChoices(), new String[] { "y", "x" });
+    }
+
+    @Test(groups = { "unit" })
+    public void testOfEnum() {
+        Option option = Option.ofEnum("n", null, null, null);
+        Assert.assertEquals(option.getDefaultValue(), "");
+        Assert.assertEquals(option.getChoices(), new String[0]);
+
+        option = Option.ofEnum("n", null, null, Dummy.class);
+        Assert.assertEquals(option.getDefaultValue(), "");
+        Assert.assertEquals(option.getChoices(), new String[0]);
+
+        option = Option.ofEnum("n", null, null, Format.class);
+        Assert.assertEquals(option.getDefaultValue(), Format.TSV.name());
+        Assert.assertEquals(option.getChoices().length, Format.values().length);
+
+        option = Option.ofEnum("n", null, "invalid", Compression.class);
+        Assert.assertEquals(option.getDefaultValue(), Compression.NONE.name());
+        Assert.assertEquals(option.getChoices().length, Compression.values().length);
+
+        option = Option.ofEnum("n", null, "LZ4", Compression.class);
+        Assert.assertEquals(option.getDefaultValue(), Compression.LZ4.name());
+        Assert.assertEquals(option.getChoices().length, Compression.values().length);
     }
 
     @Test(groups = { "unit" })

@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
@@ -123,7 +124,7 @@ public class AbstractInterpreterTest {
         Assert.assertEquals(count, 1);
         Assert.assertEquals(result.get(String.class), "");
 
-        Option.RESULT_STRING_TRIM.setValue(props, "true");
+        Option.RESULT_STRING_TRIM.setValue(props, Constants.TRUE_EXPR);
         count = 0;
         result = i.process("test", new StringReader("{\"value\": [\" 1\", \"2 \", \"\"]}"), props);
         for (Row r : result.rows()) {

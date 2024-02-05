@@ -95,8 +95,8 @@ public final class Option implements Serializable {
      * Whether to perform a dry run.
      */
     public static final Option EXEC_DRYRUN = Option
-            .of(new String[] { "exec.dryrun", "Whether to perform a dry run without actual execution.", "false",
-                    "true" });
+            .of(new String[] { "exec.dryrun", "Whether to perform a dry run without actual execution.",
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     /**
      * The error handling approach to use when an execution fails.
      */
@@ -147,7 +147,7 @@ public final class Option implements Serializable {
             .of(new String[] { "result.var", "Unique variable name of the query result." });
     public static final Option RESULT_REUSE = Option
             .of(new String[] { "result.reuse", "Whether to reuse the result, only works when result.var is specified.",
-                    "true", "false" });
+                    Constants.TRUE_EXPR, Constants.FALSE_EXPR });
     public static final Option RESULT_SCOPE = Option
             .of(new String[] { "result.scope", "Scope of the result, only works when result.var is specified.",
                     Constants.SCOPE_QUERY, Constants.SCOPE_THREAD, Constants.SCOPE_GLOBAL });
@@ -156,8 +156,8 @@ public final class Option implements Serializable {
                     "The JSON path to extract a value from the JSON query results. The extracted value will be converted to a string and escaped." });
     public static final Option RESULT_STRING_ESCAPE = Option
             .of(new String[] { "result.string.escape",
-                    "Whether to escape single quotes and special characters in string query results.", "false",
-                    "true" });
+                    "Whether to escape single quotes and special characters in string query results.",
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option RESULT_STRING_ESCAPE_CHAR = Option
             .of(new String[] { "result.string.escape.char", "The character that will be used for escaping.", "\\" });
     public static final Option RESULT_STRING_ESCAPE_TARGET = Option
@@ -165,13 +165,13 @@ public final class Option implements Serializable {
                     "The target character that will be escaped in string query results.", "'" });
     public static final Option RESULT_STRING_REPLACE = Option
             .of(new String[] { "result.string.replace", "Whether to perform variable substitution in the query result.",
-                    "false", "true" });
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option RESULT_STRING_TRIM = Option
-            .of(new String[] { "result.string.trim", "Whether to trim whitespace from the query result.", "false",
-                    "true" });
+            .of(new String[] { "result.string.trim", "Whether to trim whitespace from the query result.",
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option RESULT_STRING_SPLIT = Option
-            .of(new String[] { "result.string.split", "Whether to split the query result string into a list.", "false",
-                    "true" });
+            .of(new String[] { "result.string.split", "Whether to split the query result string into a list.",
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option RESULT_STRING_SPLIT_CHAR = Option
             .of(new String[] { "result.string.split.char",
                     "The delimiter character(s) to use when splitting the query result.", "\n" });
@@ -373,6 +373,31 @@ public final class Option implements Serializable {
      * @param name         non-null name
      * @param description  optional description
      * @param defaultValue optional default value
+     * @param clazz        optional enum class
+     * @return option
+     */
+    public static Option ofEnum(String name, String description, String defaultValue, Class<? extends Enum<?>> clazz) {
+        final String[] arr;
+        if (clazz != null) {
+            Enum<?>[] choices = clazz.getEnumConstants();
+            int len = choices.length;
+            arr = new String[len];
+            for (int i = 0; i < len; i++) {
+                arr[i] = choices[i].name();
+            }
+        } else {
+            arr = Constants.EMPTY_STRING_ARRAY;
+        }
+
+        return of(name, description, defaultValue, arr);
+    }
+
+    /**
+     * Creates an option.
+     *
+     * @param name         non-null name
+     * @param description  optional description
+     * @param defaultValue optional default value
      * @param choices      optional choices
      * @return option
      */
@@ -391,10 +416,8 @@ public final class Option implements Serializable {
             }
 
             if (!list.isEmpty() && !list.contains(defaultValue)) {
-                // FIXME an option for Option?
+                // FIXME or throw exception when defaultValue does not exist in choices?
                 defaultValue = list.get(0);
-                // throw new IllegalArgumentException(String.format(Locale.ROOT,
-                // "Invalid default value \"%s\". Valid choices: %s.", defaultValue, list));
             }
         }
         return new Option(name, description, defaultValue,
@@ -518,7 +541,7 @@ public final class Option implements Serializable {
      * @return the overrided value, null means it did not exist
      */
     public String setValue(Properties props) {
-        return setValue(null, props, null, true);
+        return setValue(null, props, null);
     }
 
     /**
@@ -530,14 +553,14 @@ public final class Option implements Serializable {
      * @return the overrided value, null means it did not exist
      */
     public String setValue(Properties props, String value) {
-        return setValue(null, props, value, true);
+        return setValue(null, props, value);
     }
 
     public String setJdbcxValue(Properties props, String value) {
-        return setValue(PROPERTY_PREFIX, props, value, true);
+        return setValue(PROPERTY_PREFIX, props, value);
     }
 
-    public String setValue(String prefix, Properties props, String value, boolean validate) {
+    public String setValue(String prefix, Properties props, String value) {
         if (props == null) {
             return null;
         } else if (value == null || (!choices.isEmpty() && !choices.contains(value))) {
