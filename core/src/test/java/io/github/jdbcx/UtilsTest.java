@@ -150,6 +150,10 @@ public class UtilsTest {
                 expected);
 
         expected.clear();
+        expected.put("a 1", "select 1");
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=select+1", '&', false), expected);
+
+        expected.clear();
         expected.put("a 1", "b ");
         expected.put("c", "3");
         Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);

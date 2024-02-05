@@ -295,6 +295,10 @@ public final class Utils {
         if (key != null && builder.length() > 0) {
             String value = builder.toString().trim();
             if (!key.isEmpty() && !value.isEmpty()) {
+                if (!notUrlEncoded) {
+                    key = decode(key);
+                    value = decode(value);
+                }
                 map.put(key, value);
             }
         }
