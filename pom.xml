@@ -89,7 +89,7 @@
         <compress.version>1.25.0</compress.version>
         <!--
             wget https://parsers.org/download/congocc.jar
-            mvn install:install-file -Dfile=congocc.jar \ -DgroupId=org.parsers -DartifactId=congocc \ -Dversion=0.0.1 -Dpackaging=jar
+            mvn install:install-file -Dfile=congocc.jar -DgroupId=org.parsers -DartifactId=congocc -Dversion=0.0.1 -Dpackaging=jar
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.5.3</dnsjava.version>
@@ -112,8 +112,7 @@
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-11</zstd-jni.version>
         <testcontainers.version>1.19.3</testcontainers.version>
-        <!-- stay 7.5 for JDK 8 support -->
-        <testng.version>7.5.1</testng.version>
+        <testng.version>7.9.0</testng.version>
 
         <shade.base>${project.groupId}.internal</shade.base>
 
@@ -126,8 +125,7 @@
         <exec-plugin.version>3.1.1</exec-plugin.version>
         <failsafe-plugin.version>3.2.5</failsafe-plugin.version>
         <flatten-plugin.version>1.6.0</flatten-plugin.version>
-        <!-- stay with 4.9.9 for JDK8 and its higher version does not work -->
-        <git-plugin.version>4.9.9</git-plugin.version>
+        <git-plugin.version>7.0.0</git-plugin.version>
         <gpg-plugin.version>3.1.0</gpg-plugin.version>
         <helper-plugin.version>3.5.0</helper-plugin.version>
         <jacoco-plugin.version>0.8.11</jacoco-plugin.version>
@@ -758,6 +756,9 @@
             </activation>
             <properties>
                 <caffeine.version>2.9.2</caffeine.version>
+                <hikaricp.version>4.0.3</hikaricp.version>
+                <testng.version>7.5.1</testng.version>
+                <git-plugin.version>4.9.9</git-plugin.version>
             </properties>
         </profile>
         <profile>
