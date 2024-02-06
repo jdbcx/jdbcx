@@ -20,7 +20,7 @@ ARG JDBCX_VERSION=0.4.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
-    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
+    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" SLF4J_VERSION=2.0.11 \
     JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.4.0}
 
 # Labels
@@ -49,17 +49,17 @@ WORKDIR /app
 COPY --from=jdk /min-jre ./openjdk
 
 # Download JDBCX conditionally
-RUN if [ -f jdbcx-driver-*.jar ]; then echo "Skip downloading"; \
-    elif [ "${JDBCX_VERSION}" = "latest" ]; then wget -O jdbcx-driver-${JDBCX_VERSION}.jar \
+RUN if [ -f jdbcx-server-*.jar ]; then echo "Skip downloading"; \
+    elif [ "${JDBCX_VERSION}" = "latest" ]; then wget -O jdbcx-server-${JDBCX_VERSION}.jar \
         $(curl -sL https://api.github.com/repos/jdbcx/jdbcx/releases/latest \
-        | grep "browser_download_url.*jdbcx-driver.*.jar" | tail -1 \
+        | grep "browser_download_url.*jdbcx-server.*.jar" | tail -1 \
         | cut -d : -f 2,3 | tr -d \"); \
-    else wget -nv https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-driver-${JDBCX_VERSION}.jar \
+    else wget -nv https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/jdbcx-server-${JDBCX_VERSION}.jar \
         https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/LICENSE \
         https://github.com/jdbcx/jdbcx/releases/download/v${JDBCX_VERSION}/NOTICE; fi
 
 RUN chmod +x /*.sh \
-    && ln -s jdbcx-driver-*.jar jdbcx.jar \
+    && ln -s jdbcx-server-*.jar jdbcx.jar \
     && wget -nv -O ./drivers/duckdb.LICENSE https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
     && wget -nv -O ./drivers/mysql-connector-j.LICENSE \
         https://raw.githubusercontent.com/mysql/mysql-connector-j/release/8.x/LICENSE \
@@ -73,10 +73,12 @@ RUN chmod +x /*.sh \
         https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.9.2/duckdb_jdbc-0.9.2.jar \
         https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar \
         https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar \
-        https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.11/slf4j-api-2.0.11.jar \
-        https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.11/slf4j-simple-2.0.11.jar \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar \
+        https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/${SLF4J_VERSION}/slf4j-simple-${SLF4J_VERSION}.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
-        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
+        https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar \
+    && ln -s driver/slf4j-api-*.jar slf4j-api.jar \
+    && ln -s driver/slf4j-simple-*.jar slf4j-simple.jar
 
 USER jdbcx
 
