@@ -6,7 +6,7 @@
 FROM eclipse-temurin:21-jdk-jammy AS jdk
 
 RUN jlink --add-modules \
-    java.base,java.compiler,java.logging,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver \
+    java.base,java.compiler,java.logging,java.naming,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver \
     --output /min-jre --strip-debug --no-man-pages --no-header-files --verbose
 
 # Stage 2 - build jdbcx
@@ -77,8 +77,8 @@ RUN chmod +x /*.sh \
         https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/${SLF4J_VERSION}/slf4j-simple-${SLF4J_VERSION}.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar \
-    && ln -s driver/slf4j-api-*.jar slf4j-api.jar \
-    && ln -s driver/slf4j-simple-*.jar slf4j-simple.jar
+    && ln -s drivers/slf4j-api-*.jar slf4j-api.jar \
+    && ln -s drivers/slf4j-simple-*.jar slf4j-simple.jar
 
 USER jdbcx
 
