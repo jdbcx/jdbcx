@@ -10,12 +10,12 @@ run_cli() {
 }
 
 start_server() {
-	java ${SERVER_OPTS} -cp jdbcx.jar:slf4j-api.jar:slf4j-simple.jar:. io.github.jdbcx.server.BridgeServer
+    java ${SERVER_OPTS} -cp jdbcx.jar:slf4j-api.jar:slf4j-simple.jar:. io.github.jdbcx.server.BridgeServer
 }
 
 # start clickhouse server
 if [ "$#" == "1" ] && [ "$1" == "server" ]; then
     start_server
 else
-	run_cli "$@"
+    run_cli "$@"
 fi

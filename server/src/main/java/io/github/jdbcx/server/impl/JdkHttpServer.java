@@ -16,7 +16,6 @@
 package io.github.jdbcx.server.impl;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
@@ -26,7 +25,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.Map.Entry;
 
 import com.sun.net.httpserver.Headers;
