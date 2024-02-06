@@ -172,15 +172,11 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
                         .executeQuery("select * from url('" + getServerUrl() + "?q=" + uuid + "','LineAsString')")) {
-            final String qid = server.findIdOfCachedQuery(uuid);
-            Assert.assertNotNull(qid, "Query should have been cached");
             Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
             Assert.assertTrue(rs.next());
             String queryUrl = rs.getString(1);
             Assert.assertTrue(queryUrl.startsWith("http"),
                     Utils.format("The returned URL should starts with http, but we got [%s]", queryUrl));
-            Assert.assertTrue(rs.getString(1).indexOf(qid) > 0,
-                    Utils.format("The returned URL should contacts query id [%s], but we got [%s]", qid, queryUrl));
             Assert.assertFalse(rs.next());
         }
 

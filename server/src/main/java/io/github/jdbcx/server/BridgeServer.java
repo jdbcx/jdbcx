@@ -167,10 +167,6 @@ public abstract class BridgeServer {
         defaultCompress = Compression.valueOf(OPTION_COMPRESSION.getValue(props));
     }
 
-    public final String getCachedQuery(String queryId) {
-        return queries.getIfPresent(queryId);
-    }
-
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
             Compression compress, Object userObject) throws IOException { // NOSONAR
         if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid)) {
