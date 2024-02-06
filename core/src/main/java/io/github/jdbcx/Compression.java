@@ -100,16 +100,21 @@ public enum Compression {
     /**
      * Get preferred compression algorithm based on given encodings.
      *
-     * @param encodings acceptable encodings, for example:
-     *                  {@code br;q=1.0, gzip;q=0.8, *;q=0.1}
+     * @param encodings       acceptable encodings, for example:
+     *                        {@code br;q=1.0, gzip;q=0.8, *;q=0.1}
+     * @param defaultCompress optional default compression algorithm, {@code null}
+     *                        is same as {@link #NONE}
      * @return non-null compression algorithm
      */
-    public static Compression fromEncoding(String encodings) {
+    public static Compression fromEncoding(String encodings, Compression defaultCompress) {
+        if (defaultCompress == null) {
+            defaultCompress = NONE;
+        }
         for (String part : Utils.split(encodings, ',')) {
             for (String str : Utils.split(part.trim(), ';')) {
                 final String enc = str.trim().toLowerCase(Locale.ROOT);
                 if (enc.isEmpty()) {
-                    return Compression.NONE;
+                    return defaultCompress;
                 } else if (enc.charAt(0) == '*') {
                     // widly supported with less CPU and memory overhead
                     return Compression.GZIP;
@@ -123,7 +128,7 @@ public enum Compression {
             }
         }
 
-        return NONE;
+        return defaultCompress;
     }
 
     /**

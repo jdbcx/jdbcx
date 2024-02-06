@@ -23,16 +23,17 @@ public class CompressionTest {
 
     @Test(groups = { "unit" })
     public void testFromEncoding() {
-        Assert.assertEquals(Compression.fromEncoding(null), defaultCompress);
-        Assert.assertEquals(Compression.fromEncoding(""), defaultCompress);
-        Assert.assertEquals(Compression.fromEncoding("unknown"), defaultCompress);
+        Assert.assertEquals(Compression.fromEncoding(null, null), defaultCompress);
+        Assert.assertEquals(Compression.fromEncoding("", null), defaultCompress);
+        Assert.assertEquals(Compression.fromEncoding("unknown", null), defaultCompress);
 
-        Assert.assertEquals(Compression.fromEncoding("*"), Compression.GZIP);
-        Assert.assertEquals(Compression.fromEncoding("unknown, *"), Compression.GZIP);
-        Assert.assertEquals(Compression.fromEncoding("lz4, unknown, *"), Compression.LZ4);
+        Assert.assertEquals(Compression.fromEncoding("*", null), Compression.GZIP);
+        Assert.assertEquals(Compression.fromEncoding("unknown, *", null), Compression.GZIP);
+        Assert.assertEquals(Compression.fromEncoding("lz4, unknown, *", null), Compression.LZ4);
 
         for (Compression c : Compression.values()) {
-            Assert.assertEquals(Compression.fromEncoding(c.encoding()), c);
+            Assert.assertEquals(Compression.fromEncoding(c.encoding(), null), c);
+            Assert.assertEquals(Compression.fromEncoding(c.encoding(), Compression.LZ4), c);
         }
     }
 
