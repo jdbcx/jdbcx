@@ -28,8 +28,8 @@ public abstract class BaseValueTest {
         if (expected == null) {
             Assert.assertNull(actual.get(), name);
         } else if (expected instanceof Class && Throwable.class.isAssignableFrom((Class<?>) expected)) {
-            Assert.assertThrows(Utils.format("%s should throw [%s]", name, expected), (Class<Throwable>) expected,
-                    () -> actual.get());
+            // Utils.format("%s should throw [%s]", name, expected)
+            Assert.assertThrows((Class<Throwable>) expected, () -> actual.get());
         } else if (expected instanceof String) {
             Assert.assertEquals(String.valueOf(actual.get()), (String) expected, name);
         } else {

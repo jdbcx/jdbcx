@@ -61,7 +61,10 @@ public class TypeMapping {
                 if (!toValueType.endsWith(suffix)) {
                     builder.append(suffix);
                 }
-                builder.insert(0, '.').insert(0, valueType.getPackageName());
+                String packageName = valueType.getName();
+                int index = packageName.lastIndexOf('.');
+                builder.insert(0, '.').insert(0,
+                        index != -1 ? packageName.substring(0, packageName.lastIndexOf('.')) : packageName);
             }
             try {
                 ClassLoader loader = Thread.currentThread().getContextClassLoader();
