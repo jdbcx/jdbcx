@@ -48,7 +48,6 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
-import io.github.jdbcx.data.StringValue;
 import io.github.jdbcx.dialect.DefaultDialect;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
@@ -71,13 +70,10 @@ public final class ConnectionManager implements AutoCloseable {
         List<Option> options = ext.getDefaultOptions();
         List<Row> rows = new ArrayList<>(options.size());
         for (Option o : options) {
-            rows.add(Row.of(detailFields, new StringValue(o.getName()),
-                    new StringValue(o.getValue(props)),
-                    new StringValue(o.getDefaultValue()),
-                    new StringValue(o.getDescription()),
-                    new StringValue(String.join(",", o.getChoices())),
-                    new StringValue(o.getSystemProperty(Option.PROPERTY_PREFIX)),
-                    new StringValue(o.getEnvironmentVariable(Option.PROPERTY_PREFIX))));
+            rows.add(Row.of(detailFields,
+                    new Object[] { o.getName(), o.getValue(props), o.getDefaultValue(), o.getDescription(),
+                            String.join(",", o.getChoices()), o.getSystemProperty(Option.PROPERTY_PREFIX),
+                            o.getEnvironmentVariable(Option.PROPERTY_PREFIX) }));
         }
         return Result.of(detailFields, rows);
     }

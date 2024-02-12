@@ -17,6 +17,7 @@ package io.github.jdbcx;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -27,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.data.IterableArray;
@@ -34,6 +36,8 @@ import io.github.jdbcx.data.IterableInputStream;
 import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableWrapper;
+import io.github.jdbcx.data.JsonlSerde;
+import io.github.jdbcx.data.TsvSerde;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
@@ -140,7 +144,7 @@ public final class Result<T> implements AutoCloseable {
             return this;
         }
 
-        public Result<?> build() {
+        public Result<?> build() { // NOSONAR
             if (valueType == null || rows == null) {
                 throw new IllegalArgumentException("Non-null value type and rows are required");
             }
@@ -152,6 +156,43 @@ public final class Result<T> implements AutoCloseable {
     private static final ErrorHandler defaultErrorHandler = new ErrorHandler(Constants.EMPTY_STRING);
 
     public static final List<Field> DEFAULT_FIELDS = Collections.singletonList(Field.DEFAULT);
+
+    public static final Serialization getSerde(Format format, Properties config) {
+        if (format == null) {
+            throw new IllegalArgumentException("Non-null format is required");
+        }
+        final Serialization serde;
+        switch (format) {
+            case TSV:
+                serde = new TsvSerde(config);
+                break;
+            case JSONL:
+                serde = new JsonlSerde(config);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupport format: " + format);
+        }
+        return serde;
+    }
+
+    public static final Result<?> readFrom(Format format, Properties config, InputStream in) throws IOException { // NOSONAR
+        if (in == null) {
+            throw new IllegalArgumentException("Non-null input stream is required");
+        }
+
+        return getSerde(format, config).deserialize(in);
+    }
+
+    public static final void writeTo(Result<?> result, Format format, Properties config, OutputStream out)
+            throws IOException {
+        if (result == null) {
+            return;
+        } else if (out == null) {
+            throw new IllegalArgumentException("Non-null output stream is required");
+        }
+
+        getSerde(format, config).serialize(result, out);
+    }
 
     public static Result<Object[]> of(Object[] arr, Field... fields) {
         return of(fields != null && fields.length > 0 ? Arrays.asList(fields) : DEFAULT_FIELDS, arr);
@@ -165,7 +206,7 @@ public final class Result<T> implements AutoCloseable {
         return new Result<>(fields, arr, arr.getClass(), wrapper);
     }
 
-    public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) {
+    public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) { // NOSONAR
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
@@ -173,7 +214,7 @@ public final class Result<T> implements AutoCloseable {
         return new Result<>(fields, it, it.getClass(), wrapper);
     }
 
-    public static Result<?> of(List<Field> fields, Row... rows) {
+    public static Result<?> of(List<Field> fields, Row... rows) { // NOSONAR
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
@@ -181,7 +222,7 @@ public final class Result<T> implements AutoCloseable {
                 : new Result<>(fields, null, Void.class, Collections.emptyList());
     }
 
-    public static Result<?> of(Row row, Row... more) {
+    public static Result<?> of(Row row, Row... more) { // NOSONAR
         final int len;
         if (more == null || (len = more.length) == 0) {
             return row != null ? new Result<>(row.fields(), row, row.getClass(), Collections.singletonList(row))

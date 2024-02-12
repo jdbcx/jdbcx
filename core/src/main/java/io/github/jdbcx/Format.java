@@ -33,6 +33,7 @@ public enum Format {
     AVROB("application/vnd.apache.avro+binary", "avro"),
     AVRO("application/vnd.apache.avro+json", "avroj"),
     BSON("application/bson", "bson"),
+    JSONL("application/jsonl", "jsonl"),
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET("application/vnd.apache.parquet", "parquet");
 
@@ -100,7 +101,7 @@ public enum Format {
      * Get format based on given file name.
      *
      * @param file file name
-     * @return format, could be null
+     * @return format, could be {@code null}
      */
     public static Format fromFileName(String file) {
         String ext = null;

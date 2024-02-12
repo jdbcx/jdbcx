@@ -31,6 +31,7 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Format;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.Stream;
@@ -160,6 +161,36 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 "Should not have content encoding header");
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_MOVED_TEMP);
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), queryUrl);
+    }
+
+    @Test(groups = { "integration" })
+    public void testDirectQuery() throws Exception {
+        final String url = getServerUrl();
+        final String query = "select 1 a, 'one' b union all select 2, 'two'";
+        final String expected = "{\"a\":1,\"b\":\"one\"}\n{\"a\":2,\"b\":\"two\"}";
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        // use query parameters
+        WebExecutor web = new WebExecutor(config);
+        HttpURLConnection conn = web.openConnection(new URL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
+                headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
+
+        // mixed
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        headers.put(BridgeServer.HEADER_ACCEPT, "application/jsonl");
+        web = new WebExecutor(config);
+        conn = web.openConnection(new URL(url + "?m=d"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, query);
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.JSONL.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
     }
 
     @Test(groups = { "integration" })

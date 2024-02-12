@@ -143,23 +143,24 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        // id, query, format, compression, parameters
-        final String method = exchange.getRequestMethod();
-        final URI requestUri = exchange.getRequestURI();
-        final Map<String, String> params = Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', false);
-        final Map<String, String> headers = new HashMap<>();
-        for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
-            List<String> value = entry.getValue();
-            headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
-        }
+        String method = null;
+        URI requestUri = null;
+        Map<String, String> headers = null;
+        try (HttpExchange ex = exchange) {
+            // id, query, format, compression, parameters
+            method = exchange.getRequestMethod();
+            requestUri = exchange.getRequestURI();
+            final Map<String, String> params = Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', false);
+            headers = new HashMap<>();
+            for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
+                List<String> value = entry.getValue();
+                headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
+            }
 
-        try {
             dispatch(method, requestUri.getPath(), headers, params, exchange);
         } catch (Exception e) {
             log.error("Failed to dispatch request[%s, url=%s, headers=%s]", method, requestUri, headers, e);
             throw e;
-        } finally {
-            exchange.close();
         }
     }
 
@@ -170,14 +171,11 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     }
 
     @Override
-    public boolean test() {
-        return true;
-    }
-
-    @Override
     public void stop() {
         log.info("Shutting down server...");
         server.stop(0);
         log.info("Server is shutdown");
+
+        super.stop();
     }
 }

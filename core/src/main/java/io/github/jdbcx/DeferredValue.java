@@ -39,7 +39,7 @@ public final class DeferredValue<T> implements Supplier<T> {
      * Wraps a future object.
      *
      * @param <T>    type of the value
-     * @param future future object, could be null
+     * @param future future object, could be {@code null}
      * @return deferred value of a future object
      */
     public static <T> DeferredValue<T> of(CompletableFuture<T> future) {
@@ -50,7 +50,7 @@ public final class DeferredValue<T> implements Supplier<T> {
      * Wraps a future object.
      *
      * @param <T>     type of the value
-     * @param future  future object, could be null
+     * @param future  future object, could be {@code null}
      * @param timeout timeout in milliseconds, zero or negative number means no
      *                timeout
      * @return deferred vaue of a future object
@@ -81,7 +81,7 @@ public final class DeferredValue<T> implements Supplier<T> {
      * Wraps return value from a supplier function.
      *
      * @param <T>      type of the value
-     * @param supplier supplier function, could be null
+     * @param supplier supplier function, could be {@code null}
      * @return deferred value of return value from supplier function
      */
     @SuppressWarnings("unchecked")

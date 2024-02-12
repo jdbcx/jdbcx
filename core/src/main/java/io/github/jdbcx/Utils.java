@@ -320,8 +320,8 @@ public final class Utils {
      * Creates a temporary file with given prefix and suffix. Same as
      * {@code createTempFile(prefix, suffix, true)}.
      *
-     * @param prefix prefix, could be null
-     * @param suffix suffix, could be null
+     * @param prefix prefix, could be {@code null}
+     * @param suffix suffix, could be {@code null}
      * @return non-null temporary file
      * @throws IOException when failed to create the temporary file
      */
@@ -934,6 +934,49 @@ public final class Utils {
 
         final int length = test.length();
         return str.length() >= length && str.substring(0, length).equalsIgnoreCase(test);
+    }
+
+    /**
+     * Encapsulates the given array in an immutable list. Same as
+     * {@code toImmutableList(type, values, true, true)}.
+     *
+     * @param <T>    type of the element
+     * @param type   class
+     * @param values array
+     * @return non-null list
+     */
+    public static <T> List<T> toImmutableList(Class<T> type, T[] values) {
+        return toImmutableList(type, values, true, true);
+    }
+
+    /**
+     * Encapsulates the given array in an immutable list.
+     *
+     * @param <T>               type of the element
+     * @param type              class
+     * @param values            array
+     * @param discardNulls      whether to discard null values in array
+     * @param discardDuplicates whether to discard duplicated values in array
+     * @return non-null list
+     */
+    public static <T> List<T> toImmutableList(Class<T> type, T[] values, boolean discardNulls,
+            boolean discardDuplicates) {
+        final int len;
+        if (type == null || values == null || (len = values.length) == 0) {
+            return Collections.emptyList();
+        }
+
+        boolean resize = false;
+        List<T> list = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            T v = values[i];
+            if ((discardNulls && v == null) || (discardDuplicates && list.contains(v))) {
+                resize = true;
+                continue;
+            }
+            list.add(v);
+        }
+        return Collections.unmodifiableList(resize ? new ArrayList<>(list) : list);
     }
 
     /**

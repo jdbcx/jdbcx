@@ -33,27 +33,24 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
-import io.github.jdbcx.Field;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
-import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.Value;
 
 public abstract class BridgeServer {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
 
-    public static final String HEADER_ACCEPT = "Accept";
-    public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
-    public static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
-    public static final String HEADER_CONTENT_TYPE = "Content-Type";
-    public static final String HEADER_LOCATION = "Location";
-    public static final String HEADER_QUERY_ID = "X-Query-Id";
-    public static final String HEADER_QUERY_USER = "X-Query-User";
-    public static final String HEADER_TRANSACTION_ID = "X-Transaction-Id";
+    public static final String HEADER_ACCEPT = "accept";
+    public static final String HEADER_ACCEPT_ENCODING = "accept-encoding";
+    public static final String HEADER_CONTENT_ENCODING = "content-encoding";
+    public static final String HEADER_CONTENT_TYPE = "content-type";
+    public static final String HEADER_LOCATION = "location";
+    public static final String HEADER_QUERY_ID = "x-query-id";
+    public static final String HEADER_QUERY_USER = "x-query-user";
+    public static final String HEADER_TRANSACTION_ID = "x-transaction-id";
 
     public static final String METHOD_HEAD = "HEAD";
 
@@ -124,9 +121,9 @@ public abstract class BridgeServer {
         Caffeine<Object, Object> builder = Caffeine.newBuilder()
                 .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT);
         if (requestTimeout > 0L) {
-            builder.expireAfterAccess(requestTimeout, TimeUnit.MILLISECONDS);
+            builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS);
         }
-        queries = builder.<String, String>build();
+        queries = builder.recordStats().<String, String>build();
 
         host = Option.SERVER_HOST.getValue(props);
         port = Integer.parseInt(Option.SERVER_PORT.getValue(props));
@@ -186,23 +183,7 @@ public abstract class BridgeServer {
             // if (warning != null) {
             // log.warn("Warning from [%s]", stmt, warning);
             // }
-            final List<Field> fields = result.fields();
-            final int size = fields.size();
-            out.write(fields.get(0).name().getBytes());
-            for (int i = 1; i < size; i++) {
-                Field f = fields.get(i);
-                out.write('\t');
-                out.write(f.name().getBytes());
-            }
-            for (Row r : result.rows()) {
-                out.write('\n');
-                out.write(r.value(0).asString().getBytes());
-                for (int i = 1; i < size; i++) {
-                    Value v = r.value(i);
-                    out.write('\t');
-                    out.write(v.asString().getBytes());
-                }
-            }
+            Result.writeTo(result, request.getFormat(), null, out);
             success = true;
         } catch (SQLException e) {
             throw new IOException(e);
@@ -210,8 +191,6 @@ public abstract class BridgeServer {
             if (!success) {
                 log.error("Failed to execute query for %s", request);
             }
-            // queries.invalidate(request.getQueryId());
-            // log.debug("Explicitly removed cached query [%s]", request.getQueryId());
         }
     }
 
@@ -245,14 +224,14 @@ public abstract class BridgeServer {
 
         List<String> parts = Utils.split(path, '.');
         int size = parts.size();
-        Compression compress = Compression.fromEncoding(headers.get(HEADER_CONTENT_ENCODING), defaultCompress);
-        Format format = Format.fromMimeType(headers.get(HEADER_CONTENT_TYPE), defaultFormat);
+        Compression compress = Compression.fromEncoding(headers.get(HEADER_ACCEPT_ENCODING), defaultCompress);
+        Format format = Format.fromMimeType(headers.get(HEADER_ACCEPT), defaultFormat);
         if (size >= 3) { // my.tsv.gz
             compress = Checker.isNullOrEmpty(compressParam)
                     ? Compression.fromFileExtension(parts.get(size - 1), compress)
-                    : Compression.fromEncoding(compressParam, compress);
+                    : Compression.fromFileExtension(compressParam, compress);
             format = Checker.isNullOrEmpty(formatParam) ? Format.fromFileExtension(parts.get(size - 2), format)
-                    : Format.fromMimeType(formatParam, format);
+                    : Format.fromFileExtension(formatParam, format);
             if (Checker.isNullOrEmpty(qid)) {
                 qid = String.join(".", parts.subList(0, size - 2));
             }
@@ -260,10 +239,11 @@ public abstract class BridgeServer {
             String ext = parts.get(1);
             Compression c = Compression.fromFileExtension(ext, null);
             if (c != null) {
-                compress = Checker.isNullOrEmpty(compressParam) ? c : Compression.fromEncoding(compressParam, compress);
+                compress = Checker.isNullOrEmpty(compressParam) ? c
+                        : Compression.fromFileExtension(compressParam, compress);
             } else {
                 format = Checker.isNullOrEmpty(formatParam) ? Format.fromFileExtension(ext, format)
-                        : Format.fromMimeType(formatParam, format);
+                        : Format.fromFileExtension(formatParam, format);
             }
             if (Checker.isNullOrEmpty(qid)) {
                 qid = parts.get(0);
@@ -272,10 +252,10 @@ public abstract class BridgeServer {
             qid = path;
 
             if (!Checker.isNullOrEmpty(compressParam)) {
-                compress = Compression.fromEncoding(compressParam, compress);
+                compress = Compression.fromFileExtension(compressParam, compress);
             }
             if (!Checker.isNullOrEmpty(formatParam)) {
-                format = Format.fromMimeType(formatParam, format);
+                format = Format.fromFileExtension(formatParam, format);
             }
         }
 
@@ -289,7 +269,7 @@ public abstract class BridgeServer {
         Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, userObject);
         log.debug("Dispatching %s", request);
         if (Checker.isNullOrBlank(request.getQuery())) {
-            log.debug("Invalid %s", request);
+            log.warn("Non-existent or expired %s", request);
             respond(request, HttpURLConnection.HTTP_NOT_FOUND);
         } else if (METHOD_HEAD.equals(request.getMethod())) {
             respond(request, HttpURLConnection.HTTP_OK);
@@ -308,9 +288,12 @@ public abstract class BridgeServer {
                 case DIRECT_QUERY:
                 case MUTATION: {
                     execute(request);
+                    // queries.invalidate(request.getQueryId());
+                    // log.debug("Explicitly removed cached query [%s]", request.getQueryId());
                     break;
                 }
                 default:
+                    log.warn("Unsupported %s", request);
                     respond(request, HttpURLConnection.HTTP_BAD_REQUEST,
                             "Unsupported query mode: " + request.getQueryMode());
                     break;
@@ -325,28 +308,14 @@ public abstract class BridgeServer {
 
     public abstract void start();
 
-    public boolean startAndWait(long timeout) {
-        if (timeout < 0) {
-            start();
-            return test();
-        }
+    public void stop() {
+        log.debug("Invaliding query cache: %s", queries.stats());
+        queries.invalidateAll();
+        log.debug("Remaining entries in query cache: %s", queries.asMap());
 
-        start();
-
-        final long startTime = timeout > 0L ? System.currentTimeMillis() : 0L;
-        while (timeout >= 0L) {
-            if (test()) {
-                return true;
-            } else if (startTime > 0L) {
-                timeout -= System.currentTimeMillis() - startTime;
-            }
-        }
-        return false;
+        log.debug("Stoping connection pool: %s", datasource);
+        datasource.close();
     }
-
-    public abstract void stop();
-
-    public abstract boolean test();
 
     public static void main(String[] args) {
         final BridgeServer server = Utils.getService(BridgeServer.class);

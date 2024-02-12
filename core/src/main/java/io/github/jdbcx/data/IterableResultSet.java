@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.data;
 
-import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -29,44 +28,41 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
+import io.github.jdbcx.ValueFactory;
 
 public final class IterableResultSet implements Iterable<Row> {
-    static final class ResultSetValue implements Value {
+    static final class ResultSetValue extends WrappedValue {
         private final transient ResultSet rs;
         private final int index;
 
-        ResultSetValue(ResultSet rs, int index) {
+        ResultSetValue(Value v, ResultSet rs, int index) {
+            super(v);
             this.rs = rs;
             this.index = index;
         }
 
         @Override
-        public boolean isNull() {
+        protected void ensureUpdated() {
             try {
-                return rs.getObject(index) == null;
+                value.updateFrom(rs, index);
+                setUpdated(true);
             } catch (SQLException e) {
-                throw new IllegalStateException(e);
+                throw new IllegalArgumentException(e);
             }
         }
 
         @Override
-        public String asString(Charset charset) {
-            try {
-                return rs.getString(index);
-            } catch (SQLException e) {
-                throw new IllegalStateException(e);
+        public Value updateFrom(ResultSet rs, int index) throws SQLException {
+            if (this.rs != rs || this.index != index) {
+                value.updateFrom(rs, index);
+                setUpdated(true);
             }
-        }
-
-        @Override
-        public Object asObject() {
-            return rs;
+            return this;
         }
     }
 
     static final class ResultSetIterator implements Iterator<Row> {
         private final ResultSet rs;
-        private final List<Field> fields;
         private final Row cursor;
 
         private int state; // 0 - before first; 1 - has next; 2 - eos
@@ -78,13 +74,14 @@ public final class IterableResultSet implements Iterable<Row> {
         ResultSetIterator(ResultSet rs, List<Field> fields) {
             this.rs = rs;
 
+            final ValueFactory factory = ValueFactory.getInstance();
             try {
                 final Value[] values;
                 if (fields != null) {
                     int size = fields.size();
                     values = new Value[size];
                     for (int i = 0; i < size; i++) {
-                        values[i] = new ResultSetValue(rs, i + 1);
+                        values[i] = new ResultSetValue(factory.newValue(fields.get(i), null), rs, i + 1);
                     }
                 } else {
                     ResultSetMetaData metaData = rs.getMetaData();
@@ -93,11 +90,12 @@ public final class IterableResultSet implements Iterable<Row> {
                     values = new Value[columns];
                     for (int i = 0; i < columns; i++) {
                         int index = i + 1;
-                        fields.add(Field.of(metaData.getColumnName(index), metaData.getColumnType(index)));
-                        values[i] = new ResultSetValue(rs, index);
+                        Field f = Field.of(metaData.getColumnName(index), metaData.getColumnType(index));
+                        fields.add(f);
+                        values[i] = new ResultSetValue(factory.newValue(f, metaData.getColumnTypeName(index)), rs,
+                                index);
                     }
                 }
-                this.fields = fields;
                 this.cursor = new DefaultRow(fields, values);
             } catch (SQLException e) {
                 throw new IllegalArgumentException(e);
@@ -152,12 +150,12 @@ public final class IterableResultSet implements Iterable<Row> {
         }
 
         // try {
-        //     if (!rs.isBeforeFirst()) {
-        //         throw new IllegalStateException(
-        //                 "ResultSet has been read as the cursor position is not before the first");
-        //     }
+        // if (!rs.isBeforeFirst()) {
+        // throw new IllegalStateException(
+        // "ResultSet has been read as the cursor position is not before the first");
+        // }
         // } catch (SQLException e) {
-        //     // ignore
+        // // ignore
         // }
 
         return new ResultSetIterator(rs, fields);

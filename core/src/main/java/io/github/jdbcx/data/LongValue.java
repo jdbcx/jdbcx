@@ -18,27 +18,92 @@ package io.github.jdbcx.data;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import io.github.jdbcx.Constants;
-import io.github.jdbcx.Value;
+import io.github.jdbcx.ValueFactory;
 
-public final class LongValue implements Value {
-    private final boolean isNull;
-    private final long value;
+public class LongValue extends AbstractValue {
+    /**
+     * Unsigned version of {@code LongValue}.
+     */
+    static final class UnsignedLongValue extends LongValue {
+        protected UnsignedLongValue(ValueFactory factory, boolean nullable) {
+            super(factory, nullable);
+        }
 
-    public LongValue(long value) {
-        this.isNull = false;
-        this.value = value;
+        protected UnsignedLongValue(ValueFactory factory, boolean nullable, long value) {
+            super(factory, nullable, value);
+        }
+
+        @Override
+        public BigInteger asBigInteger() {
+            if (isNull()) {
+                return null;
+            }
+
+            long l = asLong();
+            BigInteger v = BigInteger.valueOf(l);
+            if (l < 0L) {
+                v = v.and(UnsignedLong.MASK);
+            }
+            return v;
+        }
+
+        @Override
+        public BigDecimal asBigDecimal(int scale) {
+            if (isNull()) {
+                return null;
+            }
+
+            long l = asLong();
+            return l < 0L ? new BigDecimal(BigInteger.valueOf(l).and(UnsignedLong.MASK), scale)
+                    : BigDecimal.valueOf(l, scale);
+        }
+
+        @Override
+        public Object asObject() {
+            return isNull() ? null : UnsignedLong.valueOf(asLong());
+        }
+
+        @Override
+        public String asString() {
+            return isNull() ? Constants.EMPTY_STRING : Long.toUnsignedString(asLong());
+        }
+
+        @Override
+        public String toJsonExpression() {
+            return isNull() ? Constants.NULL_STR : Long.toUnsignedString(asLong());
+        }
+
+        @Override
+        public String toSqlExpression() {
+            return isNull() ? Constants.NULL_EXPR : Long.toUnsignedString(asLong());
+        }
     }
 
-    public LongValue(Long value) {
-        if (value == null) {
-            this.isNull = true;
-            this.value = 0L;
-        } else {
-            this.isNull = false;
-            this.value = value.longValue();
-        }
+    public static final LongValue of(ValueFactory factory, boolean nullable, boolean signed) {
+        return signed ? new LongValue(factory, nullable) : new UnsignedLongValue(factory, nullable);
+    }
+
+    public static final LongValue of(ValueFactory factory, boolean nullable, boolean signed, long value) {
+        return signed ? new LongValue(factory, nullable, value) : new UnsignedLongValue(factory, nullable, value);
+    }
+
+    private boolean isNull;
+    private long value;
+
+    protected LongValue(ValueFactory factory, boolean nullable) {
+        super(factory, nullable);
+        this.isNull = nullable;
+        this.value = this.factory.getDefaultLong();
+    }
+
+    protected LongValue(ValueFactory factory, boolean nullable, long value) {
+        super(factory, nullable);
+        this.isNull = false;
+        this.value = value;
     }
 
     @Override
@@ -83,21 +148,52 @@ public final class LongValue implements Value {
 
     @Override
     public BigInteger asBigInteger() {
-        return isNull() ? null : BigInteger.valueOf(value);
+        return isNull ? null : BigInteger.valueOf(value);
     }
 
     @Override
     public BigDecimal asBigDecimal() {
-        return isNull() ? null : BigDecimal.valueOf(value);
+        return isNull ? null : new BigDecimal(asBigInteger(), factory.getDecimalScale());
     }
 
     @Override
-    public String asString(Charset charset) {
-        return isNull ? Constants.EMPTY_STRING : String.valueOf(value);
+    public String toJsonExpression() {
+        return isNull ? Constants.NULL_STR : Long.toString(value);
+    }
+
+    @Override
+    public String toSqlExpression() {
+        return isNull ? Constants.NULL_EXPR : Long.toString(value);
     }
 
     @Override
     public Object asObject() {
         return isNull ? null : value;
+    }
+
+    @Override
+    public String asString(Charset charset) {
+        return isNull ? Constants.EMPTY_STRING : Long.toString(value);
+    }
+
+    @Override
+    public LongValue resetToDefault() {
+        this.value = factory.getDefaultLong();
+        this.isNull = false;
+        return this;
+    }
+
+    @Override
+    public LongValue resetToNull() {
+        this.value = factory.getDefaultLong();
+        this.isNull = nullable;
+        return this;
+    }
+
+    @Override
+    public LongValue updateFrom(ResultSet rs, int index) throws SQLException {
+        this.value = rs.getLong(index);
+        this.isNull = rs.wasNull();
+        return this;
     }
 }

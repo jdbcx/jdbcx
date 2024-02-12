@@ -16,61 +16,90 @@
 package io.github.jdbcx.data;
 
 import java.nio.charset.Charset;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import io.github.jdbcx.Constants;
-import io.github.jdbcx.Value;
+import io.github.jdbcx.Converter;
+import io.github.jdbcx.ValueFactory;
 
-public final class StringValue implements Value {
-    private final byte[] bytes;
-    private final String value;
-
-    public StringValue(String value) {
-        this.bytes = null;
-        this.value = value;
+public final class StringValue extends ObjectValue<String> {
+    public static StringValue of(ValueFactory factory, boolean nullable, int length) {
+        return new StringValue(factory, nullable, length, null);
     }
 
-    public StringValue(byte[] bytes) {
-        this.bytes = bytes;
-        this.value = null;
+    public static StringValue of(ValueFactory factory, boolean nullable, int length, String value) {
+        return new StringValue(factory, nullable, length, value);
     }
 
-    public StringValue(Object value) {
-        if (value instanceof byte[]) {
-            this.bytes = (byte[]) value;
-            this.value = null;
-        } else {
-            this.bytes = null;
-            this.value = value != null ? value.toString() : null;
+    public static StringValue of(ValueFactory factory, boolean nullable, int length, byte[] value) {
+        final StringValue v = new StringValue(factory, nullable, length, null);
+        if (value != null) {
+            v.set(new String(value, v.factory.getCharset()));
         }
+        return v;
     }
+
+    private final int length;
 
     @Override
-    public boolean isNull() {
-        return bytes == null && value == null;
+    protected StringValue set(String value) {
+        final int len;
+        if (value == null) {
+            super.set(nullable ? null : factory.getDefaultString(length));
+        } else if (length == 0 || (len = value.length()) == length) {
+            super.set(value);
+        } else if (len > length) {
+            super.set(value.substring(0, length));
+        } else {
+            StringBuilder builder = new StringBuilder(length).append(value);
+            char ch = factory.getDefaultChar();
+            for (int i = len; i < length; i++) {
+                builder.append(ch);
+            }
+            super.set(builder.toString());
+        }
+        return this;
+    }
+
+    protected StringValue(ValueFactory factory, boolean nullable, int length, String value) {
+        super(factory, nullable, value);
+        this.length = length;
+        set(value);
     }
 
     @Override
     public byte[] asBinary(Charset charset) {
-        if (bytes != null) {
-            return bytes;
-        } else if (value != null) {
-            return value.getBytes(charset != null ? charset : Constants.DEFAULT_CHARSET);
+        if (isNull()) {
+            return Constants.EMPTY_BYTE_ARRAY;
         }
-        return Constants.EMPTY_BYTE_ARRAY;
+        return asObject().getBytes(charset != null ? charset : factory.getCharset());
     }
 
     @Override
     public String asString(Charset charset) {
-        if (value != null) {
-            return value;
-        } else if (bytes != null) {
-            return new String(bytes, charset != null ? charset : Constants.DEFAULT_CHARSET);
-        }
-        return Constants.EMPTY_STRING;
+        return isNull() ? factory.getDefaultString() : asObject();
     }
 
     @Override
-    public Object asObject() {
-        return asString();
+    public String toJsonExpression() {
+        return isNull() ? Constants.NULL_STR : Converter.toJsonExpression(asObject());
+    }
+
+    @Override
+    public String toSqlExpression() {
+        return isNull() ? Constants.NULL_EXPR : Converter.toSqlExpression(asObject());
+    }
+
+    @Override
+    public StringValue resetToDefault() {
+        set(factory.getDefaultString(length));
+        return this;
+    }
+
+    @Override
+    public StringValue updateFrom(ResultSet rs, int index) throws SQLException {
+        set(rs.getString(index));
+        return this;
     }
 }

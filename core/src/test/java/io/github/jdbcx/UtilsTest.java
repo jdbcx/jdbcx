@@ -253,4 +253,34 @@ public class UtilsTest {
         Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", true), true);
         Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", false), false);
     }
+
+    @Test(groups = { "unit" })
+    public void testToImmutableList() {
+        Assert.assertEquals(Utils.toImmutableList(String.class, null), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, null, false, false), Collections.emptyList());
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[0]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[0], false, false), Collections.emptyList());
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[1]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[1], false, false),
+                Collections.singletonList(null));
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2], false, false),
+                Arrays.asList(null, null));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2], false, true),
+                Collections.singletonList(null));
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }),
+                Collections.singletonList("1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, false, false),
+                Arrays.asList("1", null, "1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, true, false),
+                Arrays.asList("1", "1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, false, true),
+                Arrays.asList("1", null));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, true, true),
+                Collections.singletonList("1"));
+    }
 }

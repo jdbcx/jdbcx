@@ -21,9 +21,6 @@ import java.util.Collections;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.data.LongValue;
-import io.github.jdbcx.data.StringValue;
-
 public class RowTest {
     @Test(groups = "unit")
     public void testConstructor() {
@@ -47,12 +44,12 @@ public class RowTest {
         Assert.assertEquals(r.value(1).asString(), "2");
         Assert.assertEquals(r.values().size(), 2);
 
-        r = Row.of(Collections.singletonList(Field.of("name")), new StringValue("3"));
+        r = Row.of(Collections.singletonList(Field.of("name")), Values.of("3"));
         Assert.assertEquals(r.size(), 1);
         Assert.assertEquals(r.value(0).asString(), "3");
         Assert.assertEquals(r.values().size(), 1);
 
-        r = Row.of(Collections.singletonList(Field.of("name")), new StringValue("3"), new LongValue(4L));
+        r = Row.of(Collections.singletonList(Field.of("name")), Values.of("3"), Values.of(4L));
         Assert.assertEquals(r.size(), 1);
         Assert.assertEquals(r.value(0).asString(), "3");
         Assert.assertEquals(r.value(1).asString(), "4");

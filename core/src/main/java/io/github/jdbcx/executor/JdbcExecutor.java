@@ -28,7 +28,6 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
-import io.github.jdbcx.data.StringValue;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
@@ -43,8 +42,7 @@ public class JdbcExecutor extends AbstractExecutor {
     public Object execute(String query, Connection conn, Properties props) throws SQLException {
         if (getDryRun(props)) {
             return new ReadOnlyResultSet(null,
-                    Result.of(Row.of(dryRunFields, new StringValue(conn), new StringValue(query),
-                            new StringValue(getTimeout(props)), new StringValue(props))));
+                    Result.of(Row.of(dryRunFields, new Object[] { conn, query, getTimeout(props), props })));
         } else if (Checker.isNullOrBlank(query)) {
             return new CombinedResultSet();
         }

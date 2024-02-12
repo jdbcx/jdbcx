@@ -35,7 +35,6 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.data.StringValue;
 
 public final class HelpDriverExtension implements DriverExtension {
     static final class ActivityListener implements JdbcActivityListener {
@@ -62,10 +61,8 @@ public final class HelpDriverExtension implements DriverExtension {
                 exts.remove(DefaultDriverExtension.getInstance());
                 List<Row> rows = new ArrayList<>(exts.size());
                 for (DriverExtension ext : exts) {
-                    rows.add(Row.of(summaryFields, new StringValue(ext.getName()),
-                            new StringValue(String.join(",", ext.getAliases())),
-                            new StringValue(ext.getDescription()),
-                            new StringValue(ext.getUsage())));
+                    rows.add(Row.of(summaryFields, new Object[] { ext.getName(), String.join(",", ext.getAliases()),
+                            ext.getDescription(), ext.getUsage() }));
                 }
                 return Result.of(summaryFields, rows);
             }

@@ -22,7 +22,13 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * This class contains shared constants that are accessible by all classes.
@@ -44,13 +50,31 @@ public final class Constants {
 
     public static final String EMPTY_STRING = "";
 
+    public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
+    public static final TimeZone SYS_TIMEZONE = TimeZone.getDefault();
+    public static final ZoneId UTC_ZONE = UTC_TIMEZONE.toZoneId();
+    public static final ZoneId SYS_ZONE = SYS_TIMEZONE.toZoneId();
+
+    public static final LocalDate DATE_ZERO = LocalDate.ofEpochDay(0L);
+    public static final LocalDateTime DATETIME_ZERO = LocalDateTime.ofEpochSecond(0L, 0, ZoneOffset.UTC);
+    public static final LocalTime TIME_ZERO = LocalTime.ofSecondOfDay(0L);
+
     public static final String FALSE_EXPR = Boolean.FALSE.toString();
+    public static final String NO_EXPR = "no";
+    public static final String ZERO_EXPR = "0";
     public static final String TRUE_EXPR = Boolean.TRUE.toString();
+    public static final String YES_EXPR = "yes";
+    public static final String ONE_EXPR = "1";
 
     public static final String NULL_EXPR = "NULL";
     public static final String NAN_EXPR = "NaN";
     public static final String INF_EXPR = "Inf";
     public static final String NINF_EXPR = "-Inf";
+
+    public static final String NULL_STR = "null";
+
+    public static final int MIN_TIME_SCALE = 0;
+    public static final int MAX_TIME_SCALE = 9;
 
     public static final String RE_META_CHARS = "<([{\\^-=$!|]})?*+.>";
 

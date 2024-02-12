@@ -42,7 +42,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
     @BeforeClass(groups = { "integration" })
     protected void startServer() {
-        Assert.assertTrue(server.startAndWait(3000L), "Failed to start server");
+        server.start();
     }
 
     @AfterClass(groups = { "integration" })

@@ -27,8 +27,8 @@ public final class LogMessage {
      * Creates a log message with arguments. The latest argument could be a
      * {@code java.lang.Throwable} providing details like stack trace of an error.
      *
-     * @param format    Object format, could be null
-     * @param arguments arguments, could be null or empty
+     * @param format    Object format, could be {@code null}
+     * @param arguments arguments, could be {@code null} or empty array
      * @return log message
      */
     public static LogMessage of(Object format, Object... arguments) {
@@ -78,7 +78,7 @@ public final class LogMessage {
     /**
      * Gets error which may or may not be null.
      *
-     * @return error, could be null
+     * @return error, could be {@code null}
      */
     public Throwable getThrowable() {
         return this.throwable;

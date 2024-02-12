@@ -135,7 +135,7 @@ public enum Compression {
      * Get compression algorithm based on given file name.
      *
      * @param file file name
-     * @return compression algorithm, could be null
+     * @return compression algorithm, could be {@code null}
      */
     public static Compression fromFileName(String file) {
         String ext = null;
@@ -173,7 +173,7 @@ public enum Compression {
      * Get compression based on given magic number.
      *
      * @param bytes magic number
-     * @return compression, could be null
+     * @return compression, could be {@code null}
      */
     public static Compression fromMagicNumber(byte[] bytes) {
         Compression compression = null;

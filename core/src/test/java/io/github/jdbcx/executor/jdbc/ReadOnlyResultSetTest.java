@@ -28,7 +28,6 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
-import io.github.jdbcx.data.StringValue;
 
 public class ReadOnlyResultSetTest {
     @Test(groups = { "unit" })
@@ -51,8 +50,8 @@ public class ReadOnlyResultSetTest {
         List<Field> fields = Arrays
                 .asList(new Field[] { Field.of("a", JDBCType.VARCHAR), Field.of("b", JDBCType.VARCHAR) });
         List<Row> rows = Arrays.asList(new Row[] {
-                Row.of(fields, new StringValue("a1"), new StringValue("b1")),
-                Row.of(fields, new StringValue("a2"), new StringValue("b2")),
+                Row.of(fields, new Object[] { "a1", "b1" }),
+                Row.of(fields, new Object[] { "a2", "b2" }),
         });
         ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Result.of(fields, rows));
         ResultSetMetaData md = rs.getMetaData();
@@ -77,8 +76,8 @@ public class ReadOnlyResultSetTest {
         List<Field> fields = Arrays
                 .asList(new Field[] { Field.of("a", JDBCType.VARCHAR), Field.of("b", JDBCType.VARCHAR) });
         List<Row> rows = Arrays.asList(new Row[] {
-                Row.of(fields, new StringValue("a1"), new StringValue("b1")),
-                Row.of(fields, new StringValue("a2"), new StringValue("b2")),
+                Row.of(fields, new Object[] { "a1", "b1" }),
+                Row.of(fields, new Object[] { "a2", "b2" }),
         });
         ReadOnlyResultSet rs = new ReadOnlyResultSet(null, Result.of(fields, rows));
         Assert.assertTrue(rs.isBeforeFirst(), "Should be before the first");

@@ -475,7 +475,7 @@ public final class Option implements Serializable {
     /**
      * Gets value from the given properties.
      *
-     * @param props properties, could be null
+     * @param props properties, could be {@code null}
      * @return non-null value in properties if it's not null and valid, or same as
      *         {@link #getDefaultValue()}
      */
