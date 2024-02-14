@@ -20,17 +20,17 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
-            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.burt</groupId>
             <artifactId>jmespath-gson</artifactId>
-            <optional>true</optional>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.code.gson</groupId>
@@ -41,7 +41,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
