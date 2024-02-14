@@ -80,6 +80,9 @@ public final class Option implements Serializable {
     public static final Option POST_QUERY = Option
             .of(new String[] { "post.query", "Query must execute right after the current one" });
 
+    public static final Option BRIDGE_URL = Option
+            .of(new String[] { "bridge.url", "Bridge URL used for executing the query remotely.",
+                    "http://localhost:8080/" });
     /**
      * Path to config property file.
      */

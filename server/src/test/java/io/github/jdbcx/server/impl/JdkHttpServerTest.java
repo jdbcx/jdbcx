@@ -72,7 +72,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
             try (ResultSet rs = stmt
                     .executeQuery(
-                            "select * from url('" + getServerUrl() + "?m=d&q=select+1+as+r','TSVWithNames')")) {
+                            "select * from url('" + getServerUrl() + "?m=d&q=select+1+as+r','CSVWithNames')")) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertEquals(rs.getMetaData().getColumnName(1), "r");
                 Assert.assertTrue(rs.next());
@@ -84,7 +84,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
             String query = "select *, b::string as c from (select generate_series a, a*random() b from generate_series("
                     + count + ",1,-1))";
             try (ResultSet rs = stmt.executeQuery(
-                    "select * from url('" + getServerUrl() + "?m=d&q=" + Utils.encode(query) + "','TSVWithNames')")) {
+                    "select * from url('" + getServerUrl() + "?m=d&q=" + Utils.encode(query) + "','CSVWithNames')")) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 3);
                 Assert.assertEquals(rs.getMetaData().getColumnName(1), "a");
                 Assert.assertEquals(rs.getMetaData().getColumnName(2), "b");

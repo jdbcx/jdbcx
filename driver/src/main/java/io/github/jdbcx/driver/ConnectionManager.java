@@ -134,7 +134,8 @@ public final class ConnectionManager implements AutoCloseable {
     private final DriverExtension defaultExtension;
     private final Connection conn;
     private final JdbcDialect dialect;
-    private final String url;
+    private final String bridgeUrl;
+    private final String jdbcUrl;
     private final Properties props;
     private final Properties normalizedProps;
     private final Properties originalProps;
@@ -159,7 +160,8 @@ public final class ConnectionManager implements AutoCloseable {
         this.defaultExtension = defaultExtension;
         this.conn = conn;
         this.dialect = null; // cache.get(getDatabaseProduct(conn));
-        this.url = url;
+        this.bridgeUrl = Option.BRIDGE_URL.getJdbcxValue(originalProps);
+        this.jdbcUrl = url;
         this.props = extensionProps;
         this.normalizedProps = normalizedProps;
         this.originalProps = originalProps;
@@ -176,9 +178,10 @@ public final class ConnectionManager implements AutoCloseable {
 
     public Connection createConnection() {
         try {
-            return Utils.startsWith(url, JDBC_PREFIX, true)
-                    ? DriverInfo.findSuitableDriver(url, normalizedProps, classLoader).connect(url, normalizedProps)
-                    : DriverManager.getConnection(url, normalizedProps);
+            return Utils.startsWith(jdbcUrl, JDBC_PREFIX, true)
+                    ? DriverInfo.findSuitableDriver(jdbcUrl, normalizedProps, classLoader).connect(jdbcUrl,
+                            normalizedProps)
+                    : DriverManager.getConnection(jdbcUrl, normalizedProps);
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -256,8 +259,12 @@ public final class ConnectionManager implements AutoCloseable {
         return ext;
     }
 
-    public String getUrl() {
-        return url;
+    public String getBridgeUrl() {
+        return bridgeUrl;
+    }
+
+    public String getJdbcUrl() {
+        return jdbcUrl;
     }
 
     public Properties getExtensionProperties() {

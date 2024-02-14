@@ -144,22 +144,31 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         // id, query, format, compression, parameters
-        final String method = exchange.getRequestMethod();
-        final URI requestUri = exchange.getRequestURI();
-        final Map<String, String> params = Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', false);
-        final Map<String, String> headers = new HashMap<>();
-        for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
-            List<String> value = entry.getValue();
-            headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
-        }
+        final String method;
+        final URI requestUri;
+        final Map<String, String> headers;
 
         try {
-            dispatch(method, requestUri.getPath(), headers, params, exchange);
+            method = exchange.getRequestMethod();
+            requestUri = exchange.getRequestURI();
+            headers = new HashMap<>();
+            for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
+                List<String> value = entry.getValue();
+                headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
+            }
+            log.debug("Hanlde request[%s, url=%s, headers=%s]", method, requestUri, headers);
+
+            dispatch(method, requestUri.getPath(), headers, Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', true),
+                    exchange);
         } catch (Exception e) {
-            log.error("Failed to dispatch request[%s, url=%s, headers=%s]", method, requestUri, headers, e);
+            log.error("Failed to handle request", e);
             throw e;
         } finally {
-            exchange.close();
+            try {
+                exchange.close();
+            } catch (Throwable e) { // NOSONAR
+                // ignore
+            }
         }
     }
 

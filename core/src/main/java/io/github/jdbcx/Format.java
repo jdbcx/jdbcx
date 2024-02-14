@@ -18,10 +18,10 @@ package io.github.jdbcx;
 import java.util.Locale;
 
 public enum Format {
-    // https://www.iana.org/assignments/media-types/text/tab-separated-values
-    TSV("text/tab-separated-values", "tsv"),
     // https://www.iana.org/assignments/media-types/text/csv
     CSV("text/csv", "csv"),
+    // https://www.iana.org/assignments/media-types/text/tab-separated-values
+    TSV("text/tab-separated-values", "tsv"),
     TXT("text/plain", "txt"),
     // https://www.iana.org/assignments/media-types/application/json
     JSON("application/json", "json"),
@@ -65,12 +65,12 @@ public enum Format {
      * @param mimeTypes     acceptable MIME types, for example:
      *                      {@code text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, *_/_*;q=0.8}
      * @param defaultFormat optional default format, {@code null} is same as
-     *                      {@link #TSV}
+     *                      {@link #CSV}
      * @return non-null data format
      */
     public static Format fromMimeType(String mimeTypes, Format defaultFormat) {
         if (defaultFormat == null) {
-            defaultFormat = TSV;
+            defaultFormat = CSV;
         }
 
         for (String part : Utils.split(mimeTypes, ',')) {

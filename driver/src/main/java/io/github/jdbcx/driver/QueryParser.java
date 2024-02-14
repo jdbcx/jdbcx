@@ -225,6 +225,24 @@ public final class QueryParser {
         return len - 1;
     }
 
+    static String[] extractBridgeBlock(String block, String extension, int beginIndex, int len) {
+        if (!ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
+            return Constants.EMPTY_STRING_ARRAY;
+        }
+
+        for (int i = beginIndex; i < len; i++) {
+            char ch = block.charAt(i);
+            if (ch == '.') {
+                beginIndex = i + 1;
+                break;
+            } else if (!Character.isWhitespace(ch)) {
+                beginIndex = i;
+                break;
+            }
+        }
+        return new String[] { ExecutableBlock.KEYWORD_BRIDGE, block.substring(beginIndex) };
+    }
+
     static String[] parseExecutableBlock(String block, Properties props) {
         int beginIndex = 0;
         int scope = -1;
@@ -242,6 +260,10 @@ public final class QueryParser {
             } else if (scope == 0) { // extension
                 if (ch == '.') {
                     extension = block.substring(beginIndex, i++).trim();
+                    String[] parts = extractBridgeBlock(block, extension, i, len);
+                    if (parts.length > 0) {
+                        return parts;
+                    }
                     beginIndex = i;
                     int j = i;
                     for (; j < len; j++) {
@@ -267,11 +289,19 @@ public final class QueryParser {
                     scope = 1;
                 } else if (ch == '(') {
                     extension = block.substring(beginIndex, i).trim();
+                    String[] parts = extractBridgeBlock(block, extension, i, len);
+                    if (parts.length > 0) {
+                        return parts;
+                    }
                     i = extractProperties(block, i + 1, len, props);
                     scope = 1;
                     beginIndex = i + 1;
                 } else if (ch == ':') {
                     extension = block.substring(beginIndex, i).trim();
+                    String[] parts = extractBridgeBlock(block, extension, i, len);
+                    if (parts.length > 0) {
+                        return parts;
+                    }
                     scope = 2;
                     beginIndex = i + 1;
                 } else if (Character.isWhitespace(ch)) {
@@ -290,6 +320,9 @@ public final class QueryParser {
 
                     if (j == len) {
                         extension = block.substring(beginIndex, i);
+                        if (ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
+                            return new String[] { ExecutableBlock.KEYWORD_BRIDGE, Constants.EMPTY_STRING };
+                        }
                         script = Constants.EMPTY_STRING;
                         break;
                     }
@@ -320,6 +353,9 @@ public final class QueryParser {
         if (script == null) {
             if (scope == 0) {
                 extension = block.substring(beginIndex);
+                if (ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
+                    return new String[] { ExecutableBlock.KEYWORD_BRIDGE, Constants.EMPTY_STRING };
+                }
                 script = Constants.EMPTY_STRING;
             } else {
                 script = block.substring(beginIndex);

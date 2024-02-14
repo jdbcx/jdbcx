@@ -382,6 +382,21 @@ public class QueryParserTest {
                 new ParsedQuery(Arrays.asList("", "", "", ""),
                         Arrays.asList(new ExecutableBlock(1, "var", props, "x=ch-dev", false),
                                 new ExecutableBlock(3, "web", expectedProps, "my request", true))));
+
+        // bridge
+        props.clear();
+        expectedProps.clear();
+        Assert.assertEquals(QueryParser.parse("{{ bridge }}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "bridge", props, "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ bridge. }}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "bridge", props, "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ bridge() }}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "bridge", props, "()", true))));
+        Assert.assertEquals(QueryParser.parse("{{ bridge. web() }}", props), new ParsedQuery(Arrays.asList("", ""),
+                Arrays.asList(new ExecutableBlock(1, "bridge", props, "web()", true))));
+        Assert.assertEquals(QueryParser.parse("select {{ bridge.db.db1: select 1 }}", props),
+                new ParsedQuery(Arrays.asList("select ", ""),
+                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "db.db1: select 1", true))));
     }
 
     @Test(groups = { "unit" })

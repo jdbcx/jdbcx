@@ -86,7 +86,7 @@ public class BigDecimalValueTest extends BaseValueTest {
                 BigInteger.ZERO, // BigInteger
                 BigDecimal.ZERO, // BigDecimal
                 new BigDecimal(BigInteger.ZERO, 3), // BigDecimal(3)
-                Format.TSV, // Enum(Format)
+                Format.CSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime
@@ -111,7 +111,7 @@ public class BigDecimalValueTest extends BaseValueTest {
                 BigInteger.ONE, // BigInteger
                 BigDecimal.ONE, // BigDecimal
                 new BigDecimal(BigInteger.valueOf(1000L), 3), // BigDecimal(3)
-                Format.CSV, // Enum(Format)
+                Format.TSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime

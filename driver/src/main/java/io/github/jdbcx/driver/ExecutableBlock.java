@@ -30,6 +30,9 @@ import io.github.jdbcx.Checker;
  * </ul>
  */
 public final class ExecutableBlock {
+    // reserved keyword
+    static final String KEYWORD_BRIDGE = "bridge";
+
     private final int index;
     private final String extension;
     private final Properties props;
@@ -80,6 +83,10 @@ public final class ExecutableBlock {
 
     public boolean hasOutput() {
         return output;
+    }
+
+    public boolean useBridge() {
+        return KEYWORD_BRIDGE.equals(extension);
     }
 
     @Override

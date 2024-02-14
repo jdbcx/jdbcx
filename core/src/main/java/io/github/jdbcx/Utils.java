@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -123,7 +124,7 @@ public final class Utils {
                 loader.reload(); // slow but safe
                 return loader;
             }
-        } catch (Throwable e) {
+        } catch (Throwable e) { // NOSONAR
             // ignore
         }
 
@@ -240,18 +241,18 @@ public final class Utils {
      * @return non-null key value pairs
      */
     public static Map<String, String> toKeyValuePairs(String str) {
-        return toKeyValuePairs(str, ',', true);
+        return toKeyValuePairs(str, ',', false);
     }
 
     /**
      * Converts given string to key value paris.
      *
-     * @param str           string
-     * @param delimiter     delimiter maong key value pairs
-     * @param notUrlEncoded whether the key and value are URL encoded or not
+     * @param str          string
+     * @param delimiter    delimiter between key value pairs
+     * @param isUrlEncoded whether the key and value are URL encoded or not
      * @return non-null key value pairs
      */
-    public static Map<String, String> toKeyValuePairs(String str, char delimiter, boolean notUrlEncoded) {
+    public static Map<String, String> toKeyValuePairs(String str, char delimiter, boolean isUrlEncoded) {
         if (str == null || str.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -261,7 +262,7 @@ public final class Utils {
         StringBuilder builder = new StringBuilder();
         for (int i = 0, len = str.length(); i < len; i++) {
             char ch = str.charAt(i);
-            if (notUrlEncoded && ch == '\\' && i + 1 < len) {
+            if (!isUrlEncoded && ch == '\\' && i + 1 < len) {
                 ch = str.charAt(++i);
                 builder.append(ch);
                 continue;
@@ -273,13 +274,13 @@ public final class Utils {
                 }
             } else if (ch == '=' && key == null) {
                 key = builder.toString().trim();
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     key = decode(key);
                 }
                 builder.setLength(0);
             } else if (ch == delimiter && key != null) {
                 String value = builder.toString().trim();
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     value = decode(value);
                 }
                 builder.setLength(0);
@@ -295,7 +296,7 @@ public final class Utils {
         if (key != null && builder.length() > 0) {
             String value = builder.toString().trim();
             if (!key.isEmpty() && !value.isEmpty()) {
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     key = decode(key);
                     value = decode(value);
                 }
@@ -304,6 +305,45 @@ public final class Utils {
         }
 
         return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Converts given map to key value pairs in string format.
+     *
+     * @param kvps map
+     * @return non-null key value pairs in string format
+     */
+    public static String toKeyValuePairs(Map<String, String> kvps) {
+        return toKeyValuePairs(kvps, ',', false);
+    }
+
+    /**
+     * Converts given map to key value pairs in string format.
+     *
+     * @param kvps             map
+     * @param delimiter        delimiter between key value pairs
+     * @param requireUrlEncode whether the key and value are URL encoded or not
+     * @return non-null key value pairs in string format
+     */
+    public static String toKeyValuePairs(Map<String, String> kvps, char delimiter, boolean requireUrlEncode) {
+        if (kvps == null || kvps.isEmpty()) {
+            return Constants.EMPTY_STRING;
+        }
+
+        StringBuilder builder = new StringBuilder(kvps.size() * 20);
+        if (requireUrlEncode) {
+            for (Entry<String, String> entry : kvps.entrySet()) {
+                builder.append(encode(entry.getKey())).append('=').append(encode(entry.getValue())).append(delimiter);
+            }
+        } else {
+            for (Entry<String, String> entry : kvps.entrySet()) {
+                builder.append(entry.getKey()).append('=').append(entry.getValue()).append(delimiter);
+            }
+        }
+        if (builder.length() > 0) {
+            builder.deleteCharAt(builder.length() - 1);
+        }
+        return builder.toString();
     }
 
     /**

@@ -69,7 +69,7 @@ public class DateValueTest extends BaseValueTest {
                 BigInteger.ZERO, // BigInteger
                 BigDecimal.ZERO, // BigDecimal
                 new BigDecimal(BigInteger.ZERO, 3), // BigDecimal(3)
-                Format.TSV, // Enum(Format)
+                Format.CSV, // Enum(Format)
                 LocalDate.ofEpochDay(0L), // Date
                 factory.getDefaultTime(), // Time
                 factory.getDefaultTimestamp(), // DateTime
@@ -94,7 +94,7 @@ public class DateValueTest extends BaseValueTest {
                 BigInteger.ONE, // BigInteger
                 BigDecimal.ONE, // BigDecimal
                 new BigDecimal(BigInteger.ONE, 3), // BigDecimal(3)
-                Format.CSV, // Enum(Format)
+                Format.TSV, // Enum(Format)
                 LocalDate.ofEpochDay(1L), // Date
                 factory.getDefaultTime(), // Time
                 LocalDateTime.of(LocalDate.ofEpochDay(1L), factory.getDefaultTime()), // DateTime

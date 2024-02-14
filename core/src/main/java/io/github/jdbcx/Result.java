@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
 
+import io.github.jdbcx.data.CsvSerde;
 import io.github.jdbcx.data.IterableArray;
 import io.github.jdbcx.data.IterableInputStream;
 import io.github.jdbcx.data.IterableReader;
@@ -163,6 +164,9 @@ public final class Result<T> implements AutoCloseable {
         }
         final Serialization serde;
         switch (format) {
+            case CSV:
+                serde = new CsvSerde(config);
+                break;
             case TSV:
                 serde = new TsvSerde(config);
                 break;

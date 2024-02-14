@@ -19,7 +19,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class FormatTest {
-    static final Format defaultFormat = Format.TSV;
+    static final Format defaultFormat = Format.CSV;
 
     @Test(groups = { "unit" })
     public void testFromFileExtension() {

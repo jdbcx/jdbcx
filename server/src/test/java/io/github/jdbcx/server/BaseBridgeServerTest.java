@@ -217,7 +217,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
                         .executeQuery("select * from url('{{web(url.template=" + getServerUrl() + "):select '" + uuid
-                                + "' r}}','TSVWithNames')")) {
+                                + "' r}}','CSVWithNames')")) {
             // final String qid = server.findIdOfCachedQuery(uuid);
             // Assert.assertNotNull(qid, "Query should have been cached");
             Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
@@ -226,6 +226,62 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             Assert.assertEquals(rs.getString(1), uuid);
             // Assert.assertTrue(rs.getString(1).indexOf(qid) > 0);
             Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testDefaultBridge() throws Exception {
+        final String bridgeUrl = getServerUrl();
+        final String chServerUrl = getClickHouseServer();
+        final String jdbcUrl = "jdbc:ch://" + chServerUrl;
+
+        Properties props = new Properties();
+        props.setProperty("jdbcx.bridge.url", bridgeUrl);
+        WrappedDriver d = new WrappedDriver();
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            final String url;
+            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                url = rs.getString(1);
+                Assert.assertTrue(url.startsWith("http"));
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ web(base.url=%s) }}", url))) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "'x'\nx");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:duckdb:", props); Statement stmt = conn.createStatement();) {
+            stmt.execute("install httpfs");
+
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format(
+                            "select * from read_csv('{{ bridge.db(url=%s): select 'x' }}', header=true, auto_detect=true)",
+                            jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                // Assert.assertEquals(rs.getString(1), "'x'");
+                // Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "x");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:ch://" + chServerUrl, props);
+                Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format(
+                            "select * from url('{{ bridge.db(url=%s): select 'x' }}', 'CSVWithNames')", jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "x");
+                Assert.assertFalse(rs.next());
+            }
         }
     }
 }

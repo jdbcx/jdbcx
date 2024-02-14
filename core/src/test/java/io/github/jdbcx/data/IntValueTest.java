@@ -57,7 +57,7 @@ public class IntValueTest extends BaseValueTest {
                 BigInteger.ZERO, // BigInteger
                 new BigDecimal(0), // BigDecimal
                 new BigDecimal(BigInteger.ZERO, 3), // BigDecimal(3)
-                Format.TSV, // Enum(Format)
+                Format.CSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime
@@ -82,7 +82,7 @@ public class IntValueTest extends BaseValueTest {
                 BigInteger.ONE, // BigInteger
                 new BigDecimal(1), // BigDecimal
                 new BigDecimal(BigInteger.ONE, 3), // BigDecimal(3)
-                Format.CSV, // Enum(Format)
+                Format.TSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime
@@ -137,7 +137,7 @@ public class IntValueTest extends BaseValueTest {
                 BigInteger.ZERO, // BigInteger
                 new BigDecimal(0), // BigDecimal
                 new BigDecimal(BigInteger.ZERO, 3), // BigDecimal(3)
-                Format.TSV, // Enum(Format)
+                Format.CSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime
@@ -162,7 +162,7 @@ public class IntValueTest extends BaseValueTest {
                 BigInteger.ONE, // BigInteger
                 new BigDecimal(1), // BigDecimal
                 new BigDecimal(BigInteger.ONE, 3), // BigDecimal(3)
-                Format.CSV, // Enum(Format)
+                Format.TSV, // Enum(Format)
                 DateTimeParseException.class, // Date
                 DateTimeParseException.class, // Time
                 DateTimeParseException.class, // DateTime

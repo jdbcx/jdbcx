@@ -85,7 +85,7 @@ public class OptionTest {
         Assert.assertEquals(option.getChoices(), new String[0]);
 
         option = Option.ofEnum("n", null, null, Format.class);
-        Assert.assertEquals(option.getDefaultValue(), Format.TSV.name());
+        Assert.assertEquals(option.getDefaultValue(), Format.CSV.name());
         Assert.assertEquals(option.getChoices().length, Format.values().length);
 
         option = Option.ofEnum("n", null, "invalid", Compression.class);

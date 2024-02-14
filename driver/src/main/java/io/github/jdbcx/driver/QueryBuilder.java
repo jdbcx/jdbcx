@@ -37,6 +37,7 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
+import io.github.jdbcx.interpreter.WebInterpreter;
 
 public final class QueryBuilder {
     private final QueryContext context;
@@ -56,6 +57,21 @@ public final class QueryBuilder {
         this.directQuery = pq.isDirectQuery();
         this.parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
         this.blocks = pq.getExecutableBlocks().toArray(new ExecutableBlock[0]);
+        for (int i = 0, len = blocks.length; i < len; i++) {
+            ExecutableBlock block = this.blocks[i];
+            if (block.useBridge()) {
+                Properties props = new Properties();
+                WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
+                StringBuilder builder = new StringBuilder(block.getContent().length() + 4);
+                if (block.hasOutput()) {
+                    builder.append("{{").append(block.getContent()).append("}}");
+                } else {
+                    builder.append("{%").append(block.getContent()).append("%}");
+                }
+                this.blocks[i] = new ExecutableBlock(block.getIndex(), "web", props, builder.toString(),
+                        block.hasOutput());
+            }
+        }
 
         this.manager = manager;
         this.queryResult = queryResult;

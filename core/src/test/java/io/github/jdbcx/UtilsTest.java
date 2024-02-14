@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.UnaryOperator;
@@ -131,37 +132,45 @@ public class UtilsTest {
 
     @Test(groups = "unit")
     public void tetToKeyValuePairs() {
-        Assert.assertEquals(Utils.toKeyValuePairs(null), Collections.emptyMap());
+        Assert.assertEquals(Utils.toKeyValuePairs((String) null), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(""), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(",,,"), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(" , , , "), Collections.emptyMap());
 
-        Map<String, String> expected = new HashMap<>();
+        Assert.assertEquals(Utils.toKeyValuePairs((Map<String, String>) null), "");
+        Assert.assertEquals(Utils.toKeyValuePairs(Collections.emptyMap()), "");
+
+        Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Content-Type", "application/json");
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type=application/json"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs(" Content-Type = application/json ,"), expected);
         // Assert.assertEquals(Utils.toKeyValuePairs(", Content-Type = application/json
         // ,"), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected), "Content-Type=application/json");
 
         expected.put("Authorization", "Bear 1234 5");
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type=application/json,Authorization=Bear 1234 5"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json , Authorization = Bear 1234 5 "),
                 expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected), "Content-Type=application/json,Authorization=Bear 1234 5");
 
         expected.clear();
         expected.put("a 1", "select 1");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=select+1", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=select+1", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', true), "a+1=select+1");
 
         expected.clear();
         expected.put("a 1", "b ");
         expected.put("c", "3");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', true), "a+1=b+&c=3");
 
         expected.clear();
         expected.put("a%201", "b%20");
         expected.put("c", "3");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', false), "a%201=b%20&c=3");
     }
 
     @Test(groups = { "unit" })

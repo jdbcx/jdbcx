@@ -106,7 +106,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 BigInteger.ZERO, // BigInteger
                 BigDecimal.ZERO, // BigDecimal
                 new BigDecimal(BigInteger.ZERO, 3), // BigDecimal(3)
-                Format.TSV, // Enum(Format)
+                Format.CSV, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 factory.getDefaultTime(), // Time
                 factory.getDefaultTimestamp(), // DateTime
@@ -133,7 +133,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 BigInteger.ONE, // BigInteger
                 BigDecimal.ONE, // BigDecimal
                 new BigDecimal(BigInteger.valueOf(1000L), 3), // BigDecimal(3)
-                Format.CSV, // Enum(Format)
+                Format.TSV, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 LocalTime.ofSecondOfDay(1L), // Time
                 LocalDateTime.of(factory.getDefaultDate(), LocalTime.ofSecondOfDay(1L)), // DateTime
