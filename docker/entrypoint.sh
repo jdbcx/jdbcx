@@ -2,11 +2,11 @@
 
 set -e
 
-: ${JDBCX_OPTS:=""}
+: ${DRIVER_OPTS:=""}
 : ${SERVER_OPTS:=""}
 
 run_cli() {
-    java ${JDBCX_OPTS} -cp jdbcx.jar io.github.jdbcx.Main "$@"
+    java ${DRIVER_OPTS} -cp jdbcx.jar io.github.jdbcx.Main "$@"
 }
 
 start_server() {

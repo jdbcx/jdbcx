@@ -31,7 +31,7 @@ public class WebExecutorTest extends BaseIntegrationTest {
     @Test(groups = "unit")
     public void testConstructor() throws IOException {
         WebExecutor executor;
-        Assert.assertNotNull(executor = new WebExecutor(null));
+        Assert.assertNotNull(executor = new WebExecutor(null, null));
         Assert.assertEquals(executor.getDefaultConnectTimeout(),
                 Integer.parseInt(WebExecutor.OPTION_CONNECT_TIMEOUT.getDefaultValue()));
         Assert.assertEquals(executor.getDefaultSocketTimeout(),
@@ -40,7 +40,7 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Assert.assertEquals(executor.getDefaultProxy(), WebExecutor.OPTION_PROXY.getDefaultValue());
 
         Properties props = new Properties();
-        Assert.assertNotNull(executor = new WebExecutor(props));
+        Assert.assertNotNull(executor = new WebExecutor(null, props));
         Assert.assertEquals(executor.getDefaultConnectTimeout(),
                 Integer.parseInt(WebExecutor.OPTION_CONNECT_TIMEOUT.getDefaultValue()));
         Assert.assertEquals(executor.getDefaultSocketTimeout(),
@@ -49,7 +49,7 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Assert.assertEquals(executor.getDefaultProxy(), WebExecutor.OPTION_PROXY.getDefaultValue());
 
         WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(props, "30001");
-        Assert.assertNotNull(executor = new WebExecutor(props));
+        Assert.assertNotNull(executor = new WebExecutor(null, props));
         Assert.assertEquals(executor.getDefaultConnectTimeout(),
                 Integer.parseInt(WebExecutor.OPTION_CONNECT_TIMEOUT.getDefaultValue()));
         Assert.assertEquals(executor.getDefaultSocketTimeout(), 30001);
@@ -57,21 +57,21 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Assert.assertEquals(executor.getDefaultProxy(), WebExecutor.OPTION_PROXY.getDefaultValue());
 
         WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(props, "1234");
-        Assert.assertNotNull(executor = new WebExecutor(props));
+        Assert.assertNotNull(executor = new WebExecutor(null, props));
         Assert.assertEquals(executor.getDefaultConnectTimeout(), 1234);
         Assert.assertEquals(executor.getDefaultSocketTimeout(), 30001);
         Assert.assertEquals(executor.getDefaultTimeout(), Integer.parseInt(Option.EXEC_TIMEOUT.getDefaultValue()));
         Assert.assertEquals(executor.getDefaultProxy(), WebExecutor.OPTION_PROXY.getDefaultValue());
 
         Option.EXEC_TIMEOUT.setValue(props, "999999");
-        Assert.assertNotNull(executor = new WebExecutor(props));
+        Assert.assertNotNull(executor = new WebExecutor(null, props));
         Assert.assertEquals(executor.getDefaultConnectTimeout(), 1234);
         Assert.assertEquals(executor.getDefaultSocketTimeout(), 30001);
         Assert.assertEquals(executor.getDefaultTimeout(), 999999);
         Assert.assertEquals(executor.getDefaultProxy(), WebExecutor.OPTION_PROXY.getDefaultValue());
 
         WebExecutor.OPTION_PROXY.setValue(props, "socks5h://4.3.2.1:1234");
-        Assert.assertNotNull(executor = new WebExecutor(props));
+        Assert.assertNotNull(executor = new WebExecutor(null, props));
         Assert.assertEquals(executor.getDefaultConnectTimeout(), 1234);
         Assert.assertEquals(executor.getDefaultSocketTimeout(), 30001);
         Assert.assertEquals(executor.getDefaultTimeout(), 999999);
@@ -80,45 +80,45 @@ public class WebExecutorTest extends BaseIntegrationTest {
 
     @Test(groups = "unit")
     public void testGetProxy() throws IOException {
-        Assert.assertEquals(new WebExecutor(null).getProxy(null), Proxy.NO_PROXY);
+        Assert.assertEquals(new WebExecutor(null, null).getProxy(null), Proxy.NO_PROXY);
         Properties props = new Properties();
-        Assert.assertEquals(new WebExecutor(props).getProxy(null), Proxy.NO_PROXY);
-        Assert.assertEquals(new WebExecutor(props).getProxy(props), Proxy.NO_PROXY);
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(null), Proxy.NO_PROXY);
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props), Proxy.NO_PROXY);
 
         WebExecutor.OPTION_PROXY.setValue(props, "");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props), Proxy.NO_PROXY);
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props), Proxy.NO_PROXY);
 
         WebExecutor.OPTION_PROXY.setValue(props, ":");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(WebExecutor.DEFAULT_PROXY_TYPE, InetSocketAddress
                         .createUnresolved(WebExecutor.DEFAULT_PROXY_HOST, WebExecutor.DEFAULT_PROXY_PORT)));
         WebExecutor.OPTION_PROXY.setValue(props, ":8989");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(WebExecutor.DEFAULT_PROXY_TYPE,
                         InetSocketAddress.createUnresolved(WebExecutor.DEFAULT_PROXY_HOST, 8989)));
         WebExecutor.OPTION_PROXY.setValue(props, "-$-"); // authority
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(WebExecutor.DEFAULT_PROXY_TYPE, InetSocketAddress
                         .createUnresolved(WebExecutor.DEFAULT_PROXY_HOST, WebExecutor.DEFAULT_PROXY_PORT)));
         WebExecutor.OPTION_PROXY.setValue(props, "www.test.com:");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(WebExecutor.DEFAULT_PROXY_TYPE,
                         InetSocketAddress.createUnresolved("www.test.com", WebExecutor.DEFAULT_PROXY_PORT)));
         WebExecutor.OPTION_PROXY.setValue(props, "www.test.com:8989");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(WebExecutor.DEFAULT_PROXY_TYPE,
                         InetSocketAddress.createUnresolved("www.test.com", 8989)));
 
         WebExecutor.OPTION_PROXY.setValue(props, "http://www.test.com");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(Proxy.Type.HTTP,
                         InetSocketAddress.createUnresolved("www.test.com", WebExecutor.DEFAULT_PROXY_PORT)));
         WebExecutor.OPTION_PROXY.setValue(props, "https://www.test.com");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(Proxy.Type.HTTP,
                         InetSocketAddress.createUnresolved("www.test.com", WebExecutor.DEFAULT_PROXY_PORT)));
         WebExecutor.OPTION_PROXY.setValue(props, "socks5h://4.3.2.1:1234");
-        Assert.assertEquals(new WebExecutor(props).getProxy(props),
+        Assert.assertEquals(new WebExecutor(null, props).getProxy(props),
                 new Proxy(Proxy.Type.SOCKS, InetSocketAddress.createUnresolved("4.3.2.1", 1234)));
     }
 
@@ -127,16 +127,16 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Properties props = new Properties();
         String address = getClickHouseServer();
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null).get(new URL("http://" + address), props, null)),
+                Stream.readAllAsString(new WebExecutor(null, null).get(new URL("http://" + address), props, null)),
                 "Ok.\n");
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null)
+                Stream.readAllAsString(new WebExecutor(null, null)
                         .get(new URL("http://default@" + address + "?query=select+7"), props, null)),
                 "7\n");
 
         Option.PROXY.setValue(props, getProxyServer());
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null).get(
+                Stream.readAllAsString(new WebExecutor(null, null).get(
                         new URL("http://" + getDeclaredClickHouseServer() + "?query=select+1"), props, null)),
                 "1\n");
     }
@@ -145,8 +145,9 @@ public class WebExecutorTest extends BaseIntegrationTest {
     public void testPost() throws Exception {
         Properties props = new Properties();
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null).post(new URL("http://default@" + getClickHouseServer()),
-                        "select 9", props, null)),
+                Stream.readAllAsString(
+                        new WebExecutor(null, null).post(new URL("http://default@" + getClickHouseServer()),
+                                "select 9", props, null)),
                 "9\n");
     }
 }

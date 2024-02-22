@@ -80,9 +80,6 @@ public final class Option implements Serializable {
     public static final Option POST_QUERY = Option
             .of(new String[] { "post.query", "Query must execute right after the current one" });
 
-    public static final Option BRIDGE_URL = Option
-            .of(new String[] { "bridge.url", "Bridge URL used for executing the query remotely.",
-                    "http://localhost:8080/" });
     /**
      * Path to config property file.
      */
@@ -192,10 +189,10 @@ public final class Option implements Serializable {
             .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
                     "stream" });
 
-    public static final Option SERVER_URL = Option.of(new String[] { "server.url", "Server url" });
-    public static final Option SERVER_HOST = Option.of(new String[] { "server.host", "Server host" });
-    public static final Option SERVER_PORT = Option.of("server.port", "Server port", "8080");
-    public static final Option SERVER_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
+    public static final Option SERVER_URL = Option
+            .of(new String[] { "server.url", "Bridge server URL used for executing the query remotely." });
+    public static final Option SERVER_HOST = Option.of(new String[] { "server.host", "Bridge server host." });
+    public static final Option SERVER_PORT = Option.of("server.port", "Bridge server port.", "8080");
     public static final Option SERVER_CONTEXT = Option.of("server.context",
             "Server web context starts and ends with backslash", "/");
 
@@ -214,6 +211,9 @@ public final class Option implements Serializable {
             .of(new String[] { "ssl.protocol", "SSL/TLS protocol to use.", "TLS" });
     public static final Option SSL_ROOT_CERT = Option
             .of(new String[] { "ssl.root.cert", "Path to the trusted root SSL/TLS certificate file." });
+
+    public static final Option TAG = Option.ofEnum("tag",
+            "Variable tags used in SQL templating and dynamic queries.", null, VariableTag.class);
 
     /**
      * The Builder class is used to construct options.

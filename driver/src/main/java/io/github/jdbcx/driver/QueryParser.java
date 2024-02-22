@@ -25,6 +25,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 /**
  * This class parses the given query string to extract discrete parts and
@@ -88,7 +89,7 @@ public final class QueryParser {
         return new Part(endPosition, escapedString);
     }
 
-    static Part extractPropertyNamePart(String str, int startIndex, int len, Properties props) {
+    static Part extractPropertyNamePart(String str, int startIndex, int len, VariableTag tag, Properties props) {
         StringBuilder builder = new StringBuilder();
         for (int i = startIndex; i < len; i++) {
             char ch = str.charAt(i);
@@ -103,7 +104,7 @@ public final class QueryParser {
                 if (Character.isJavaIdentifierPart(ch) || ch == '.' || ch == '{' || ch == '}') {
                     builder.append(ch);
                 } else if (Character.isWhitespace(ch) || ch == '=') {
-                    return new Part(i, Utils.applyVariables(builder.toString(), props));
+                    return new Part(i, Utils.applyVariables(builder.toString(), tag, props));
                 } else {
                     throw new IllegalArgumentException(
                             Utils.format("Property name can only contain letter and dot but we found [%s]", ch));
@@ -114,7 +115,8 @@ public final class QueryParser {
         throw new IllegalArgumentException(Utils.format("Missing value for property [%s]", builder.toString()));
     }
 
-    static Part extractPartBefore(String str, int startIndex, int len, Properties props, char... stopChars) {
+    static Part extractPartBefore(String str, int startIndex, int len, VariableTag tag, Properties props,
+            char... stopChars) {
         StringBuilder builder = new StringBuilder();
         boolean escaped = false;
         for (int i = startIndex; i < len; i++) {
@@ -133,25 +135,25 @@ public final class QueryParser {
                     }
                 }
                 if (found) {
-                    return new Part(i, Utils.applyVariables(builder.toString().trim(), props));
+                    return new Part(i, Utils.applyVariables(builder.toString().trim(), tag, props));
                 } else {
                     builder.append(ch);
                 }
             }
         }
-        return new Part(len, Utils.applyVariables(builder.toString().trim(), props));
+        return new Part(len, Utils.applyVariables(builder.toString().trim(), tag, props));
     }
 
-    static Part extractPropertyValuePart(String str, int startIndex, int len, Properties props) {
+    static Part extractPropertyValuePart(String str, int startIndex, int len, VariableTag tag, Properties props) {
         Part part = null;
         for (int i = startIndex; i < len; i++) {
             char ch = str.charAt(i);
             if (ch == '\'' || ch == '"' || ch == '`') {
-                part = extractQuotedPart(str, i + 1, len, props, ch);
+                part = extractQuotedPart(str, i + 1, len, tag, props, ch);
             } else if (ch == ',' || ch == ')') {
                 part = new Part(i, Constants.EMPTY_STRING);
             } else if (!Character.isWhitespace(ch)) {
-                part = extractPartBefore(str, i, len, props, ',', ')');
+                part = extractPartBefore(str, i, len, tag, props, ',', ')');
             }
 
             if (part != null) {
@@ -172,7 +174,7 @@ public final class QueryParser {
      * @param quote      quote character
      * @return quoted part
      */
-    static Part extractQuotedPart(String str, int startIndex, int len, Properties props, char quote) {
+    static Part extractQuotedPart(String str, int startIndex, int len, VariableTag tag, Properties props, char quote) {
         StringBuilder builder = new StringBuilder();
         boolean escaped = false;
         for (int i = startIndex; i < len; i++) {
@@ -186,7 +188,7 @@ public final class QueryParser {
                 if (++i < len && str.charAt(i) == quote) {
                     builder.append(ch);
                 } else {
-                    return new Part(i, Utils.applyVariables(builder.toString(), props));
+                    return new Part(i, Utils.applyVariables(builder.toString(), tag, props));
                 }
             } else {
                 builder.append(ch);
@@ -196,7 +198,7 @@ public final class QueryParser {
         throw new IllegalArgumentException(Utils.format("Missing quote: [%s]", quote));
     }
 
-    static int extractProperties(String str, int startIndex, int len, Properties props) {
+    static int extractProperties(String str, int startIndex, int len, VariableTag tag, Properties props) {
         String key = null;
         for (int i = startIndex; i < len; i++) {
             char ch = str.charAt(i);
@@ -204,7 +206,7 @@ public final class QueryParser {
                 if (key == null) {
                     key = Constants.EMPTY_STRING;
                 } else {
-                    Part part = extractPropertyValuePart(str, i + 1, len, props);
+                    Part part = extractPropertyValuePart(str, i + 1, len, tag, props);
                     i = part.endPosition - 1;
                     props.setProperty(key, part.escaped);
                     key = null;
@@ -213,7 +215,7 @@ public final class QueryParser {
                 return i;
             } else if (ch != ',' && !Character.isWhitespace(ch)) {
                 if (key == null) {
-                    Part part = extractPropertyNamePart(str, i, len, props);
+                    Part part = extractPropertyNamePart(str, i, len, tag, props);
                     i = part.endPosition - 1;
                     key = part.escaped;
                 } else {
@@ -243,7 +245,10 @@ public final class QueryParser {
         return new String[] { ExecutableBlock.KEYWORD_BRIDGE, block.substring(beginIndex) };
     }
 
-    static String[] parseExecutableBlock(String block, Properties props) {
+    static String[] parseExecutableBlock(String block, VariableTag tag, Properties props) {
+        final char leftChar = tag.leftChar();
+        final char rightChar = tag.rightChar();
+
         int beginIndex = 0;
         int scope = -1;
         String extension = Constants.EMPTY_STRING;
@@ -268,10 +273,10 @@ public final class QueryParser {
                     int j = i;
                     for (; j < len; j++) {
                         ch = block.charAt(j);
-                        if (ch == '{') {
-                            j = block.indexOf('}', j + 1);
+                        if (ch == leftChar) {
+                            j = block.indexOf(rightChar, j + 1);
                             if (j == -1) {
-                                throw new IllegalArgumentException("Unclosed brace found at " + j);
+                                throw new IllegalArgumentException("Unclosed tag found at " + j);
                             }
                             i = j + 1;
                         } else if (ch != '-' && !Character.isJavaIdentifierPart(ch)) {
@@ -293,7 +298,7 @@ public final class QueryParser {
                     if (parts.length > 0) {
                         return parts;
                     }
-                    i = extractProperties(block, i + 1, len, props);
+                    i = extractProperties(block, i + 1, len, tag, props);
                     scope = 1;
                     beginIndex = i + 1;
                 } else if (ch == ':') {
@@ -331,7 +336,7 @@ public final class QueryParser {
                 }
             } else if (scope == 1) { // properties
                 if (ch == '(') {
-                    i = extractProperties(block, i + 1, len, props);
+                    i = extractProperties(block, i + 1, len, tag, props);
                     beginIndex = i + 1;
                 } else if (ch == ':') {
                     scope = 2;
@@ -364,18 +369,19 @@ public final class QueryParser {
         return new String[] { extension, script };
     }
 
-    static ExecutableBlock parseDependentExecutableBlock(int id, String executableBlock, Properties vars) {
+    static ExecutableBlock parseDependentExecutableBlock(int id, String executableBlock, VariableTag tag,
+            Properties vars) {
         Properties props = new Properties();
         if (vars != null) {
             props.putAll(vars);
         }
-        String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, vars), props);
+        String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, tag, vars), tag, props);
         return new ExecutableBlock(id, parsed[0], props, parsed[1], false);
     }
 
-    static void addExecutableBlock(StringBuilder builder, String executableBlock, Properties vars, boolean output,
-            List<String> parts, List<ExecutableBlock> blocks) {
-        parts.add(Utils.applyVariables(builder, vars));
+    static void addExecutableBlock(StringBuilder builder, String executableBlock, VariableTag tag, Properties vars,
+            boolean output, List<String> parts, List<ExecutableBlock> blocks) {
+        parts.add(Utils.applyVariables(builder, tag, vars));
         builder.setLength(0);
 
         Properties props = new Properties();
@@ -383,49 +389,40 @@ public final class QueryParser {
             props.putAll(vars);
         }
 
-        String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, vars), props);
+        String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, tag, vars), tag, props);
         String preQuery = (String) props.remove(Option.PRE_QUERY.getName());
         String postQuery = (String) props.remove(Option.POST_QUERY.getName());
         if (!Checker.isNullOrEmpty(preQuery)) {
-            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, vars));
+            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, tag, vars));
             parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
         }
         blocks.add(new ExecutableBlock(parts.size(), parsed[0], props, parsed[1], output));
         parts.add(Constants.EMPTY_STRING); // placeholder of current query
         if (!Checker.isNullOrEmpty(postQuery)) {
-            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, vars));
+            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars));
             parts.add(Constants.EMPTY_STRING); // placeholder of post-query
         }
     }
 
     /**
-     * Parses the given query string. Same as {@code parse(query, vars, '\\')}.
+     * Parses the given query string.
      *
      * @param query the query string to parse
+     * @param tag   non-null variable tag used for parsing
      * @param vars  optional variables for substitution
      * @return non-null parsed query
      */
-    public static ParsedQuery parse(String query, Properties vars) {
-        return parse(query, vars, '\\');
-    }
-
-    /**
-     * Parses the given query string to extract discrete parts and executable code
-     * blocks.
-     *
-     * @param query      the query string to parse
-     * @param vars       optional variables for substitution
-     * @param escapeChar the escape character, typically backslash - cannot be
-     *                   percent (%) or brace ({})
-     * @return non-null parsed query
-     */
-    public static ParsedQuery parse(String query, Properties vars, char escapeChar) {
+    public static ParsedQuery parse(String query, VariableTag tag, Properties vars) {
         if (Checker.isNullOrEmpty(query)) {
             return ParsedQuery.EMPTY;
-        } else if (escapeChar == '%' || escapeChar == '{' || escapeChar == '}') {
-            throw new IllegalArgumentException(
-                    "The escape character cannot be '%' or '{}' as these are reserved symbols. Please specify a different character.");
+        } else if (tag == null) {
+            tag = VariableTag.BRACE;
         }
+
+        final char escapeChar = tag.escapeChar();
+        final char leftChar = tag.leftChar();
+        final char rightChar = tag.rightChar();
+        final char procChar = tag.procedureChar();
 
         final int len = query.length();
         List<String> parts = new LinkedList<>();
@@ -441,7 +438,7 @@ public final class QueryParser {
                 } else {
                     escaped = true;
                 }
-            } else if (ch == '{') {
+            } else if (ch == leftChar) {
                 char nextChar = escapeChar;
                 if (++i < len) {
                     nextChar = query.charAt(i);
@@ -451,10 +448,10 @@ public final class QueryParser {
                 }
 
                 if (nextChar == ch && !escaped) { // executable block with output: {{ ... }}
-                    int index = indexOf(query, i + 1, "}}", escapeChar);
+                    int index = indexOf(query, i + 1, tag.functionRight(), escapeChar);
                     if (index > 0) {
                         for (int k = index; k < len; k++) { // be greedy
-                            if (query.charAt(k) == '}') {
+                            if (query.charAt(k) == rightChar) {
                                 index++;
                             } else {
                                 break;
@@ -471,15 +468,17 @@ public final class QueryParser {
                                     break;
                                 }
                             }
-                            addExecutableBlock(builder, query.substring(i + 1, endIndex), vars, true, parts, blocks);
+                            addExecutableBlock(builder, query.substring(i + 1, endIndex), tag, vars, true, parts,
+                                    blocks);
                         }
                         i = index - 1;
                     } else {
                         builder.append(ch).append(nextChar);
-                        log.debug("Executable block starts with \"{{\" at %d but missing \"}}\"", i - 1);
+                        log.debug("Executable block starts with \"%s\" at %d but missing \"%s\"", tag.functionLeft(),
+                                tag.functionRight(), i - 1);
                     }
-                } else if (nextChar == '%' && !escaped) { // executable block: {% ... %}
-                    int index = indexOf(query, i + 1, "%}", escapeChar);
+                } else if (nextChar == procChar && !escaped) { // executable block: {% ... %}
+                    int index = indexOf(query, i + 1, tag.procedureRight(), escapeChar);
                     if (index > 0) {
                         if (query.charAt(i + 1) == '-') {
                             log.debug("Skip executable block: %s", query.substring(i - 1, index));
@@ -492,12 +491,14 @@ public final class QueryParser {
                                     break;
                                 }
                             }
-                            addExecutableBlock(builder, query.substring(i + 1, endIndex), vars, false, parts, blocks);
+                            addExecutableBlock(builder, query.substring(i + 1, endIndex), tag, vars, false, parts,
+                                    blocks);
                         }
                         i = index - 1;
                     } else {
                         builder.append(ch);
-                        log.debug("Executable block starts with \"{%%\" at %d but missing \"%%}\"", i - 1);
+                        log.debug("Executable block starts with \"%s\" at %d but missing \"%s\"", tag.procedureLeft(),
+                                tag.procedureRight(), i - 1);
                     }
                 } else {
                     builder.append(ch).append(nextChar);
@@ -513,7 +514,7 @@ public final class QueryParser {
         }
 
         if (builder.length() > 0) {
-            parts.add(Utils.applyVariables(builder.toString(), vars));
+            parts.add(Utils.applyVariables(builder.toString(), tag, vars));
         }
 
         return new ParsedQuery(parts, blocks);

@@ -13,26 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.dialect;
+package io.github.jdbcx.driver;
 
-import java.sql.SQLException;
+import java.sql.Connection;
 
-import io.github.jdbcx.Field;
 import io.github.jdbcx.JdbcDialect;
 
-public final class DefaultDialect implements JdbcDialect {
-    private static final JdbcDialect instance = new DefaultDialect();
+public interface ManagedConnection extends Connection {
+    /**
+     * Gets connection manager.
+     *
+     * @return non-null connection manager
+     */
+    ConnectionManager getManager();
 
-    public static JdbcDialect getInstance() {
-        return instance;
-    }
-
-    @Override
-    public void createTemporaryTable(String table, Field... fields) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createTemporaryTable'");
-    }
-
-    private DefaultDialect() {
+    default JdbcDialect getDialect() {
+        return getManager().getDialect();
     }
 }

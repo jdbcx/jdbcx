@@ -25,8 +25,8 @@ import io.github.jdbcx.executor.CommandLineExecutor;
 
 public final class DefaultDriverExtension implements DriverExtension {
     private static final List<Option> options = Collections.unmodifiableList(
-            Arrays.asList(Option.BRIDGE_URL, Option.CONFIG_PATH, Option.CUSTOM_CLASSPATH,
-                    CommandLineExecutor.OPTION_DOCKER_PATH, Option.PROXY));
+            Arrays.asList(Option.SERVER_URL, Option.CONFIG_PATH, Option.CUSTOM_CLASSPATH,
+                    CommandLineExecutor.OPTION_DOCKER_PATH, Option.PROXY, Option.TAG));
 
     private static final DriverExtension instance = new DefaultDriverExtension();
 

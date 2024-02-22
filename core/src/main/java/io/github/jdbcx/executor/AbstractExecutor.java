@@ -43,6 +43,7 @@ import io.github.jdbcx.Executor;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 abstract class AbstractExecutor implements Executor {
     static final void cancelAllTasks(Logger log, CompletableFuture<?>[] tasks) {
@@ -168,6 +169,8 @@ abstract class AbstractExecutor implements Executor {
         scheduler = Executors.newSingleThreadScheduledExecutor(new CustomThreadFactory("JdbcxScheduler-"));
     }
 
+    protected final VariableTag defaultTag;
+
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
     protected final Charset defaultInputCharset;
@@ -176,7 +179,9 @@ abstract class AbstractExecutor implements Executor {
     protected final int defaultTimeout;
     protected final Path defaultWorkDir;
 
-    protected AbstractExecutor(Properties props) {
+    protected AbstractExecutor(VariableTag tag, Properties props) {
+        this.defaultTag = tag != null ? tag : VariableTag.BRACE;
+
         String inputCharset = Option.INPUT_CHARSET.getValue(props);
         String outputCharset = Option.OUTPUT_CHARSET.getValue(props);
         String workDir = Option.WORK_DIRECTORY.getValue(props);

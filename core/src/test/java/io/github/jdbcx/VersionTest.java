@@ -43,4 +43,32 @@ public class VersionTest {
 
         check(Version.of("1.2.3 (rv: 12345678)"), 1, 2, 3, "(rv: 12345678)");
     }
+
+    @Test(groups = "unit")
+    public void testToString() {
+        Version v = Version.of("0.3.2  (rev: 123) ");
+        Assert.assertEquals(v.toString(), "Version 0.3.2 (rev: 123)");
+        Assert.assertEquals(v.toCompactString(), "0.3.2 (rev: 123)");
+        Assert.assertEquals(v.toShortString(), "0.3.2");
+
+        v = Version.of("0.0.2  (rev: 123) ");
+        Assert.assertEquals(v.toString(), "Version 0.0.2 (rev: 123)");
+        Assert.assertEquals(v.toCompactString(), "0.0.2 (rev: 123)");
+        Assert.assertEquals(v.toShortString(), "0.0.2");
+
+        v = Version.of("1.0.0  (rev: 123) ");
+        Assert.assertEquals(v.toString(), "Version 1.0.0 (rev: 123)");
+        Assert.assertEquals(v.toCompactString(), "1 (rev: 123)");
+        Assert.assertEquals(v.toShortString(), "1");
+
+        v = Version.of("1.1.0  (rev: 123) ");
+        Assert.assertEquals(v.toString(), "Version 1.1.0 (rev: 123)");
+        Assert.assertEquals(v.toCompactString(), "1.1 (rev: 123)");
+        Assert.assertEquals(v.toShortString(), "1.1");
+
+        v = Version.of("1.0.1  (rev: 123) ");
+        Assert.assertEquals(v.toString(), "Version 1.0.1 (rev: 123)");
+        Assert.assertEquals(v.toCompactString(), "1.0.1 (rev: 123)");
+        Assert.assertEquals(v.toShortString(), "1.0.1");
+    }
 }

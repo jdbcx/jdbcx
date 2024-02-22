@@ -23,6 +23,10 @@ public interface Interpreter {
         return QueryContext.getCurrentContext();
     }
 
+    default VariableTag getVariableTag() {
+        return VariableTag.BRACE;
+    }
+
     /**
      * Interprets the given query.
      *

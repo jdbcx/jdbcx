@@ -15,9 +15,15 @@
  */
 package io.github.jdbcx.server;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.net.HttpURLConnection;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.SQLException;
@@ -33,18 +39,20 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.Version;
 
 public abstract class BridgeServer {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
 
-    public static final String HEADER_ACCEPT = "accept";
-    public static final String HEADER_ACCEPT_ENCODING = "accept-encoding";
+    public static final String HEADER_ACCEPT = "accept"; // format
+    public static final String HEADER_ACCEPT_ENCODING = "accept-encoding"; // compression
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
     public static final String HEADER_LOCATION = "location";
@@ -60,6 +68,8 @@ public abstract class BridgeServer {
     public static final String PARAM_QUERY = "q";
     public static final String PARAM_QUERY_MODE = "m";
 
+    public static final String PATH_CONFIG = "config";
+
     public static final long DEFAULT_REQUEST_LIMIT = 10000L;
 
     public static final Option OPTION_DATASOURCE_CONFIG = Option.of("server.datasource.config",
@@ -74,10 +84,41 @@ public abstract class BridgeServer {
     public static final Option OPTION_QUERY_TIMEOUT = Option.of("server.query.timeout",
             "Maximum query execution time in millisecond", "30000");
 
+    public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
     public static final Option OPTION_FORMAT = Option.ofEnum("server.format", "Server response format", null,
             Format.class);
     public static final Option OPTION_COMPRESSION = Option.ofEnum("server.compress", "Server response compression",
             null, Compression.class);
+
+    protected static final Properties load() {
+        Properties sysProps = System.getProperties();
+        final String fileName = Utils
+                .normalizePath(sysProps.getProperty(Option.PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
+                        Option.CONFIG_PATH.getDefaultValue()));
+
+        if (Checker.isNullOrEmpty(fileName)) {
+            log.debug("No default config file specified");
+            return sysProps;
+        }
+
+        Properties defProps = new Properties(sysProps);
+        Path path = Paths.get(fileName);
+        if (!path.isAbsolute()) {
+            path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
+        }
+        File file = path.toFile();
+        if (file.exists() && file.canRead()) {
+            try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
+                defProps.load(reader);
+                log.debug("Loaded default config from file \"%s\".", fileName);
+            } catch (IOException e) {
+                log.warn("Failed to load default config from file \"%s\"", fileName, e);
+            }
+        } else {
+            log.debug("Skip loading default config as file \"%s\" is not accessible.", fileName);
+        }
+        return defProps;
+    }
 
     private final Cache<String, String> queries;
 
@@ -91,11 +132,15 @@ public abstract class BridgeServer {
     protected final int backlog;
     // protected final int threads;
 
+    protected final String tag;
+
     protected final Format defaultFormat;
     protected final Compression defaultCompress;
 
+    private final Properties essentials;
+
     protected BridgeServer(Properties props) {
-        String dsConfigFile = OPTION_DATASOURCE_CONFIG.getValue(props);
+        String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
         HikariConfig config = null;
         if (!Checker.isNullOrEmpty(dsConfigFile)) {
             try {
@@ -112,10 +157,10 @@ public abstract class BridgeServer {
         }
         datasource = new HikariDataSource(config);
 
-        queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getValue(props));
+        queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getJdbcxValue(props));
 
-        final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getValue(props));
-        final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getValue(props));
+        final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getJdbcxValue(props));
+        final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getJdbcxValue(props));
 
         // TODO load persistent requests from disk file or database
         Caffeine<Object, Object> builder = Caffeine.newBuilder()
@@ -125,12 +170,12 @@ public abstract class BridgeServer {
         }
         queries = builder.recordStats().<String, String>build();
 
-        host = Option.SERVER_HOST.getValue(props);
-        port = Integer.parseInt(Option.SERVER_PORT.getValue(props));
+        host = Option.SERVER_HOST.getJdbcxValue(props);
+        port = Integer.parseInt(Option.SERVER_PORT.getJdbcxValue(props));
 
-        final String url = Option.SERVER_URL.getValue(props);
+        final String url = Option.SERVER_URL.getJdbcxValue(props);
         if (Checker.isNullOrEmpty(url)) {
-            String path = Option.SERVER_CONTEXT.getValue(props);
+            String path = Option.SERVER_CONTEXT.getJdbcxValue(props);
             if (Checker.isNullOrEmpty(path)) {
                 path = "/";
             } else {
@@ -158,10 +203,25 @@ public abstract class BridgeServer {
             }
         }
 
-        backlog = Integer.parseInt(Option.SERVER_BACKLOG.getValue(props, "0"));
+        backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
 
-        defaultFormat = Format.valueOf(OPTION_FORMAT.getValue(props));
-        defaultCompress = Compression.valueOf(OPTION_COMPRESSION.getValue(props));
+        tag = Option.TAG.getJdbcxValue(props);
+
+        defaultFormat = Format.valueOf(OPTION_FORMAT.getJdbcxValue(props));
+        defaultCompress = Compression.valueOf(OPTION_COMPRESSION.getJdbcxValue(props));
+
+        essentials = new Properties();
+        Option.SERVER_URL.setValue(essentials, baseUrl);
+        if (!Checker.isNullOrEmpty(tag)) {
+            Option.TAG.setValue(essentials, tag);
+        }
+        if (defaultFormat != null) {
+            OPTION_FORMAT.setValue(essentials, defaultFormat.name());
+        }
+        if (defaultCompress != null && defaultCompress != Compression.NONE) {
+            OPTION_COMPRESSION.setValue(essentials, defaultCompress.name());
+        }
+        log.info("Initialized bridge server with below configuration:\n%s", essentials);
     }
 
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
@@ -173,28 +233,56 @@ public abstract class BridgeServer {
         return new Request(method, mode, qid, query, txid, format, compress, userObject);
     }
 
-    protected void query(Request request, OutputStream out) throws IOException {
+    protected final Properties getConfig() {
+        Properties props = new Properties();
+        props.putAll(essentials);
+        return props;
+    }
+
+    protected final void writeConfig(OutputStream out) throws IOException {
+        essentials.store(out, Utils.format("Bridge server %s configuration", Version.current().toShortString()));
+    }
+
+    @SuppressWarnings("resource")
+    protected void query(Request request) throws IOException {
+        log.debug("Executing query [%s]...", request.getQueryId());
         boolean success = false;
         try (Connection conn = datasource.getConnection();
                 Statement stmt = conn.createStatement();
                 Result<?> result = request.isMutation() ? Result.of(stmt.executeLargeUpdate(request.getQuery()))
                         : Result.of(stmt.executeQuery(request.getQuery()))) {
-            // final SQLWarning warning = stmt.getWarnings();
-            // if (warning != null) {
-            // log.warn("Warning from [%s]", stmt, warning);
-            // }
-            Result.writeTo(result, request.getFormat(), null, out);
-            success = true;
+            final Compression compress = request.getCompression();
+            compress.checkProvider();
+            try (OutputStream out = compress.compress(getResponseOutputStream(request))) {
+                success = true; // query was a success and we got response output stream without any issue
+                // final SQLWarning warning = stmt.getWarnings();
+                // if (warning != null) {
+                // log.warn("Warning from [%s]", stmt, warning);
+                // }
+                Result.writeTo(result, request.getFormat(), null, out);
+            }
         } catch (SQLException e) {
+            // invalidate the query so that client-side retry later will end up with 404
+            queries.invalidate(request.getQueryId());
+            log.debug("Invalidated query [%s] due to error: %s", request.getQueryId(), e.getMessage());
             throw new IOException(e);
         } finally {
             if (!success) {
-                log.error("Failed to execute query for %s", request);
+                respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
         }
     }
 
     protected abstract void execute(Request request) throws IOException;
+
+    /**
+     * Sets response code to 200 and gets raw response output stream.
+     *
+     * @param request non-null request object
+     * @return raw response output stream
+     * @throws IOException when failed to get response output stream
+     */
+    protected abstract OutputStream getResponseOutputStream(Request request) throws IOException;
 
     protected abstract void redirect(Request request) throws IOException;
 
@@ -204,10 +292,16 @@ public abstract class BridgeServer {
         respond(request, code, null);
     }
 
+    protected abstract void showConfig(Object userObject) throws IOException;
+
     protected void dispatch(String method, String path, Map<String, String> headers, Map<String, String> params,
             Object userObject) throws IOException {
         if (!path.startsWith(context)) {
             throw new IOException(Utils.format("Request URI must starts with [%s]", context));
+        } else if (path.endsWith(PATH_CONFIG) && (path.length() == context.length() + PATH_CONFIG.length())) {
+            log.debug("Sending server configuration");
+            showConfig(userObject);
+            return;
         } else {
             path = path.substring(context.length());
             if (!path.isEmpty() && path.charAt(0) == '/') {

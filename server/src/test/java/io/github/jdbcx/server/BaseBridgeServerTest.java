@@ -15,11 +15,14 @@
  */
 package io.github.jdbcx.server;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,12 +59,12 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testDefaultUrl() throws Exception {
+    public void testDefaultUrl() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<?, ?> headers = new HashMap<>();
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
@@ -77,12 +80,12 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testNonExistentUrl() throws Exception {
+    public void testNonExistentUrl() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<?, ?> headers = new HashMap<>();
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "non-exist-query.id"), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
@@ -96,14 +99,31 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testSubmitQuery() throws Exception {
+    public void testWriteConfig() throws IOException {
+        final String url = getServerUrl();
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(null, config);
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        HttpURLConnection conn = web.openConnection(new URL(url + BridgeServer.PATH_CONFIG), config, headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        try (InputStream input = conn.getInputStream()) {
+            config.clear();
+            config.load(input);
+            Assert.assertEquals(config, server.getConfig());
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testSubmitQuery() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
         headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
         headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?q=select+1"), config, headers);
         Assert.assertNull(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE),
@@ -129,14 +149,14 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testSubmitAndRedirectQuery() throws Exception {
+    public void testSubmitAndRedirectQuery() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
         headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
         headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?m=r&q=select+1"), config, headers);
         String queryUrl = conn.getHeaderField(BridgeServer.HEADER_LOCATION);
@@ -164,7 +184,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testDirectQuery() throws Exception {
+    public void testDirectQuery() throws IOException {
         final String url = getServerUrl();
         final String query = "select 1 a, 'one' b union all select 2, 'two'";
         final String expected = "{\"a\":1,\"b\":\"one\"}\n{\"a\":2,\"b\":\"two\"}";
@@ -172,7 +192,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
         // use query parameters
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         HttpURLConnection conn = web.openConnection(new URL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
                 headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
@@ -181,7 +201,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         // mixed
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         headers.put(BridgeServer.HEADER_ACCEPT, "application/jsonl");
-        web = new WebExecutor(config);
+        web = new WebExecutor(null, config);
         conn = web.openConnection(new URL(url + "?m=d"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
@@ -230,7 +250,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testDefaultBridge() throws Exception {
+    public void testDefaultBridge() throws IOException, SQLException {
         final String bridgeUrl = getServerUrl();
         final String chServerUrl = getClickHouseServer();
         final String jdbcUrl = "jdbc:ch://" + chServerUrl;

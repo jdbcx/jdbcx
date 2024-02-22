@@ -16,11 +16,38 @@
 package io.github.jdbcx;
 
 public final class Version {
-    private static final Version defaultVersion = new Version(0, 0, 0, Constants.EMPTY_STRING);
+    private static final Version noVersion = new Version(0, 0, 0, Constants.EMPTY_STRING);
+
+    static final class Factory {
+        static final Version currentVersion;
+
+        static {
+            String str = Version.class.getPackage().getImplementationVersion();
+            if (Checker.isNullOrEmpty(str)) {
+                str = Constants.EMPTY_STRING;
+            } else {
+                char[] chars = str.toCharArray();
+                for (int i = 0, len = chars.length; i < len; i++) {
+                    if (Character.isDigit(chars[i])) {
+                        str = str.substring(i);
+                        break;
+                    }
+                }
+            }
+            currentVersion = Version.of(str);
+        }
+
+        private Factory() {
+        }
+    }
+
+    public static Version current() {
+        return Factory.currentVersion;
+    }
 
     public static Version of(String version) {
         if (Checker.isNullOrBlank(version)) {
-            return defaultVersion;
+            return noVersion;
         }
 
         int[] array = new int[] { -1, -1, -1 };
@@ -80,6 +107,31 @@ public final class Version {
 
     public String getAdditionalInfo() {
         return additional;
+    }
+
+    public String toShortString() {
+        StringBuilder builder = new StringBuilder().append(major);
+        if (minor != 0 || patch != 0) {
+            builder.append('.').append(minor);
+        }
+        if (patch != 0) {
+            builder.append('.').append(patch);
+        }
+        return builder.toString();
+    }
+
+    public String toCompactString() {
+        StringBuilder builder = new StringBuilder().append(major);
+        if (minor != 0 || patch != 0) {
+            builder.append('.').append(minor);
+        }
+        if (patch != 0) {
+            builder.append('.').append(patch);
+        }
+        if (!additional.isEmpty()) {
+            builder.append(' ').append(additional);
+        }
+        return builder.toString();
     }
 
     @Override

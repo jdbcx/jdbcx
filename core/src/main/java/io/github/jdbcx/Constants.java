@@ -50,6 +50,10 @@ public final class Constants {
 
     public static final String EMPTY_STRING = "";
 
+    public static final String LOCAL_HOST_IPV4 = "127.0.0.1";
+    public static final String LOCAL_HOST_IPV6 = "::1";
+    public static final String LOCAL_HOST_NAME = "localhost";
+
     public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     public static final TimeZone SYS_TIMEZONE = TimeZone.getDefault();
     public static final ZoneId UTC_ZONE = UTC_TIMEZONE.toZoneId();

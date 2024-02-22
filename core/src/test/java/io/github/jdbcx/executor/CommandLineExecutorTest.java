@@ -84,27 +84,30 @@ public class CommandLineExecutorTest {
     public void testConstructor(String echoCommand) throws IOException {
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new CommandLineExecutor("non_existing_command", true,
-                        newProperties(null, null, 0, null, null, null)));
+                        null, newProperties(null, null, 0, null, null, null)));
         Assert.assertNotNull(
-                new CommandLineExecutor("non_existing_command", false, newProperties(null, null, 0, null, null, null)));
+                new CommandLineExecutor("non_existing_command", false, null,
+                        newProperties(null, null, 0, null, null, null)));
 
-        Assert.assertNotNull(new CommandLineExecutor(echoCommand, newProperties(null, null, 0, null, null, null)));
+        Assert.assertNotNull(
+                new CommandLineExecutor(echoCommand, null, newProperties(null, null, 0, null, null, null)));
     }
 
     @Test(dataProvider = "echoCommand", groups = "unit")
     public void testExecute(String echoCommand) throws IOException, TimeoutException {
         Assert.assertTrue(
                 Stream.readAllAsString(
-                        new CommandLineExecutor(echoCommand, true, newProperties(null, null, 0, null, null, null))
+                        new CommandLineExecutor(echoCommand, true, null, newProperties(null, null, 0, null, null, null))
                                 .execute(null, null))
                         .length() > 0);
         Assert.assertThrows(IOException.class,
                 () -> Stream.readAllAsString(new CommandLineExecutor(Constants.IS_WINDOWS ? echoCommand : "ls", true,
-                        newProperties(null, null, 0, null, null, null))
+                        null, newProperties(null, null, 0, null, null, null))
                         .execute(null, null, "|")));
         Assert.assertEquals(
                 Stream.readAllAsString(
-                        new CommandLineExecutor(echoCommand, true, newProperties(null, null, 0, null, null, null, "Y"))
+                        new CommandLineExecutor(echoCommand, true, null,
+                                newProperties(null, null, 0, null, null, null, "Y"))
                                 .execute(null, null, "o", "k"))
                         .trim(),
                 "o k");
@@ -117,15 +120,16 @@ public class CommandLineExecutorTest {
         }
         Assert.assertTrue(
                 Stream.readAllAsString(
-                        new CommandLineExecutor("wsl -- echo", true, newProperties(null, null, 0, null, null, null))
+                        new CommandLineExecutor("wsl -- echo", true, null,
+                                newProperties(null, null, 0, null, null, null))
                                 .execute(null, null))
                         .length() > 0);
         Assert.assertThrows(IOException.class,
-                () -> new CommandLineExecutor("wsl -- echo", true, newProperties(null, null, 0, null, null, null))
+                () -> new CommandLineExecutor("wsl -- echo", true, null, newProperties(null, null, 0, null, null, null))
                         .execute(null, null, "|"));
         try (ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
             CommandLineExecutor prqlc = new CommandLineExecutor("wsl -- /home/zhicwu/.cargo/bin/prqlc", true,
-                    newProperties(null, null, 0, null, null, null, "-V"));
+                    null, newProperties(null, null, 0, null, null, null, "-V"));
             prqlc.execute(0, true, 3000, null, "from t", null, out, null, "compile", "-t", "sql.clickhouse");
             String sql = new String(out.toByteArray());
             sql = sql.replaceAll("[\\s\\t\\r\\n]*", "");

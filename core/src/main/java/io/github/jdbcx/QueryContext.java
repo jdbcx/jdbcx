@@ -31,6 +31,7 @@ public final class QueryContext implements AutoCloseable, Serializable {
 
     public static final String KEY_CONFIG = "config";
     public static final String KEY_CONNECTION = "connection";
+    public static final String KEY_TAG = "tag";
 
     private static final QueryContext globalContext = new QueryContext(Constants.SCOPE_GLOBAL, null);
     private static final ThreadLocal<QueryContext> instanceHolder = ThreadLocal
@@ -196,7 +197,7 @@ public final class QueryContext implements AutoCloseable, Serializable {
                 return;
             }
         } while ((context = context.parent) != null);
-        throw new IllegalArgumentException(Utils.format("Unknown scope \"\"", scope));
+        throw new IllegalArgumentException(Utils.format("Unknown scope \"%s\"", scope));
     }
 
     public String getVariable(String name) {
@@ -219,7 +220,7 @@ public final class QueryContext implements AutoCloseable, Serializable {
                 return context.vars.getProperty(name, defaultValue);
             }
         } while ((context = context.parent) != null);
-        throw new IllegalArgumentException(Utils.format("Unknown scope \"\"", scope));
+        throw new IllegalArgumentException(Utils.format("Unknown scope \"%s\"", scope));
     }
 
     @Override

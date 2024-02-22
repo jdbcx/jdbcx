@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -92,24 +94,6 @@ public final class Utils {
         return normalize ? Paths.get(path).toAbsolutePath().normalize() : Paths.get(path);
     }
 
-    public static String getVersion() {
-        final String version;
-        String str = Utils.class.getPackage().getImplementationVersion();
-        if (Checker.isNullOrEmpty(str)) {
-            version = Constants.EMPTY_STRING;
-        } else {
-            char[] chars = str.toCharArray();
-            for (int i = 0, len = chars.length; i < len; i++) {
-                if (Character.isDigit(chars[i])) {
-                    str = str.substring(i);
-                    break;
-                }
-            }
-            version = str;
-        }
-        return version;
-    }
-
     public static <T> ServiceLoader<T> load(Class<T> serviceClass, ClassLoader classLoader) {
         if (serviceClass == null || classLoader == null) {
             throw new IllegalArgumentException("Non-null service class and class loader are required");
@@ -145,12 +129,20 @@ public final class Utils {
         return path;
     }
 
-    public static String applyVariables(String template, UnaryOperator<String> applyFunc) {
+    public static String applyVariables(String template, VariableTag tag, UnaryOperator<String> applyFunc) {
         if (template == null || template.isEmpty()) {
             return Constants.EMPTY_STRING;
-        } else if (applyFunc == null || template.indexOf("${") == -1) {
+        } else if (tag == null) {
+            tag = VariableTag.BRACE;
+        }
+        if (applyFunc == null || template.indexOf(tag.variableLeft()) == -1) {
             return template;
         }
+
+        final char leftChar = tag.leftChar();
+        final char rightChar = tag.rightChar();
+        final char varChar = tag.variableChar();
+        final char escapeChar = tag.escapeChar();
 
         final int len = template.length();
         StringBuilder builder = new StringBuilder(len);
@@ -163,10 +155,10 @@ public final class Utils {
                 if (escaped) {
                     builder.append(ch);
                     escaped = false;
-                } else if (ch == '\\') {
+                } else if (ch == escapeChar) {
                     builder.append(ch);
                     escaped = true;
-                } else if (ch == '$' && i + 2 < len && template.charAt(i + 1) == '{') {
+                } else if (ch == varChar && i + 2 < len && template.charAt(i + 1) == leftChar) {
                     startIndex = i++;
                 } else {
                     builder.append(ch);
@@ -175,9 +167,9 @@ public final class Utils {
                 if (escaped) {
                     sb.append(ch);
                     escaped = false;
-                } else if (ch == '\\') {
+                } else if (ch == escapeChar) {
                     escaped = true;
-                } else if (ch == '}') {
+                } else if (ch == rightChar) {
                     String key = sb.toString();
                     sb.setLength(0);
 
@@ -200,26 +192,27 @@ public final class Utils {
         return builder.toString();
     }
 
-    public static String applyVariables(CharSequence template, Map<String, String> variables) {
+    public static String applyVariables(CharSequence template, VariableTag tag, Map<String, String> variables) {
         if (template == null || template.length() == 0) {
             return Constants.EMPTY_STRING;
         }
-        return applyVariables(template.toString(), variables == null || variables.isEmpty() ? null : variables::get);
+        return applyVariables(template.toString(), tag,
+                variables == null || variables.isEmpty() ? null : variables::get);
     }
 
-    public static String applyVariables(String template, Map<String, String> variables) {
-        return applyVariables(template, variables == null || variables.isEmpty() ? null : variables::get);
+    public static String applyVariables(String template, VariableTag tag, Map<String, String> variables) {
+        return applyVariables(template, tag, variables == null || variables.isEmpty() ? null : variables::get);
     }
 
-    public static String applyVariables(CharSequence template, Properties variables) {
+    public static String applyVariables(CharSequence template, VariableTag tag, Properties variables) {
         if (template == null || template.length() == 0) {
             return Constants.EMPTY_STRING;
         }
-        return applyVariables(template.toString(), variables == null ? null : variables::getProperty);
+        return applyVariables(template.toString(), tag, variables == null ? null : variables::getProperty);
     }
 
-    public static String applyVariables(String template, Properties variables) {
-        return applyVariables(template, variables == null ? null : variables::getProperty);
+    public static String applyVariables(String template, VariableTag tag, Properties variables) {
+        return applyVariables(template, tag, variables == null ? null : variables::getProperty);
     }
 
     public static int getMapInitialCapacity(int capacity) {
@@ -347,6 +340,59 @@ public final class Utils {
     }
 
     /**
+     * Creates instance according to given options.
+     *
+     * @param <T>            type of the class
+     * @param preferredClass preferred class for instantiation
+     * @param defaultClass   default class for instantiation
+     * @param autoDetect     whether to detect preferred class
+     * @return non-null instance
+     */
+    public static <T> T createInstance(Class<? extends T> preferredClass, Class<? extends T> defaultClass,
+            boolean autoDetect) {
+        T instance = null;
+        if (autoDetect) {
+            try {
+                instance = preferredClass.getDeclaredConstructor().newInstance();
+            } catch (Throwable t) { // NOSONAR
+                // ignore
+            }
+        }
+
+        if (instance == null) {
+            try {
+                instance = defaultClass.getDeclaredConstructor().newInstance();
+            } catch (Throwable e) { // NOSONAR
+                throw new UnsupportedOperationException("Failed to create default instance of " + defaultClass, e);
+            }
+        }
+        return instance;
+    }
+
+    public static <T, I extends T> T createInstance(Class<T> interfaceClass, String className, I defaultInstance) {
+        if (interfaceClass == null || defaultInstance == null) {
+            throw new IllegalArgumentException("Non-null interface class and default instance are required");
+        } else if (!Checker.isNullOrEmpty(className)) {
+            final String fullQualifiedClassName = className.indexOf('.') != -1 ? className
+                    : new StringBuilder(defaultInstance.getClass().getPackage().getName())
+                            .append('.').append(className).toString();
+
+            try {
+                ClassLoader loader = Thread.currentThread().getContextClassLoader();
+                if (loader == null) {
+                    loader = defaultInstance.getClass().getClassLoader();
+                }
+                Class<?> clazz = loader.loadClass(fullQualifiedClassName);
+                return interfaceClass.cast(clazz.getConstructor().newInstance());
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        return defaultInstance;
+    }
+
+    /**
      * Creates a temporary file. Same as {@code createTempFile(null, null, true)}.
      *
      * @return non-null temporary file
@@ -459,6 +505,41 @@ public final class Utils {
         }
 
         return getPath(file, true);
+    }
+
+    public static String getHost(String defaultHost) {
+        boolean isLocal = false;
+        if (Checker.isNullOrEmpty(defaultHost)) {
+            defaultHost = Constants.LOCAL_HOST_IPV4;
+            isLocal = true;
+        } else {
+            try {
+                InetAddress address = InetAddress.getByName(defaultHost);
+                isLocal = address.isLoopbackAddress();
+            } catch (UnknownHostException e) {
+                defaultHost = Constants.LOCAL_HOST_IPV4;
+                isLocal = true;
+            }
+        }
+
+        String host = defaultHost;
+        try {
+            InetAddress localHost = InetAddress.getLocalHost();
+            host = localHost.getHostAddress();
+            for (InetAddress addr : InetAddress.getAllByName(localHost.getHostName())) {
+                if (addr.isSiteLocalAddress()) { // RFC 1918
+                    host = addr.getHostAddress();
+                    break;
+                }
+            }
+        } catch (UnknownHostException e) { // should never happen
+            throw new ExceptionInInitializerError(e);
+        }
+
+        if (!isLocal && (Constants.LOCAL_HOST_IPV4.equals(host) || Constants.LOCAL_HOST_IPV6.equals(host))) {
+            host = defaultHost;
+        }
+        return host;
     }
 
     /**

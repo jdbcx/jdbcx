@@ -27,15 +27,16 @@ import org.testng.annotations.Test;
 public class ScriptExecutorTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ScriptExecutor(null, null, null));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ScriptExecutor(null, new Properties(), null));
+        Assert.assertThrows(IllegalArgumentException.class, () -> new ScriptExecutor(null, null, null, null));
         Assert.assertThrows(IllegalArgumentException.class,
-                () -> new ScriptExecutor(null, new Properties(), new HashMap<>()));
+                () -> new ScriptExecutor(null, null, new Properties(), null));
         Assert.assertThrows(IllegalArgumentException.class,
-                () -> new ScriptExecutor("lua", new Properties(), new HashMap<>()));
+                () -> new ScriptExecutor(null, null, new Properties(), new HashMap<>()));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ScriptExecutor("lua", null, new Properties(), new HashMap<>()));
 
-        Assert.assertEquals(new ScriptExecutor("rhino", null, null).getDefaultLanguage(), "rhino");
-        Assert.assertEquals(new ScriptExecutor("Groovy", new Properties(), new HashMap<>()).getDefaultLanguage(),
+        Assert.assertEquals(new ScriptExecutor("rhino", null, null, null).getDefaultLanguage(), "rhino");
+        Assert.assertEquals(new ScriptExecutor("Groovy", null, new Properties(), new HashMap<>()).getDefaultLanguage(),
                 "Groovy");
     }
 
@@ -44,16 +45,16 @@ public class ScriptExecutorTest {
         Properties props = new Properties();
         Map<String, Object> vars = new HashMap<>();
         Map<String, Object> tmp = new HashMap<>();
-        Assert.assertEquals(new ScriptExecutor("rhino", props, vars).execute(null, props, tmp), "");
+        Assert.assertEquals(new ScriptExecutor("rhino", null, props, vars).execute(null, props, tmp), "");
         // Assert.assertEquals(new Scripting("rhino", props, vars).execute("1+1",
         // tmp), 2L);
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute(null, props, tmp), "");
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("1+1", props, tmp), 2);
+        Assert.assertEquals(new ScriptExecutor("Groovy", null, props, vars).execute(null, props, tmp), "");
+        Assert.assertEquals(new ScriptExecutor("Groovy", null, props, vars).execute("1+1", props, tmp), 2);
 
         vars.put("a", 5);
         tmp.put("b", 6L);
         // Assert.assertEquals(new Scripting("rhino", props, vars).execute("a+b",
         // tmp), 11L);
-        Assert.assertEquals(new ScriptExecutor("Groovy", props, vars).execute("a+b", props, tmp), 11L);
+        Assert.assertEquals(new ScriptExecutor("Groovy", null, props, vars).execute("a+b", props, tmp), 11L);
     }
 }

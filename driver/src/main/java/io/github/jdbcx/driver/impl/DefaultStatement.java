@@ -32,6 +32,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.driver.ParsedQuery;
 import io.github.jdbcx.driver.QueryBuilder;
@@ -88,7 +89,7 @@ public class DefaultStatement extends DefaultResource implements Statement {
     protected List<String> handleResults(String query) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, queryResult);
             List<String> queries = builder.build();
             if (queries.isEmpty()) {
@@ -97,13 +98,15 @@ public class DefaultStatement extends DefaultResource implements Statement {
 
             w = builder.getLastWarning();
 
+            final VariableTag tag = manager.getVariableTag();
             final JdbcActivityListener listener = manager.createListener(context);
             final int size = queries.size();
             Properties props = manager.getExtensionProperties();
             if (size == 1) {
                 return Collections
                         .singletonList(ConnectionManager.normalize(
-                                ConnectionManager.convertTo(listener.onQuery(queries.get(0)), String.class), props));
+                                ConnectionManager.convertTo(listener.onQuery(queries.get(0)), String.class), tag,
+                                props));
             }
 
             // not worthy of running in parallel?
@@ -111,7 +114,7 @@ public class DefaultStatement extends DefaultResource implements Statement {
             for (int i = 0; i < size; i++) {
                 String q = queries.get(i);
                 list.add(ConnectionManager.normalize(ConnectionManager.convertTo(listener.onQuery(q), String.class),
-                        props));
+                        tag, props));
             }
             return Collections.unmodifiableList(list);
         } catch (SQLWarning e) {

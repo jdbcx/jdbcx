@@ -41,6 +41,8 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
+import io.github.jdbcx.Version;
 import io.github.jdbcx.security.SslContextProvider;
 
 public class WebExecutor extends AbstractExecutor {
@@ -50,6 +52,12 @@ public class WebExecutor extends AbstractExecutor {
     static final Proxy.Type DEFAULT_PROXY_TYPE = Proxy.Type.HTTP;
     static final String DEFAULT_PROXY_HOST = "localhost";
     static final int DEFAULT_PROXY_PORT = 1080;
+
+    static final String DEFAULT_USER_AGENT = "JDBCX/" + Version.current().toShortString();
+
+    public static final String HEADER_ACCEPT = "Accept";
+    public static final String HEADER_AUTHORIZATION = "Authorization";
+    public static final String HEADER_USER_AGENT = "User-Agent";
 
     public static final Option OPTION_CONNECT_TIMEOUT = Option
             .of(new String[] { "connect.timeout",
@@ -92,7 +100,7 @@ public class WebExecutor extends AbstractExecutor {
                 user = Utils.decode(userInfo);
             }
             userInfo = new StringBuilder(user).append(':').append(passwd).toString();
-            conn.setRequestProperty("Authorization",
+            conn.setRequestProperty(HEADER_AUTHORIZATION,
                     "Basic ".concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
         }
     }
@@ -152,8 +160,8 @@ public class WebExecutor extends AbstractExecutor {
         return p;
     }
 
-    public WebExecutor(Properties props) {
-        super(props);
+    public WebExecutor(VariableTag tag, Properties props) {
+        super(tag, props);
 
         this.defaultConnectTimeout = OPTION_CONNECT_TIMEOUT.getValue(props);
         this.defaultFollowRedirect = OPTION_FOLLOW_REDIRECT.getValue(props);
@@ -170,15 +178,23 @@ public class WebExecutor extends AbstractExecutor {
 
         final HttpURLConnection conn = (HttpURLConnection) url.openConnection(getProxy(config));
         if (headers != null) {
+            boolean hasUserAgent = false;
             for (Entry<?, ?> header : headers.entrySet()) {
                 Object key = header.getKey();
                 Object val = header.getValue();
                 if (key != null && val != null) {
-                    String str = Utils.applyVariables(val.toString(), config);
+                    String k = key.toString();
+                    if (!hasUserAgent && HEADER_USER_AGENT.equalsIgnoreCase(k)) {
+                        hasUserAgent = true;
+                    }
+                    String str = Utils.applyVariables(val.toString(), defaultTag, config);
                     if (!Checker.isNullOrBlank(str)) {
-                        conn.setRequestProperty(key.toString(), val.toString());
+                        conn.setRequestProperty(k, val.toString());
                     }
                 }
+            }
+            if (!hasUserAgent) {
+                conn.setRequestProperty(HEADER_USER_AGENT, DEFAULT_USER_AGENT);
             }
         }
 

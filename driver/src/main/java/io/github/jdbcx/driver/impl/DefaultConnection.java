@@ -19,7 +19,6 @@ import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
 import java.sql.Clob;
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
@@ -44,9 +43,10 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.driver.DefaultDriverExtension;
+import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
-public final class DefaultConnection extends DefaultResource implements Connection {
+public final class DefaultConnection extends DefaultResource implements ManagedConnection {
     private static final Logger log = LoggerFactory.getLogger(DefaultConnection.class);
 
     protected final AtomicBoolean autoCommit;
@@ -95,6 +95,11 @@ public final class DefaultConnection extends DefaultResource implements Connecti
                 originalProps);
 
         this.url = url;
+    }
+
+    @Override
+    public ConnectionManager getManager() {
+        return manager;
     }
 
     @Override

@@ -35,8 +35,8 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
         super();
 
         Properties props = new Properties();
-        Option.SERVER_URL.setValue(props, getServerUrl());
-        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setValue(props, "/datasource.properties");
+        Option.SERVER_URL.setJdbcxValue(props, getServerUrl());
+        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "/datasource.properties");
         server = new JdkHttpServer(props);
     }
 
@@ -52,7 +52,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
     // @Test(groups = { "integration" })
     // public void testAny() throws Exception {
-    // super.testJdbcQuery();
+    //     super.testWriteConfig();
     // }
 
     @Test(groups = { "integration" })

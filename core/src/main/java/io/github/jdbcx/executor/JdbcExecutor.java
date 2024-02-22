@@ -28,6 +28,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
@@ -35,8 +36,8 @@ public class JdbcExecutor extends AbstractExecutor {
     private static final List<Field> dryRunFields = Collections
             .unmodifiableList(Arrays.asList(Field.of("connection"), FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
-    public JdbcExecutor(Properties props) {
-        super(props);
+    public JdbcExecutor(VariableTag tag, Properties props) {
+        super(tag, props);
     }
 
     public Object execute(String query, Connection conn, Properties props) throws SQLException {

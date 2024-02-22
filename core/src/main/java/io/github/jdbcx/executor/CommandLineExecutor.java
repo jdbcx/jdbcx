@@ -30,7 +30,6 @@ import java.io.Writer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
-import java.sql.JDBCType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,6 +51,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 /**
  * This class encapsulate a command line providing the ability to execute it
@@ -150,16 +150,16 @@ public class CommandLineExecutor extends AbstractExecutor {
     private final List<String> command;
     private final boolean defaultStdErrRedirect;
 
-    public CommandLineExecutor(String command) {
-        this(command, new Properties());
+    public CommandLineExecutor(String command, VariableTag tag) {
+        this(command, tag, new Properties());
     }
 
-    public CommandLineExecutor(String command, Properties props) {
-        this(command, true, props);
+    public CommandLineExecutor(String command, VariableTag tag, Properties props) {
+        this(command, true, tag, props);
     }
 
-    public CommandLineExecutor(String command, boolean validate, Properties props) {
-        super(props);
+    public CommandLineExecutor(String command, boolean validate, VariableTag tag, Properties props) {
+        super(tag, props);
 
         command = Utils.normalizePath(OPTION_CLI_PATH.getValue(props, command));
 

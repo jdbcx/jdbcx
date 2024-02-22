@@ -47,12 +47,13 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 /**
  * This class serves as a wrapper for a {@link Connection}.
  */
-public class WrappedConnection implements Connection {
+public class WrappedConnection implements ManagedConnection {
     private static final Logger log = LoggerFactory.getLogger(WrappedConnection.class);
 
     protected final ConnectionManager manager;
@@ -84,7 +85,7 @@ public class WrappedConnection implements Connection {
     protected List<String> handleResults(String query, WrappedStatement stmt) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, stmt.queryResult);
             List<String> queries = builder.build();
             if (queries.isEmpty()) {
@@ -93,13 +94,15 @@ public class WrappedConnection implements Connection {
 
             w = builder.getLastWarning();
 
+            final VariableTag tag = manager.getVariableTag();
             final JdbcActivityListener listener = manager.createDefaultListener(context);
             final int size = queries.size();
             Properties props = manager.getExtensionProperties();
             if (size == 1) {
                 return Collections
                         .singletonList(ConnectionManager.normalize(
-                                ConnectionManager.convertTo(listener.onQuery(queries.get(0)), String.class), props));
+                                ConnectionManager.convertTo(listener.onQuery(queries.get(0)), String.class), tag,
+                                props));
             }
 
             // not worthy of running in parallel?
@@ -107,7 +110,7 @@ public class WrappedConnection implements Connection {
             for (int i = 0; i < size; i++) {
                 String q = queries.get(i);
                 results.add(ConnectionManager.normalize(ConnectionManager.convertTo(listener.onQuery(q), String.class),
-                        props));
+                        tag, props));
             }
             return Collections.unmodifiableList(results);
         } catch (SQLWarning e) {
@@ -129,8 +132,9 @@ public class WrappedConnection implements Connection {
         ref.set(null);
 
         SQLWarning w = null;
+        final VariableTag tag = manager.getVariableTag();
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, tag, context.getVariables());
             final String[] parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
             DriverExtension defaultExtension = manager.getDefaultExtension();
             Properties props = manager.getExtensionProperties();
@@ -150,16 +154,16 @@ public class WrappedConnection implements Connection {
                         ext == defaultExtension ? props : DriverExtension.extractProperties(ext, originalProps));
                 p.putAll(context.getMergedVariables());
                 for (Entry<Object, Object> entry : block.getProperties().entrySet()) {
-                    String key = Utils.applyVariables(entry.getKey().toString(), p);
-                    String val = Utils.applyVariables(entry.getValue().toString(), p);
+                    String key = Utils.applyVariables(entry.getKey().toString(), tag, p);
+                    String val = Utils.applyVariables(entry.getValue().toString(), tag, p);
                     p.setProperty(key, val);
                 }
                 JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p); // NOSONAR
                 if (block.hasOutput()) {
                     try {
                         parts[block.getIndex()] = ConnectionManager.normalize(ConnectionManager.convertTo(
-                                cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables())),
-                                String.class), p);
+                                cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables())),
+                                String.class), tag, p);
                     } catch (SQLWarning e) {
                         ref.set(w = SqlExceptionUtils.consolidate(w, e));
                         parts[block.getIndex()] = block.getContent();
@@ -169,7 +173,7 @@ public class WrappedConnection implements Connection {
                 }
             }
 
-            final String substitutedQuery = Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts),
+            final String substitutedQuery = Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), tag,
                     context.getVariables());
             log.debug("Original Query: [%s]\r\nSubstituted Query: [%s]", query, substitutedQuery);
             return ConnectionManager.convertTo(manager.createDefaultListener(context).onQuery(substitutedQuery),
@@ -180,6 +184,11 @@ public class WrappedConnection implements Connection {
         } catch (Throwable t) { // NOSONAR
             throw SqlExceptionUtils.clientError(t);
         }
+    }
+
+    @Override
+    public final ConnectionManager getManager() {
+        return manager;
     }
 
     @Override

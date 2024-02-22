@@ -20,8 +20,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Properties;
@@ -78,24 +76,10 @@ public class BaseIntegrationTest {
 
         String url = Option.SERVER_URL.getValue(props,
                 Option.SERVER_URL.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+        // https://java.testcontainers.org/features/networking/#exposing-host-ports-to-the-container?
         if (Checker.isNullOrEmpty(url)) {
-            // https://java.testcontainers.org/features/networking/#exposing-host-ports-to-the-container?
-            try {
-                InetAddress localHost = InetAddress.getLocalHost();
-                url = localHost.getHostAddress();
-                for (InetAddress addr : InetAddress.getAllByName(localHost.getHostName())) {
-                    if (addr.isSiteLocalAddress()) { // RFC 1918
-                        url = addr.getHostAddress();
-                        break;
-                    }
-                }
-            } catch (UnknownHostException e) { // should never happen
-                throw new ExceptionInInitializerError(e);
-            }
-            if ("127.0.0.1".equals(url)) {
-                // wild guess since host.docker.internal does not work on Linux by default
-                url = "172.17.0.1";
-            }
+            // wild guess since host.docker.internal does not work on Linux by default
+            url = Utils.getHost("172.17.0.1");
             serverUrl = Utils.format("http://%s:%s%s", Option.SERVER_HOST.getValue(props, url),
                     Option.SERVER_PORT.getValue(props, Option.SERVER_PORT.getEffectiveDefaultValue("8080")),
                     Option.SERVER_CONTEXT.getValue(props, Option.SERVER_CONTEXT.getEffectiveDefaultValue("/")));
