@@ -101,7 +101,8 @@ public final class ScriptHelper {
         }
         return Stream
                 .readAllAsString(
-                        new CommandLineExecutor(obj.toString(), false, new Properties()).execute(null, null, args));
+                        new CommandLineExecutor(obj.toString(), false, null, new Properties()).execute(null, null,
+                                args));
     }
 
     public String escapeSingleQuote(Object obj) {

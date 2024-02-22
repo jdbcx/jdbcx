@@ -15,6 +15,12 @@
  */
 package io.github.jdbcx;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -94,5 +100,35 @@ public class CompressionTest {
         Assert.assertEquals(Compression.fromMimeType("Application/GZIP"), Compression.GZIP);
         Assert.assertEquals(Compression.fromMimeType("unknown,application/x-xz;q=0.6,identity;q=0.4"), Compression.XZ);
         Assert.assertEquals(Compression.fromMimeType("application/x-bzip2"), Compression.BZIP2);
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetProvider() throws IOException {
+        for (Compression c : Compression.values()) {
+            Assert.assertNotNull(Compression.getProvider(c), c.name());
+            byte[] bytes = Constants.EMPTY_BYTE_ARRAY;
+            int bufferSize = 0;
+            int level = -1;
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    OutputStream compressedOut = c.compress(out, bufferSize, level)) {
+                compressedOut.write(new byte[] { 1, 2, 3 });
+                compressedOut.close();
+                bytes = out.toByteArray();
+            }
+
+            if (c.hasMagicNumber()) {
+                Assert.assertEquals(Compression.fromMagicNumber(bytes), c);
+            } else {
+                Assert.assertNull(Compression.fromMagicNumber(bytes), c.name());
+            }
+
+            try (ByteArrayInputStream in = new ByteArrayInputStream(bytes);
+                    InputStream decompressedIn = c.decompress(in, bufferSize, level)) {
+                Assert.assertEquals(decompressedIn.read(), 1);
+                Assert.assertEquals(decompressedIn.read(), 2);
+                Assert.assertEquals(decompressedIn.read(), 3);
+                Assert.assertEquals(decompressedIn.read(), -1);
+            }
+        }
     }
 }

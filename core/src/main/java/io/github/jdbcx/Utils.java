@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -48,6 +50,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -91,24 +94,6 @@ public final class Utils {
         return normalize ? Paths.get(path).toAbsolutePath().normalize() : Paths.get(path);
     }
 
-    public static String getVersion() {
-        final String version;
-        String str = Utils.class.getPackage().getImplementationVersion();
-        if (Checker.isNullOrEmpty(str)) {
-            version = Constants.EMPTY_STRING;
-        } else {
-            char[] chars = str.toCharArray();
-            for (int i = 0, len = chars.length; i < len; i++) {
-                if (Character.isDigit(chars[i])) {
-                    str = str.substring(i);
-                    break;
-                }
-            }
-            version = str;
-        }
-        return version;
-    }
-
     public static <T> ServiceLoader<T> load(Class<T> serviceClass, ClassLoader classLoader) {
         if (serviceClass == null || classLoader == null) {
             throw new IllegalArgumentException("Non-null service class and class loader are required");
@@ -123,7 +108,7 @@ public final class Utils {
                 loader.reload(); // slow but safe
                 return loader;
             }
-        } catch (Throwable e) {
+        } catch (Throwable e) { // NOSONAR
             // ignore
         }
 
@@ -144,12 +129,20 @@ public final class Utils {
         return path;
     }
 
-    public static String applyVariables(String template, UnaryOperator<String> applyFunc) {
+    public static String applyVariables(String template, VariableTag tag, UnaryOperator<String> applyFunc) {
         if (template == null || template.isEmpty()) {
             return Constants.EMPTY_STRING;
-        } else if (applyFunc == null || template.indexOf("${") == -1) {
+        } else if (tag == null) {
+            tag = VariableTag.BRACE;
+        }
+        if (applyFunc == null || template.indexOf(tag.variableLeft()) == -1) {
             return template;
         }
+
+        final char leftChar = tag.leftChar();
+        final char rightChar = tag.rightChar();
+        final char varChar = tag.variableChar();
+        final char escapeChar = tag.escapeChar();
 
         final int len = template.length();
         StringBuilder builder = new StringBuilder(len);
@@ -162,10 +155,10 @@ public final class Utils {
                 if (escaped) {
                     builder.append(ch);
                     escaped = false;
-                } else if (ch == '\\') {
+                } else if (ch == escapeChar) {
                     builder.append(ch);
                     escaped = true;
-                } else if (ch == '$' && i + 2 < len && template.charAt(i + 1) == '{') {
+                } else if (ch == varChar && i + 2 < len && template.charAt(i + 1) == leftChar) {
                     startIndex = i++;
                 } else {
                     builder.append(ch);
@@ -174,9 +167,9 @@ public final class Utils {
                 if (escaped) {
                     sb.append(ch);
                     escaped = false;
-                } else if (ch == '\\') {
+                } else if (ch == escapeChar) {
                     escaped = true;
-                } else if (ch == '}') {
+                } else if (ch == rightChar) {
                     String key = sb.toString();
                     sb.setLength(0);
 
@@ -199,26 +192,27 @@ public final class Utils {
         return builder.toString();
     }
 
-    public static String applyVariables(CharSequence template, Map<String, String> variables) {
+    public static String applyVariables(CharSequence template, VariableTag tag, Map<String, String> variables) {
         if (template == null || template.length() == 0) {
             return Constants.EMPTY_STRING;
         }
-        return applyVariables(template.toString(), variables == null || variables.isEmpty() ? null : variables::get);
+        return applyVariables(template.toString(), tag,
+                variables == null || variables.isEmpty() ? null : variables::get);
     }
 
-    public static String applyVariables(String template, Map<String, String> variables) {
-        return applyVariables(template, variables == null || variables.isEmpty() ? null : variables::get);
+    public static String applyVariables(String template, VariableTag tag, Map<String, String> variables) {
+        return applyVariables(template, tag, variables == null || variables.isEmpty() ? null : variables::get);
     }
 
-    public static String applyVariables(CharSequence template, Properties variables) {
+    public static String applyVariables(CharSequence template, VariableTag tag, Properties variables) {
         if (template == null || template.length() == 0) {
             return Constants.EMPTY_STRING;
         }
-        return applyVariables(template.toString(), variables == null ? null : variables::getProperty);
+        return applyVariables(template.toString(), tag, variables == null ? null : variables::getProperty);
     }
 
-    public static String applyVariables(String template, Properties variables) {
-        return applyVariables(template, variables == null ? null : variables::getProperty);
+    public static String applyVariables(String template, VariableTag tag, Properties variables) {
+        return applyVariables(template, tag, variables == null ? null : variables::getProperty);
     }
 
     public static int getMapInitialCapacity(int capacity) {
@@ -240,18 +234,18 @@ public final class Utils {
      * @return non-null key value pairs
      */
     public static Map<String, String> toKeyValuePairs(String str) {
-        return toKeyValuePairs(str, ',', true);
+        return toKeyValuePairs(str, ',', false);
     }
 
     /**
      * Converts given string to key value paris.
      *
-     * @param str           string
-     * @param delimiter     delimiter maong key value pairs
-     * @param notUrlEncoded whether the key and value are URL encoded or not
+     * @param str          string
+     * @param delimiter    delimiter between key value pairs
+     * @param isUrlEncoded whether the key and value are URL encoded or not
      * @return non-null key value pairs
      */
-    public static Map<String, String> toKeyValuePairs(String str, char delimiter, boolean notUrlEncoded) {
+    public static Map<String, String> toKeyValuePairs(String str, char delimiter, boolean isUrlEncoded) {
         if (str == null || str.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -261,7 +255,7 @@ public final class Utils {
         StringBuilder builder = new StringBuilder();
         for (int i = 0, len = str.length(); i < len; i++) {
             char ch = str.charAt(i);
-            if (notUrlEncoded && ch == '\\' && i + 1 < len) {
+            if (!isUrlEncoded && ch == '\\' && i + 1 < len) {
                 ch = str.charAt(++i);
                 builder.append(ch);
                 continue;
@@ -273,13 +267,13 @@ public final class Utils {
                 }
             } else if (ch == '=' && key == null) {
                 key = builder.toString().trim();
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     key = decode(key);
                 }
                 builder.setLength(0);
             } else if (ch == delimiter && key != null) {
                 String value = builder.toString().trim();
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     value = decode(value);
                 }
                 builder.setLength(0);
@@ -295,7 +289,7 @@ public final class Utils {
         if (key != null && builder.length() > 0) {
             String value = builder.toString().trim();
             if (!key.isEmpty() && !value.isEmpty()) {
-                if (!notUrlEncoded) {
+                if (isUrlEncoded) {
                     key = decode(key);
                     value = decode(value);
                 }
@@ -304,6 +298,98 @@ public final class Utils {
         }
 
         return Collections.unmodifiableMap(map);
+    }
+
+    /**
+     * Converts given map to key value pairs in string format.
+     *
+     * @param kvps map
+     * @return non-null key value pairs in string format
+     */
+    public static String toKeyValuePairs(Map<String, String> kvps) {
+        return toKeyValuePairs(kvps, ',', false);
+    }
+
+    /**
+     * Converts given map to key value pairs in string format.
+     *
+     * @param kvps             map
+     * @param delimiter        delimiter between key value pairs
+     * @param requireUrlEncode whether the key and value are URL encoded or not
+     * @return non-null key value pairs in string format
+     */
+    public static String toKeyValuePairs(Map<String, String> kvps, char delimiter, boolean requireUrlEncode) {
+        if (kvps == null || kvps.isEmpty()) {
+            return Constants.EMPTY_STRING;
+        }
+
+        StringBuilder builder = new StringBuilder(kvps.size() * 20);
+        if (requireUrlEncode) {
+            for (Entry<String, String> entry : kvps.entrySet()) {
+                builder.append(encode(entry.getKey())).append('=').append(encode(entry.getValue())).append(delimiter);
+            }
+        } else {
+            for (Entry<String, String> entry : kvps.entrySet()) {
+                builder.append(entry.getKey()).append('=').append(entry.getValue()).append(delimiter);
+            }
+        }
+        if (builder.length() > 0) {
+            builder.deleteCharAt(builder.length() - 1);
+        }
+        return builder.toString();
+    }
+
+    /**
+     * Creates instance according to given options.
+     *
+     * @param <T>            type of the class
+     * @param preferredClass preferred class for instantiation
+     * @param defaultClass   default class for instantiation
+     * @param autoDetect     whether to detect preferred class
+     * @return non-null instance
+     */
+    public static <T> T createInstance(Class<? extends T> preferredClass, Class<? extends T> defaultClass,
+            boolean autoDetect) {
+        T instance = null;
+        if (autoDetect) {
+            try {
+                instance = preferredClass.getDeclaredConstructor().newInstance();
+            } catch (Throwable t) { // NOSONAR
+                // ignore
+            }
+        }
+
+        if (instance == null) {
+            try {
+                instance = defaultClass.getDeclaredConstructor().newInstance();
+            } catch (Throwable e) { // NOSONAR
+                throw new UnsupportedOperationException("Failed to create default instance of " + defaultClass, e);
+            }
+        }
+        return instance;
+    }
+
+    public static <T, I extends T> T createInstance(Class<T> interfaceClass, String className, I defaultInstance) {
+        if (interfaceClass == null || defaultInstance == null) {
+            throw new IllegalArgumentException("Non-null interface class and default instance are required");
+        } else if (!Checker.isNullOrEmpty(className)) {
+            final String fullQualifiedClassName = className.indexOf('.') != -1 ? className
+                    : new StringBuilder(defaultInstance.getClass().getPackage().getName())
+                            .append('.').append(className).toString();
+
+            try {
+                ClassLoader loader = Thread.currentThread().getContextClassLoader();
+                if (loader == null) {
+                    loader = defaultInstance.getClass().getClassLoader();
+                }
+                Class<?> clazz = loader.loadClass(fullQualifiedClassName);
+                return interfaceClass.cast(clazz.getConstructor().newInstance());
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        return defaultInstance;
     }
 
     /**
@@ -320,8 +406,8 @@ public final class Utils {
      * Creates a temporary file with given prefix and suffix. Same as
      * {@code createTempFile(prefix, suffix, true)}.
      *
-     * @param prefix prefix, could be null
-     * @param suffix suffix, could be null
+     * @param prefix prefix, could be {@code null}
+     * @param suffix suffix, could be {@code null}
      * @return non-null temporary file
      * @throws IOException when failed to create the temporary file
      */
@@ -419,6 +505,41 @@ public final class Utils {
         }
 
         return getPath(file, true);
+    }
+
+    public static String getHost(String defaultHost) {
+        boolean isLocal = false;
+        if (Checker.isNullOrEmpty(defaultHost)) {
+            defaultHost = Constants.LOCAL_HOST_IPV4;
+            isLocal = true;
+        } else {
+            try {
+                InetAddress address = InetAddress.getByName(defaultHost);
+                isLocal = address.isLoopbackAddress();
+            } catch (UnknownHostException e) {
+                defaultHost = Constants.LOCAL_HOST_IPV4;
+                isLocal = true;
+            }
+        }
+
+        String host = defaultHost;
+        try {
+            InetAddress localHost = InetAddress.getLocalHost();
+            host = localHost.getHostAddress();
+            for (InetAddress addr : InetAddress.getAllByName(localHost.getHostName())) {
+                if (addr.isSiteLocalAddress()) { // RFC 1918
+                    host = addr.getHostAddress();
+                    break;
+                }
+            }
+        } catch (UnknownHostException e) { // should never happen
+            throw new ExceptionInInitializerError(e);
+        }
+
+        if (!isLocal && (Constants.LOCAL_HOST_IPV4.equals(host) || Constants.LOCAL_HOST_IPV6.equals(host))) {
+            host = defaultHost;
+        }
+        return host;
     }
 
     /**
@@ -934,6 +1055,49 @@ public final class Utils {
 
         final int length = test.length();
         return str.length() >= length && str.substring(0, length).equalsIgnoreCase(test);
+    }
+
+    /**
+     * Encapsulates the given array in an immutable list. Same as
+     * {@code toImmutableList(type, values, true, true)}.
+     *
+     * @param <T>    type of the element
+     * @param type   class
+     * @param values array
+     * @return non-null list
+     */
+    public static <T> List<T> toImmutableList(Class<T> type, T[] values) {
+        return toImmutableList(type, values, true, true);
+    }
+
+    /**
+     * Encapsulates the given array in an immutable list.
+     *
+     * @param <T>               type of the element
+     * @param type              class
+     * @param values            array
+     * @param discardNulls      whether to discard null values in array
+     * @param discardDuplicates whether to discard duplicated values in array
+     * @return non-null list
+     */
+    public static <T> List<T> toImmutableList(Class<T> type, T[] values, boolean discardNulls,
+            boolean discardDuplicates) {
+        final int len;
+        if (type == null || values == null || (len = values.length) == 0) {
+            return Collections.emptyList();
+        }
+
+        boolean resize = false;
+        List<T> list = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            T v = values[i];
+            if ((discardNulls && v == null) || (discardDuplicates && list.contains(v))) {
+                resize = true;
+                continue;
+            }
+            list.add(v);
+        }
+        return Collections.unmodifiableList(resize ? new ArrayList<>(list) : list);
     }
 
     /**

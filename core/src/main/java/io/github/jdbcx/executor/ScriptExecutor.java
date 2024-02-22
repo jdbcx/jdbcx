@@ -47,6 +47,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 public class ScriptExecutor extends AbstractExecutor {
     private static final Logger log = LoggerFactory.getLogger(ScriptExecutor.class);
@@ -132,17 +133,19 @@ public class ScriptExecutor extends AbstractExecutor {
 
     private final boolean ignoreBindingError;
 
-    public ScriptExecutor(String defaultLanguage, Properties props, Map<String, Object> vars) {
-        this(defaultLanguage, props, true, vars, null);
+    public ScriptExecutor(String defaultLanguage, VariableTag tag, Properties props, Map<String, Object> vars) {
+        this(defaultLanguage, tag, props, true, vars, null);
     }
 
-    public ScriptExecutor(String defaultLanguage, Properties props, Map<String, Object> vars, ClassLoader loader) {
-        this(defaultLanguage, props, true, vars, loader);
-    }
-
-    public ScriptExecutor(String defaultLanguage, Properties props, boolean validate, Map<String, Object> vars,
+    public ScriptExecutor(String defaultLanguage, VariableTag tag, Properties props, Map<String, Object> vars,
             ClassLoader loader) {
-        super(props);
+        this(defaultLanguage, tag, props, true, vars, loader);
+    }
+
+    public ScriptExecutor(String defaultLanguage, VariableTag tag, Properties props, boolean validate,
+            Map<String, Object> vars,
+            ClassLoader loader) {
+        super(tag, props);
 
         this.manager = new ScriptEngineManager(loader != null ? loader : ScriptExecutor.class.getClassLoader());
 

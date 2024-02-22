@@ -15,13 +15,55 @@
  */
 package io.github.jdbcx;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
 public interface JdbcDialect {
+    default VariableTag getVariableTag() {
+        return VariableTag.BRACE;
+    }
+
+    default ValueFactory getValueFactory(Format format) {
+        return ValueFactory.getInstance();
+    }
+
     default String union(List<String> queries) {
         return String.join("\nunion all\n", queries);
     }
 
     void createTemporaryTable(String table, Field... fields) throws SQLException;
+
+    /**
+     * Gets table representing the given URL. This is typically used in a query like
+     * shown below.
+     * 
+     * <pre>
+     * select * from {{ bridge.db.mysql1: select 1 }}
+     * </pre>
+     * 
+     * The inner query will be translated to
+     * {@code 'http://bridge-server:8080/<uuid>.csv'} by default. This various on
+     * different databases, for examples:
+     * <ul>
+     * <li>On DuckDB, it's
+     * {@code read_csv('http://bridge-server:8080/<uuid>.csv', auto_detect=true)}
+     * </li>
+     * <li>On ClickHouse, url table function will be used, so it becomes
+     * {@code url('http://bridge-server:8080/<uuid>.csv', 'CSVWithNames')}</li>
+     * </ul>
+     *
+     * @param conn connection
+     * @param url  url
+     * @return table representing the given URL
+     * @throws SQLException
+     */
+    default String getRemoteTable(Connection conn, String url) throws SQLException {
+        if (Checker.isNullOrEmpty(url)) {
+            throw new SQLException("Non-empty URL is required");
+        }
+
+        StringBuilder builder = new StringBuilder(url.length() + 2);
+        return builder.append('\'').append(url).append('\'').toString();
+    }
 }

@@ -184,7 +184,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
         this.defaultQueryArgs = OPTION_QUERY_ARGS.getValue(config);
         this.defaultFormat = OPTION_FORMAT.getValue(config);
         this.defaultDecodeArgs = OPTION_DECODE_ARGS.getValue(config);
-        this.executor = new CommandLineExecutor(DEFAULT_COMMAND, config);
+        this.executor = new CommandLineExecutor(DEFAULT_COMMAND, getVariableTag(), config);
     }
 
     @SuppressWarnings("resource")

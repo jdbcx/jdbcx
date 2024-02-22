@@ -20,11 +20,19 @@ import java.sql.SQLException;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.JdbcDialect;
 
-public class DefaultDialect implements JdbcDialect {
+public final class DefaultDialect implements JdbcDialect {
+    private static final JdbcDialect instance = new DefaultDialect();
+
+    public static JdbcDialect getInstance() {
+        return instance;
+    }
 
     @Override
     public void createTemporaryTable(String table, Field... fields) throws SQLException {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'createTemporaryTable'");
+    }
+
+    private DefaultDialect() {
     }
 }

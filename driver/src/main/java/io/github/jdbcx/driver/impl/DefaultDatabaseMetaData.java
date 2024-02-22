@@ -29,9 +29,7 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
-import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
-import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
@@ -101,7 +99,7 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public String getDatabaseProductVersion() throws SQLException {
-        return Utils.getVersion();
+        return Version.current().toCompactString();
     }
 
     @Override
@@ -111,17 +109,17 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public String getDriverVersion() throws SQLException {
-        return Utils.getVersion();
+        return Version.current().toCompactString();
     }
 
     @Override
     public int getDriverMajorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMajorVersion();
+        return Version.current().getMajorVersion();
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMinorVersion();
+        return Version.current().getMinorVersion();
     }
 
     @Override
@@ -983,12 +981,12 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public int getDatabaseMajorVersion() throws SQLException {
-        return ConnectionManager.DRIVER_VERSION.getMajorVersion();
+        return Version.current().getMajorVersion();
     }
 
     @Override
     public int getDatabaseMinorVersion() throws SQLException {
-        return ConnectionManager.DRIVER_VERSION.getMinorVersion();
+        return Version.current().getMinorVersion();
     }
 
     @Override

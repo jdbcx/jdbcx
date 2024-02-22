@@ -21,6 +21,7 @@ import java.io.Reader;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -30,13 +31,23 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.Stream;
 
 abstract class AbstractInterpreter implements Interpreter {
     private final QueryContext context;
+    private final VariableTag tag;
 
+    @SuppressWarnings("unchecked")
     protected AbstractInterpreter(QueryContext context) {
         this.context = context;
+
+        if (context != null) {
+            Supplier<VariableTag> supplier = (Supplier<VariableTag>) context.get(QueryContext.KEY_TAG);
+            this.tag = supplier != null ? supplier.get() : VariableTag.BRACE;
+        } else {
+            this.tag = VariableTag.BRACE;
+        }
     }
 
     protected final Result<InputStream> handleError(Throwable error, String query, String charset, Properties props,
@@ -110,5 +121,10 @@ abstract class AbstractInterpreter implements Interpreter {
     @Override
     public QueryContext getContext() {
         return context;
+    }
+
+    @Override
+    public VariableTag getVariableTag() {
+        return tag;
     }
 }

@@ -15,7 +15,20 @@
  */
 package io.github.jdbcx;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Locale;
+
+import io.github.jdbcx.compress.BrotliSupport;
+import io.github.jdbcx.compress.Bzip2Support;
+import io.github.jdbcx.compress.DeflateSupport;
+import io.github.jdbcx.compress.GzipSupport;
+import io.github.jdbcx.compress.Lz4Support;
+import io.github.jdbcx.compress.NoneSupport;
+import io.github.jdbcx.compress.SnappySupport;
+import io.github.jdbcx.compress.XzSupport;
+import io.github.jdbcx.compress.ZstdSupport;
 
 public enum Compression {
     NONE("", "identity", ""),
@@ -28,7 +41,7 @@ public enum Compression {
     SNAPPY("application/x-snappy", "snappy", "sz"),
     XZ("application/x-xz", "xz", "xz", (byte) 0xFD, (byte) 0x37, (byte) 0x7A, (byte) 0x58, (byte) 0x5A, (byte) 0x00),
     // https://www.iana.org/assignments/media-types/application/zstd
-    ZSTD("application/zstd", "zstd", "zst", (byte) 0xFD, (byte) 0x2F, (byte) 0xB5, (byte) 0x28);
+    ZSTD("application/zstd", "zstd", "zst", (byte) 0x28, (byte) 0xB5, (byte) 0x2F, (byte) 0xFD);
 
     private String mimeType;
     private String encoding;
@@ -63,6 +76,66 @@ public enum Compression {
 
     public boolean hasMagicNumber() {
         return magicBytes.length > 0;
+    }
+
+    /**
+     * Checks if the provide for this compression algorithm is available or not.
+     */
+    public void checkProvider() {
+        Compression.getProvider(this);
+    }
+
+    public OutputStream compress(OutputStream output) throws IOException {
+        return compress(output, 0, -1);
+    }
+
+    public OutputStream compress(OutputStream output, int level, int bufferSize) throws IOException {
+        return getProvider(this).compress(output, level, bufferSize);
+    }
+
+    public InputStream decompress(InputStream input) throws IOException {
+        return decompress(input, 0, -1);
+    }
+
+    public InputStream decompress(InputStream input, int level, int bufferSize) throws IOException {
+        return getProvider(this).decompress(input, level, bufferSize);
+    }
+
+    static CompressionProvider getProvider(Compression compress) {
+        if (compress == null || compress == Compression.NONE) {
+            return NoneSupport.getInstance();
+        }
+
+        final CompressionProvider provider;
+        switch (compress) {
+            case BROTLI:
+                provider = BrotliSupport.getInstance();
+                break;
+            case BZIP2:
+                provider = Bzip2Support.getInstance();
+                break;
+            case DEFLATE:
+                provider = DeflateSupport.getInstance();
+                break;
+            case GZIP:
+                provider = GzipSupport.getInstance();
+                break;
+            case LZ4:
+                provider = Lz4Support.getInstance();
+                break;
+            case SNAPPY:
+                provider = SnappySupport.getInstance();
+                break;
+            case XZ:
+                provider = XzSupport.getInstance();
+                break;
+            case ZSTD:
+                provider = ZstdSupport.getInstance();
+                break;
+            default:
+                throw new UnsupportedOperationException("Unsupported decompression algorithm: " + compress);
+        }
+        return provider;
     }
 
     /**
@@ -135,7 +208,7 @@ public enum Compression {
      * Get compression algorithm based on given file name.
      *
      * @param file file name
-     * @return compression algorithm, could be null
+     * @return compression algorithm, could be {@code null}
      */
     public static Compression fromFileName(String file) {
         String ext = null;
@@ -173,7 +246,7 @@ public enum Compression {
      * Get compression based on given magic number.
      *
      * @param bytes magic number
-     * @return compression, could be null
+     * @return compression, could be {@code null}
      */
     public static Compression fromMagicNumber(byte[] bytes) {
         Compression compression = null;

@@ -240,6 +240,52 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         }
     }
 
+    @Test(groups = { "integration" })
+    public void testVariableTags() throws Exception {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String address = getClickHouseServer();
+        props.setProperty("jdbcx.tag", "ANGLE_BRACKET");
+        props.setProperty("jdbcx.web.url.template", "http://" + address + "/$<api.path>");
+        try (Connection conn = d.connect("jdbcx:ch://" + address, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("<% var: v={{[[]]}} %>SELECT '<< shell: echo '$<v>' >>' as shell, "
+                        + "<< script: 2 >> as script, '<< web(api.path=ping, result.string.trim=true) >>' as web")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("shell"), "{{[[]]}}");
+            Assert.assertEquals(rs.getInt("script"), 2);
+            Assert.assertEquals(rs.getString("web"), "Ok.");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        props.setProperty("jdbcx.tag", "SQUARE_BRACKET");
+        props.setProperty("jdbcx.web.url.template", "http://" + address + "/$[api.path]");
+        try (Connection conn = d.connect("jdbcx:ch://" + address, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("[% var: v={{<<>>}} %]SELECT '[[ shell: echo '$[v]' ]]' as shell, "
+                        + "[[ script: 2 ]] as script, '[[ web(api.path=ping, result.string.trim=true) ]]' as web")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("shell"), "{{<<>>}}");
+            Assert.assertEquals(rs.getInt("script"), 2);
+            Assert.assertEquals(rs.getString("web"), "Ok.");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+
+        props.setProperty("jdbcx.tag", "invalid");
+        props.setProperty("jdbcx.web.url.template", "http://" + address + "/${api.path}");
+        try (Connection conn = d.connect("jdbcx:ch://" + address, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("{% var: v=[[<<>>]] %}SELECT '{{ shell: echo '${v}' }}' as shell, "
+                        + "{{ script: 2 }} as script, '{{ web(api.path=ping, result.string.trim=true) }}' as web")) {
+            Assert.assertTrue(rs.next(), "Should have at least one row");
+            Assert.assertEquals(rs.getString("shell"), "[[<<>>]]");
+            Assert.assertEquals(rs.getInt("script"), 2);
+            Assert.assertEquals(rs.getString("web"), "Ok.");
+            Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+    }
+
     @Test(dataProvider = "queryMethod", groups = { "integration" })
     public void testCombinedQueryResult(boolean useExecuteQuery) throws Exception {
         Properties props = new Properties();

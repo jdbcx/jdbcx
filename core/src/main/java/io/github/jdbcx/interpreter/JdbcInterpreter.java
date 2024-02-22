@@ -34,6 +34,7 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
@@ -44,6 +45,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
             .of(new String[] { "properties", "Comma separated connection properties" });
 
     public static final Option OPTION_URL = Option.of(new String[] { "url", "JDBC connection URL" });
+    public static final Option OPTION_DIALECT = Option.of(new String[] { "dialect", "Dialect class name" });
     public static final Option OPTION_DRIVER = Option.of(new String[] { "driver", "JDBC driver class name" });
     public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
             ConfigManager.OPTION_MANAGED, Option.EXEC_TIMEOUT.update().defaultValue("30000").build()));
@@ -181,7 +183,8 @@ public class JdbcInterpreter extends AbstractInterpreter {
             return getConnectionByConfig(props, loader);
         }
 
-        str = Utils.applyVariables(OPTION_URL.getValue(props, defaultConnectionUrl), props);
+        VariableTag tag = getVariableTag();
+        str = Utils.applyVariables(OPTION_URL.getValue(props, defaultConnectionUrl), tag, props);
         if (Checker.isNullOrBlank(str)) {
             // log.debug("Reuse current connection since ")
             Supplier<Connection> supplier = (Supplier<Connection>) getContext().get(QueryContext.KEY_CONNECTION);
@@ -190,7 +193,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
             }
         } else {
             Map<String, String> map = Utils.toKeyValuePairs(
-                    Utils.applyVariables(OPTION_PROPERTIES.getValue(props, defaultConnectionProps), props));
+                    Utils.applyVariables(OPTION_PROPERTIES.getValue(props, defaultConnectionProps), tag, props));
             Properties newProps = new Properties(); // new Properties(props);
             String classpath = Option.CLASSPATH.getValue(props);
             if (!Checker.isNullOrBlank(classpath)) {
@@ -215,7 +218,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         this.loader = loader;
-        this.executor = new JdbcExecutor(config);
+        this.executor = new JdbcExecutor(getVariableTag(), config);
     }
 
     @Override

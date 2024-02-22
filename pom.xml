@@ -83,7 +83,7 @@
         <arrow.version>15.0.0</arrow.version>
         <avro.version>1.11.3</avro.version>
         <brotli.version>0.1.2</brotli.version>
-        <brotli4j.version>1.15.0</brotli4j.version>
+        <brotli4j.version>1.16.0</brotli4j.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
         <compress.version>1.25.0</compress.version>
@@ -93,25 +93,25 @@
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.5.3</dnsjava.version>
-        <duckdb.version>0.9.2</duckdb.version>
+        <duckdb.version>0.10.0</duckdb.version>
         <graphql.version>21.3</graphql.version>
         <groovy.version>4.0.18</groovy.version>
         <gson.version>2.10.1</gson.version>
         <hikaricp.version>5.1.0</hikaricp.version>
-        <jctools.version>4.0.2</jctools.version>
+        <jctools.version>4.0.3</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
         <msgpack.version>0.9.8</msgpack.version>
         <mysql.version>8.3.0</mysql.version>
-        <postgresql.version>42.7.1</postgresql.version>
-        <sqlite.version>3.45.0.0</sqlite.version>
+        <postgresql.version>42.7.2</postgresql.version>
+        <sqlite.version>3.45.1.0</sqlite.version>
         <rhino.version>1.7.14</rhino.version>
         <roaring-bitmap.version>1.0.1</roaring-bitmap.version>
-        <slf4j.version>2.0.11</slf4j.version>
+        <slf4j.version>2.0.12</slf4j.version>
         <snappy.version>1.1.10.5</snappy.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-11</zstd-jni.version>
-        <testcontainers.version>1.19.3</testcontainers.version>
+        <testcontainers.version>1.19.5</testcontainers.version>
         <testng.version>7.9.0</testng.version>
 
         <shade.base>${project.groupId}.internal</shade.base>
@@ -160,6 +160,31 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>brotli4j</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-linux-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-osx-aarch64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-osx-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aayushatharva.brotli4j</groupId>
+                <artifactId>native-windows-x86_64</artifactId>
+                <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.clickhouse</groupId>
                 <artifactId>clickhouse-jdbc</artifactId>
                 <classifier>http</classifier>
@@ -196,14 +221,24 @@
                 <version>${mysql.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.xerial</groupId>
-                <artifactId>sqlite-jdbc</artifactId>
-                <version>${sqlite.version}</version>
+                <groupId>io.burt</groupId>
+                <artifactId>jmespath-gson</artifactId>
+                <version>${jmespath.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-jsr223</artifactId>
                 <version>${groovy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.brotli</groupId>
+                <artifactId>dec</artifactId>
+                <version>${brotli.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.codehaus.janino</groupId>
@@ -214,6 +249,11 @@
                 <groupId>org.duckdb</groupId>
                 <artifactId>duckdb_jdbc</artifactId>
                 <version>${duckdb.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>${lz4.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.mozilla</groupId>
@@ -251,9 +291,19 @@
                 <version>${testng.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.burt</groupId>
-                <artifactId>jmespath-gson</artifactId>
-                <version>${jmespath.version}</version>
+                <groupId>org.tukaani</groupId>
+                <artifactId>xz</artifactId>
+                <version>${xz.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.xerial</groupId>
+                <artifactId>sqlite-jdbc</artifactId>
+                <version>${sqlite.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.xerial.snappy</groupId>
+                <artifactId>snappy-java</artifactId>
+                <version>${snappy.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

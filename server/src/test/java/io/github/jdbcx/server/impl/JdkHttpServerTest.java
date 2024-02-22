@@ -35,14 +35,14 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
         super();
 
         Properties props = new Properties();
-        Option.SERVER_URL.setValue(props, getServerUrl());
-        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setValue(props, "/datasource.properties");
+        Option.SERVER_URL.setJdbcxValue(props, getServerUrl());
+        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "/datasource.properties");
         server = new JdkHttpServer(props);
     }
 
     @BeforeClass(groups = { "integration" })
     protected void startServer() {
-        Assert.assertTrue(server.startAndWait(3000L), "Failed to start server");
+        server.start();
     }
 
     @AfterClass(groups = { "integration" })
@@ -52,7 +52,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
     // @Test(groups = { "integration" })
     // public void testAny() throws Exception {
-    // super.testJdbcQuery();
+    //     super.testWriteConfig();
     // }
 
     @Test(groups = { "integration" })
@@ -72,7 +72,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
             try (ResultSet rs = stmt
                     .executeQuery(
-                            "select * from url('" + getServerUrl() + "?m=d&q=select+1+as+r','TSVWithNames')")) {
+                            "select * from url('" + getServerUrl() + "?m=d&q=select+1+as+r','CSVWithNames')")) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertEquals(rs.getMetaData().getColumnName(1), "r");
                 Assert.assertTrue(rs.next());
@@ -84,7 +84,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
             String query = "select *, b::string as c from (select generate_series a, a*random() b from generate_series("
                     + count + ",1,-1))";
             try (ResultSet rs = stmt.executeQuery(
-                    "select * from url('" + getServerUrl() + "?m=d&q=" + Utils.encode(query) + "','TSVWithNames')")) {
+                    "select * from url('" + getServerUrl() + "?m=d&q=" + Utils.encode(query) + "','CSVWithNames')")) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 3);
                 Assert.assertEquals(rs.getMetaData().getColumnName(1), "a");
                 Assert.assertEquals(rs.getMetaData().getColumnName(2), "b");

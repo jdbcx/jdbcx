@@ -26,6 +26,7 @@ import java.util.logging.Logger;
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.Version;
 
 final class InvalidDriver implements Driver {
     private final Properties props;
@@ -62,12 +63,12 @@ final class InvalidDriver implements Driver {
 
     @Override
     public int getMajorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMajorVersion();
+        return Version.current().getMajorVersion();
     }
 
     @Override
     public int getMinorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMinorVersion();
+        return Version.current().getMinorVersion();
     }
 
     @Override

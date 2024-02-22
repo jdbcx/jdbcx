@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx.driver;
 
+import java.io.InputStream;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -38,6 +41,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Field;
+import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Logger;
@@ -47,48 +51,46 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.Version;
-import io.github.jdbcx.data.StringValue;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.dialect.DefaultDialect;
+import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public final class ConnectionManager implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
 
-    private static final JdbcDialect defaultDialect = new DefaultDialect();
     private static final Cache<String, JdbcDialect> cache = Cache.create(50, 0, ConnectionManager::getDialect);
 
     private static final List<Field> detailFields = Collections.unmodifiableList(
             Arrays.asList(Field.of("name"), Field.of("value"), Field.of("default_value"), Field.of("description"),
                     Field.of("choices"), Field.of("system_property"), Field.of("environment_variable")));
 
-    public static final Version DRIVER_VERSION = Version.of(Utils.getVersion());
-
     public static final String JDBC_PREFIX = "jdbc:";
     public static final String JDBCX_PREFIX = Option.PROPERTY_JDBCX + ":";
 
-    public static Result<?> describe(DriverExtension ext, Properties props) {
+    public static final String translate(String query) {
+        return query;
+    }
+
+    public static Result<?> describe(DriverExtension ext, Properties props) { // NOSONAR
         List<Option> options = ext.getDefaultOptions();
         List<Row> rows = new ArrayList<>(options.size());
         for (Option o : options) {
-            rows.add(Row.of(detailFields, new StringValue(o.getName()),
-                    new StringValue(o.getValue(props)),
-                    new StringValue(o.getDefaultValue()),
-                    new StringValue(o.getDescription()),
-                    new StringValue(String.join(",", o.getChoices())),
-                    new StringValue(o.getSystemProperty(Option.PROPERTY_PREFIX)),
-                    new StringValue(o.getEnvironmentVariable(Option.PROPERTY_PREFIX))));
+            rows.add(Row.of(detailFields,
+                    new Object[] { o.getName(), o.getValue(props), o.getDefaultValue(), o.getDescription(),
+                            String.join(",", o.getChoices()), o.getSystemProperty(Option.PROPERTY_PREFIX),
+                            o.getEnvironmentVariable(Option.PROPERTY_PREFIX) }));
         }
         return Result.of(detailFields, rows);
     }
 
-    public static final String normalize(String result, Properties props) {
+    public static final String normalize(String result, VariableTag tag, Properties props) {
         if (result == null) {
             return Constants.EMPTY_STRING;
         }
 
         if (Boolean.parseBoolean(Option.RESULT_STRING_REPLACE.getValue(props))) {
-            result = Utils.applyVariables(result, props);
+            result = Utils.applyVariables(result, tag, props);
         }
         if (Boolean.parseBoolean(Option.RESULT_STRING_TRIM.getValue(props))) {
             result = result.trim();
@@ -114,11 +116,7 @@ public final class ConnectionManager implements AutoCloseable {
         }
     }
 
-    public static final JdbcDialect getDialect(String product) {
-        return defaultDialect;
-    }
-
-    public static final String getDatabaseProduct(Connection conn) {
+    static final String getDatabaseProduct(Connection conn) {
         if (conn == null) {
             return Constants.EMPTY_STRING;
         }
@@ -128,22 +126,39 @@ public final class ConnectionManager implements AutoCloseable {
             builder.append(metaData.getDatabaseProductName()).append(' ').append(metaData.getDatabaseMajorVersion())
                     .append('.').append(metaData.getDatabaseMinorVersion());
         } catch (SQLException e) {
-            log.debug("Failed to retrieve database product information", e);
+            log.warn("Failed to retrieve database product information, use class name of %s insteadd", conn, e);
+            builder.append(conn.getClass().getName());
         }
-        return builder.length() > 0 ? builder.toString() : Constants.EMPTY_STRING;
+        return builder.toString();
+    }
+
+    static final JdbcDialect getDialect(String product) {
+        if (product != null) {
+            final int index = product.indexOf('-');
+            if (index != -1) {
+                product = product.substring(0, index);
+            }
+            product += "Dialect";
+        }
+        return Utils.createInstance(JdbcDialect.class, product, DefaultDialect.getInstance());
     }
 
     private final List<DriverExtension> extList;
     private final Map<String, DriverExtension> extMappings;
     private final DriverExtension defaultExtension;
     private final Connection conn;
-    private final JdbcDialect dialect;
-    private final String url;
+    private final String bridgeUrl;
+    private final Properties bridgeConfig;
+    private final String jdbcUrl;
     private final Properties props;
     private final Properties normalizedProps;
     private final Properties originalProps;
 
+    private final VariableTag tag;
+
     private final ClassLoader classLoader;
+
+    private final AtomicReference<JdbcDialect> dialectRef;
 
     ConnectionManager(DriverInfo info) throws SQLException {
         this(info.getExtensions(), info.extension, info.driver.connect(info.actualUrl, info.normalizedInfo),
@@ -162,15 +177,28 @@ public final class ConnectionManager implements AutoCloseable {
         this.extMappings = extensions;
         this.defaultExtension = defaultExtension;
         this.conn = conn;
-        this.dialect = null; // cache.get(getDatabaseProduct(conn));
-        this.url = url;
+
+        String bridge = Option.SERVER_URL.getJdbcxValue(originalProps);
+        if (Checker.isNullOrEmpty(bridge)) {
+            bridge = Utils.format("http://%s:%s%s", Option.SERVER_HOST.getValue(originalProps, Utils.getHost(null)),
+                    Option.SERVER_PORT.getValue(originalProps), Option.SERVER_CONTEXT.getValue(originalProps));
+        }
+        this.bridgeUrl = bridge;
+        this.bridgeConfig = new Properties();
+
+        this.jdbcUrl = url;
         this.props = extensionProps;
         this.normalizedProps = normalizedProps;
         this.originalProps = originalProps;
 
+        String varTag = originalProps.getProperty(Option.TAG.getJdbcxName());
+        this.tag = Checker.isNullOrEmpty(varTag) ? null
+                : VariableTag.valueOf(Option.TAG.getJdbcxValue(originalProps));
         this.classLoader = DriverInfo.getCustomClassLoader(
                 Utils.normalizePath(originalProps.getProperty(Option.CUSTOM_CLASSPATH.getJdbcxName(),
                         Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX))));
+
+        this.dialectRef = new AtomicReference<>();
     }
 
     @Override
@@ -180,9 +208,10 @@ public final class ConnectionManager implements AutoCloseable {
 
     public Connection createConnection() {
         try {
-            return Utils.startsWith(url, JDBC_PREFIX, true)
-                    ? DriverInfo.findSuitableDriver(url, normalizedProps, classLoader).connect(url, normalizedProps)
-                    : DriverManager.getConnection(url, normalizedProps);
+            return Utils.startsWith(jdbcUrl, JDBC_PREFIX, true)
+                    ? DriverInfo.findSuitableDriver(jdbcUrl, normalizedProps, classLoader).connect(jdbcUrl,
+                            normalizedProps)
+                    : DriverManager.getConnection(jdbcUrl, normalizedProps);
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -190,8 +219,10 @@ public final class ConnectionManager implements AutoCloseable {
 
     public QueryContext createContext() {
         final QueryContext context = QueryContext.newContext();
-        final Supplier<Connection> supplier = this::createConnection;
-        context.put(QueryContext.KEY_CONNECTION, supplier);
+        final Supplier<Connection> connSupplier = this::createConnection;
+        final Supplier<VariableTag> tagSupplier = this::getVariableTag;
+        context.put(QueryContext.KEY_CONNECTION, connSupplier);
+        context.put(QueryContext.KEY_TAG, tagSupplier);
         return context;
     }
 
@@ -212,7 +243,18 @@ public final class ConnectionManager implements AutoCloseable {
         return conn;
     }
 
+    public VariableTag getVariableTag() {
+        return tag != null ? tag : getDialect().getVariableTag();
+    }
+
     public JdbcDialect getDialect() {
+        JdbcDialect dialect = dialectRef.get();
+        if (dialect == null) {
+            dialect = cache.get(ConnectionManager.getDatabaseProduct(conn));
+            if (!dialectRef.compareAndSet(null, dialect)) {
+                dialect = dialectRef.get();
+            }
+        }
         return dialect;
     }
 
@@ -260,8 +302,32 @@ public final class ConnectionManager implements AutoCloseable {
         return ext;
     }
 
-    public String getUrl() {
-        return url;
+    public String getBridgeUrl() {
+        return bridgeUrl;
+    }
+
+    public Properties getBridgeConfig() {
+        if (bridgeConfig.isEmpty()) {
+            final String url = bridgeUrl + "config";
+            try {
+                Properties config = new Properties();
+                WebExecutor web = new WebExecutor(getVariableTag(), config);
+                WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
+                WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
+                WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+                try (InputStream input = web.get(new URL(url), config,
+                        Collections.singletonMap(WebExecutor.HEADER_ACCEPT, Format.TXT.mimeType()))) {
+                    bridgeConfig.load(input);
+                }
+            } catch (Exception e) {
+                log.error("Failed to get bridge server config from: " + url, e);
+            }
+        }
+        return new Properties(bridgeConfig);
+    }
+
+    public String getJdbcUrl() {
+        return jdbcUrl;
     }
 
     public Properties getExtensionProperties() {

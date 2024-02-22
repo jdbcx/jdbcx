@@ -36,7 +36,9 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
+import io.github.jdbcx.interpreter.WebInterpreter;
 
 public final class QueryBuilder {
     private final QueryContext context;
@@ -56,6 +58,21 @@ public final class QueryBuilder {
         this.directQuery = pq.isDirectQuery();
         this.parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
         this.blocks = pq.getExecutableBlocks().toArray(new ExecutableBlock[0]);
+        for (int i = 0, len = blocks.length; i < len; i++) {
+            ExecutableBlock block = this.blocks[i];
+            if (block.useBridge()) {
+                Properties props = manager.getBridgeConfig();
+                VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
+                WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
+                final String fullQuery;
+                if (block.hasOutput()) {
+                    fullQuery = tag.function(block.getContent());
+                } else {
+                    fullQuery = tag.procedure(block.getContent());
+                }
+                this.blocks[i] = new ExecutableBlock(block.getIndex(), "web", props, fullQuery, block.hasOutput());
+            }
+        }
 
         this.manager = manager;
         this.queryResult = queryResult;
@@ -86,6 +103,8 @@ public final class QueryBuilder {
         final Properties[] properties = new Properties[len];
         final Map<Integer, List<Integer>> cachedIndices = new HashMap<>();
 
+        final VariableTag tag = manager.getVariableTag();
+
         for (int i = 0; i < len; i++) {
             ExecutableBlock block = blocks[i];
             int sameBlockIndex = -1;
@@ -109,8 +128,8 @@ public final class QueryBuilder {
             properties[i] = p;
             p.putAll(context.getMergedVariables());
             for (Entry<Object, Object> entry : block.getProperties().entrySet()) {
-                String key = Utils.applyVariables(entry.getKey().toString(), p);
-                String val = Utils.applyVariables(entry.getValue().toString(), p);
+                String key = Utils.applyVariables(entry.getKey().toString(), tag, p);
+                String val = Utils.applyVariables(entry.getValue().toString(), tag, p);
                 p.setProperty(key, val);
             }
 
@@ -122,7 +141,7 @@ public final class QueryBuilder {
                                 ConnectionManager.convertTo(ConnectionManager.describe(ext, p), ResultSet.class));
                         return Collections.emptyList();
                     }
-                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables()));
+                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()));
                     if (directQuery
                             && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
                         queryResult.setResultSet(ConnectionManager.convertTo(r, ResultSet.class));
@@ -135,7 +154,7 @@ public final class QueryBuilder {
                     results[i] = Result.of(block.getContent());
                 }
             } else {
-                try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), context.getVariables()))) {
+                try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()))) {
                     results[i] = Result.of(Constants.EMPTY_STRING);
                 }
             }
@@ -151,7 +170,7 @@ public final class QueryBuilder {
             String[][] mo = exploded.toArray(new String[0][]);
             exploded.clear();
             for (Row row : r.rows()) {
-                String val = ConnectionManager.normalize(row.value(0).asString(), properties[i]);
+                String val = ConnectionManager.normalize(row.value(0).asString(), tag, properties[i]);
                 for (int ji = 0, l = mo.length; ji < l; ji++) {
                     String[] e = mo[ji]; // 😀
                     String[] newParts = Arrays.copyOf(e, len);
@@ -173,7 +192,7 @@ public final class QueryBuilder {
                 parts[blocks[i].getIndex()] = arr[i];
             }
             queries.add(
-                    Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), context.getVariables()));
+                    Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), tag, context.getVariables()));
         }
 
         return Collections.unmodifiableList(new ArrayList<>(queries));

@@ -44,7 +44,7 @@ public class ShellInterpreter extends AbstractInterpreter {
 
         OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
 
-        this.executor = new CommandLineExecutor(OPTION_PATH.getValue(config), false, config);
+        this.executor = new CommandLineExecutor(OPTION_PATH.getValue(config), false, getVariableTag(), config);
     }
 
     @Override

@@ -31,18 +31,19 @@ public class DefaultRowTest {
         List<Field> fields = Arrays.asList(Field.of("a"), Field.of("b"));
         Assert.assertEquals(DefaultRow.EMPTY.size(), new DefaultRow(fields).size());
 
-        DefaultRow row = new DefaultRow(fields, new StringValue("a1"));
+        DefaultRow row = new DefaultRow(fields, new StringValue(null, true, 0, "a1"));
         Assert.assertEquals(row.size(), 1);
-        row = new DefaultRow(fields, new StringValue("a1"), new StringValue("b1"));
+        row = new DefaultRow(fields, new StringValue(null, true, 0, "a1"), new StringValue(null, true, 0, "b1"));
         Assert.assertEquals(row.size(), 2);
-        row = new DefaultRow(fields, new StringValue("a1"), new StringValue("b1"), new StringValue("3"));
+        row = new DefaultRow(fields, new StringValue(null, true, 0, "a1"), new StringValue(null, true, 0, "b1"),
+                new StringValue(null, true, 0, "3"));
         Assert.assertEquals(row.size(), 2);
     }
 
     @Test(groups = { "unit" })
     public void testGetFieldAndValue() {
         List<Field> fields = Arrays.asList(Field.of("a"), Field.of("b"));
-        DefaultRow row = new DefaultRow(fields, new StringValue("a1"));
+        DefaultRow row = new DefaultRow(fields, new StringValue(null, true, 0, "a1"));
         Assert.assertEquals(row.size(), 1);
         Assert.assertEquals(row.field(0), fields.get(0));
         Assert.assertEquals(row.field(1), fields.get(1));
@@ -53,7 +54,8 @@ public class DefaultRowTest {
     @Test(groups = { "unit" })
     public void testIndex() {
         List<Field> fields = Arrays.asList(Field.of("aa"), Field.of("bb"));
-        DefaultRow row = new DefaultRow(fields, new StringValue("a1"), new StringValue("b1"), new StringValue("c"));
+        DefaultRow row = new DefaultRow(fields, new StringValue(null, true, 0, "a1"),
+                new StringValue(null, true, 0, "b1"), new StringValue(null, true, 0, "c"));
         Assert.assertEquals(row.size(), 2);
         Assert.assertEquals(row.index("bB"), 1);
         Assert.assertEquals(row.index("Aa"), 0);

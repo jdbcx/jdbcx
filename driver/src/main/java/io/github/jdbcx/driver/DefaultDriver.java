@@ -25,6 +25,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.Version;
 import io.github.jdbcx.driver.impl.DefaultConnection;
 
 final class DefaultDriver implements Driver, DriverAction {
@@ -48,12 +49,12 @@ final class DefaultDriver implements Driver, DriverAction {
 
     @Override
     public int getMajorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMajorVersion();
+        return Version.current().getMajorVersion();
     }
 
     @Override
     public int getMinorVersion() {
-        return ConnectionManager.DRIVER_VERSION.getMinorVersion();
+        return Version.current().getMinorVersion();
     }
 
     @Override

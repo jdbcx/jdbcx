@@ -204,7 +204,7 @@ See the [examples](https://github.com/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/) 
 # Mixed
 #
 # "-DnoProperties=true" is only required for DuckDB, because its JDBC driver does not work with unsupported property
-docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ shell: echo 1 }}' as one, '{{ db.ch-play: select 2 }}' as two, {{ script: 1+2 }} as three"
 
 
@@ -219,27 +219,27 @@ docker run --rm -it jdbcx/jdbcx "jdbcx:prql:sqlite::memory:" "from sqlite_schema
 #
 # Scripting
 #
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ script: conn.getClass()}}'"
 # or change the default language to shell
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DoutputFormat=TSVWithHeaders" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-Dverbose=true -DoutputFormat=TSVWithHeaders" jdbcx/jdbcx \
     "jdbcx:script:sqlite::memory:" "helper.format('SELECT 1 %s, 2 %s', 'one', 'two')"
 
 
 #
 # Shell
 #
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "{{ shell(exec.timeout=1000): echo 123}}"
 # or change the default language to shell
-docker run --rm -it -e JDBCX_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-Dverbose=true -DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:shell:duckdb:" "echo select 123"
 
 
 #
 # SQL
 #
-docker run --rm -it -e JDBCX_OPTS="-DnoProperties=true" jdbcx/jdbcx \
+docker run --rm -it -e DRIVER_OPTS="-DnoProperties=true" jdbcx/jdbcx \
     "jdbcx:duckdb:" "select '{{ db.ch-altinity: select 1 }}' as one, '{{ db.ch-play: select 2 }}' as two"
 ```
 

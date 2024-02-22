@@ -56,12 +56,12 @@ public class VarInterpreter extends AbstractInterpreter {
                 final QueryContext context = getContext();
                 final String prefix = OPTION_PREFIX.getValue(props, defaultPrefix);
                 if (Checker.isNullOrEmpty(prefix)) {
-                    for (Entry<String, String> entry : Utils.toKeyValuePairs(query, defaultDelimiter, true)
+                    for (Entry<String, String> entry : Utils.toKeyValuePairs(query, defaultDelimiter, false)
                             .entrySet()) {
                         context.setVariable(entry.getKey(), entry.getValue());
                     }
                 } else {
-                    Map<String, String> map = Utils.toKeyValuePairs(query, defaultDelimiter, true);
+                    Map<String, String> map = Utils.toKeyValuePairs(query, defaultDelimiter, false);
                     for (Entry<String, String> entry : map.entrySet()) {
                         context.setVariable(prefix.concat(entry.getKey()), entry.getValue());
                     }

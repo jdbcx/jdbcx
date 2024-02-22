@@ -196,7 +196,7 @@ public interface DriverExtension extends Comparable<DriverExtension> {
     /**
      * Gets the consolidated configuration options supported by this extension.
      *
-     * @param props optional connection properties, could be null
+     * @param props optional connection properties, could be {@code null}
      * @return non-null configuration options supported by this extension
      */
     default List<Option> getOptions(Properties props) {

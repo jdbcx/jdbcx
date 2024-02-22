@@ -25,13 +25,13 @@ import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
-import io.github.jdbcx.Utils;
+import io.github.jdbcx.Version;
 
 public final class VersionDriverExtension implements DriverExtension, JdbcActivityListener {
     private final String version;
 
     public VersionDriverExtension() {
-        this.version = Utils.getVersion();
+        this.version = Version.current().toCompactString();
     }
 
     @Override

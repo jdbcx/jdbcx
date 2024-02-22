@@ -17,9 +17,13 @@ package io.github.jdbcx;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.UnaryOperator;
@@ -54,57 +58,92 @@ public class UtilsTest {
 
     @Test(groups = "unit")
     public void testApplyVariables() throws IOException {
-        Assert.assertEquals(Utils.applyVariables(null, (Properties) null), "");
-        Assert.assertEquals(Utils.applyVariables(null, (Map<String, String>) null), "");
-        Assert.assertEquals(Utils.applyVariables(null, (UnaryOperator<String>) null), "");
-        Assert.assertEquals(Utils.applyVariables("", (Properties) null), "");
-        Assert.assertEquals(Utils.applyVariables("", (Map<String, String>) null), "");
-        Assert.assertEquals(Utils.applyVariables("", (UnaryOperator<String>) null), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, (Properties) null), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, (Map<String, String>) null), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, (UnaryOperator<String>) null), "");
+        Assert.assertEquals(Utils.applyVariables("", null, (Properties) null), "");
+        Assert.assertEquals(Utils.applyVariables("", null, (Map<String, String>) null), "");
+        Assert.assertEquals(Utils.applyVariables("", null, (UnaryOperator<String>) null), "");
 
         Properties props = new Properties();
         Map<String, String> map = new HashMap<>();
         UnaryOperator<String> func = x -> "";
-        Assert.assertEquals(Utils.applyVariables(null, props), "");
-        Assert.assertEquals(Utils.applyVariables(null, map), "");
-        Assert.assertEquals(Utils.applyVariables(null, func), "");
-        Assert.assertEquals(Utils.applyVariables("", props), "");
-        Assert.assertEquals(Utils.applyVariables("", map), "");
-        Assert.assertEquals(Utils.applyVariables("", func), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, props), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, map), "");
+        Assert.assertEquals(Utils.applyVariables(null, null, func), "");
+        Assert.assertEquals(Utils.applyVariables("", null, props), "");
+        Assert.assertEquals(Utils.applyVariables("", null, map), "");
+        Assert.assertEquals(Utils.applyVariables("", null, func), "");
 
-        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", func), "\\${}$\\{}${\\}");
-        Assert.assertEquals(Utils.applyVariables("${", func), "${");
-        Assert.assertEquals(Utils.applyVariables("${}", func), "");
-        Assert.assertEquals(Utils.applyVariables("${\\${}}", func), "}");
-        Assert.assertEquals(Utils.applyVariables("${\\${\\}}", func), "");
-        Assert.assertEquals(Utils.applyVariables("${ }", func), "");
-        Assert.assertEquals(Utils.applyVariables("${ no${th\\}ing }", func), "");
-        Assert.assertEquals(Utils.applyVariables("${ no${th\\}ing }${ }${}", func), "");
+        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", null, func), "\\${}$\\{}${\\}");
+        Assert.assertEquals(Utils.applyVariables("${", null, func), "${");
+        Assert.assertEquals(Utils.applyVariables("${}", null, func), "");
+        Assert.assertEquals(Utils.applyVariables("${\\${}}", null, func), "}");
+        Assert.assertEquals(Utils.applyVariables("${\\${\\}}", null, func), "");
+        Assert.assertEquals(Utils.applyVariables("${ }", null, func), "");
+        Assert.assertEquals(Utils.applyVariables("${ no${th\\}ing }", null, func), "");
+        Assert.assertEquals(Utils.applyVariables("${ no${th\\}ing }${ }${}", null, func), "");
 
         props.setProperty(" ", "whitespace");
         props.setProperty("a", "A");
         props.setProperty("${inner}", "i");
-        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", props), "\\${}$\\{}${\\}");
-        Assert.assertEquals(Utils.applyVariables("${", props), "${");
-        Assert.assertEquals(Utils.applyVariables("${}", props), "${}");
-        Assert.assertEquals(Utils.applyVariables("${ }", props), "whitespace");
-        Assert.assertEquals(Utils.applyVariables("${a}", props), "A");
-        Assert.assertEquals(Utils.applyVariables("${a}${\\${inner\\}}${ }${}", props), "Aiwhitespace${}");
+        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", null, props), "\\${}$\\{}${\\}");
+        Assert.assertEquals(Utils.applyVariables("${", null, props), "${");
+        Assert.assertEquals(Utils.applyVariables("${}", null, props), "${}");
+        Assert.assertEquals(Utils.applyVariables("${ }", null, props), "whitespace");
+        Assert.assertEquals(Utils.applyVariables("${a}", null, props), "A");
+        Assert.assertEquals(Utils.applyVariables("${a}${\\${inner\\}}${ }${}", null, props), "Aiwhitespace${}");
 
         map.put(" ", "whitespace");
         map.put("a", "A");
         map.put("${in\\ner}", "i");
-        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", map), "\\${}$\\{}${\\}");
-        Assert.assertEquals(Utils.applyVariables("${", map), "${");
-        Assert.assertEquals(Utils.applyVariables("${}", map), "${}");
-        Assert.assertEquals(Utils.applyVariables("${ }", map), "whitespace");
-        Assert.assertEquals(Utils.applyVariables("${a}", map), "A");
-        Assert.assertEquals(Utils.applyVariables("${a}${\\$\\{in\\\\ner\\}}${ }${}", map), "Aiwhitespace${}");
+        Assert.assertEquals(Utils.applyVariables("\\${}$\\{}${\\}", null, map), "\\${}$\\{}${\\}");
+        Assert.assertEquals(Utils.applyVariables("${", null, map), "${");
+        Assert.assertEquals(Utils.applyVariables("${}", null, map), "${}");
+        Assert.assertEquals(Utils.applyVariables("${ }", null, map), "whitespace");
+        Assert.assertEquals(Utils.applyVariables("${a}", null, map), "A");
+        Assert.assertEquals(Utils.applyVariables("${a}${\\$\\{in\\\\ner\\}}${ }${}", null, map), "Aiwhitespace${}");
 
         props.clear();
         props.setProperty("", "nothing");
         map.put("", "everything");
-        Assert.assertEquals(Utils.applyVariables("${}", props), "nothing");
-        Assert.assertEquals(Utils.applyVariables("${}", map), "everything");
+        Assert.assertEquals(Utils.applyVariables("${}", null, props), "nothing");
+        Assert.assertEquals(Utils.applyVariables("${}", null, map), "everything");
+
+        // try different tags
+        Assert.assertEquals(Utils.applyVariables("$<>", null, map), "$<>");
+        Assert.assertEquals(Utils.applyVariables("$<>", VariableTag.ANGLE_BRACKET, map), "everything");
+        Assert.assertEquals(Utils.applyVariables("$[]", null, props), "$[]");
+        Assert.assertEquals(Utils.applyVariables("$[]", VariableTag.SQUARE_BRACKET, props), "nothing");
+    }
+
+    @Test(groups = "unit")
+    public void testCreateInstance() {
+        Assert.assertEquals(Utils.createInstance(String.class, Object.class, false).getClass(), Object.class);
+        Assert.assertEquals(Utils.createInstance(String.class, Object.class, true).getClass(), String.class);
+
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> Utils.createInstance(null, "LinkedList", new ArrayList<>()));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> Utils.createInstance(List.class, "LinkedList", null));
+
+        Assert.assertEquals(Utils.createInstance(List.class, null, new ArrayList<>()).getClass(),
+                ArrayList.class);
+        Assert.assertEquals(Utils.createInstance(List.class, "", new ArrayList<>()).getClass(),
+                ArrayList.class);
+        Assert.assertEquals(Utils.createInstance(List.class, "NonExistList", new ArrayList<>()).getClass(),
+                ArrayList.class);
+        Assert.assertEquals(Utils.createInstance(List.class, "LinkedList", new ArrayList<>()).getClass(),
+                LinkedList.class);
+        Assert.assertEquals(Utils.createInstance(List.class, "java.util.LinkedList", new ArrayList<>()).getClass(),
+                LinkedList.class);
+    }
+
+    @Test(groups = "unit")
+    public void testGetHost() {
+        Assert.assertNotNull(Utils.getHost(null));
+        Assert.assertNotNull(Utils.getHost(""));
+        Assert.assertNotNull(Utils.getHost("bing.com"));
     }
 
     @Test(groups = "unit")
@@ -131,37 +170,45 @@ public class UtilsTest {
 
     @Test(groups = "unit")
     public void tetToKeyValuePairs() {
-        Assert.assertEquals(Utils.toKeyValuePairs(null), Collections.emptyMap());
+        Assert.assertEquals(Utils.toKeyValuePairs((String) null), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(""), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(",,,"), Collections.emptyMap());
         Assert.assertEquals(Utils.toKeyValuePairs(" , , , "), Collections.emptyMap());
 
-        Map<String, String> expected = new HashMap<>();
+        Assert.assertEquals(Utils.toKeyValuePairs((Map<String, String>) null), "");
+        Assert.assertEquals(Utils.toKeyValuePairs(Collections.emptyMap()), "");
+
+        Map<String, String> expected = new LinkedHashMap<>();
         expected.put("Content-Type", "application/json");
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type=application/json"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs(" Content-Type = application/json ,"), expected);
         // Assert.assertEquals(Utils.toKeyValuePairs(", Content-Type = application/json
         // ,"), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected), "Content-Type=application/json");
 
         expected.put("Authorization", "Bear 1234 5");
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type=application/json,Authorization=Bear 1234 5"), expected);
         Assert.assertEquals(Utils.toKeyValuePairs("Content-Type = application/json , Authorization = Bear 1234 5 "),
                 expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected), "Content-Type=application/json,Authorization=Bear 1234 5");
 
         expected.clear();
         expected.put("a 1", "select 1");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=select+1", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=select+1", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', true), "a+1=select+1");
 
         expected.clear();
         expected.put("a 1", "b ");
         expected.put("c", "3");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', true), "a+1=b+&c=3");
 
         expected.clear();
         expected.put("a%201", "b%20");
         expected.put("c", "3");
-        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', true), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs("a%201=b%20&c=3", '&', false), expected);
+        Assert.assertEquals(Utils.toKeyValuePairs(expected, '&', false), "a%201=b%20&c=3");
     }
 
     @Test(groups = { "unit" })
@@ -252,5 +299,35 @@ public class UtilsTest {
 
         Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", true), true);
         Assert.assertEquals(Utils.startsWith("JDBcX:db", "jdbcX", false), false);
+    }
+
+    @Test(groups = { "unit" })
+    public void testToImmutableList() {
+        Assert.assertEquals(Utils.toImmutableList(String.class, null), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, null, false, false), Collections.emptyList());
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[0]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[0], false, false), Collections.emptyList());
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[1]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[1], false, false),
+                Collections.singletonList(null));
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2]), Collections.emptyList());
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2], false, false),
+                Arrays.asList(null, null));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[2], false, true),
+                Collections.singletonList(null));
+
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }),
+                Collections.singletonList("1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, false, false),
+                Arrays.asList("1", null, "1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, true, false),
+                Arrays.asList("1", "1"));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, false, true),
+                Arrays.asList("1", null));
+        Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, true, true),
+                Collections.singletonList("1"));
     }
 }

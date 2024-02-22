@@ -39,6 +39,7 @@ import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.Version;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.server.BridgeServer;
 import io.github.jdbcx.server.QueryMode;
@@ -50,7 +51,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     private final HttpServer server;
 
     public JdkHttpServer() {
-        this(System.getProperties());
+        this(BridgeServer.load());
     }
 
     public JdkHttpServer(Properties props) {
@@ -82,7 +83,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         String query = request.getQuery();
 
         if (Checker.isNullOrEmpty(query)) {
-            exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, -1L);
+            respond(request, HttpURLConnection.HTTP_NOT_FOUND, "Query not found");
         } else {
             Headers headers = exchange.getResponseHeaders();
             headers.set(HEADER_CONTENT_TYPE, request.getFormat().mimeType());
@@ -90,12 +91,15 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
                 headers.set(HEADER_CONTENT_ENCODING, request.getCompression().encoding());
             }
 
-            exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0L);
-            // TODO compressed output
-            try (OutputStream out = exchange.getResponseBody()) {
-                query(request, out);
-            }
+            query(request);
         }
+    }
+
+    @Override
+    protected OutputStream getResponseOutputStream(Request request) throws IOException {
+        HttpExchange exchange = request.getUserObject(HttpExchange.class);
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0L);
+        return exchange.getResponseBody();
     }
 
     @Override
@@ -141,37 +145,59 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         }
     }
 
+    protected void showConfig(Object userObject) throws IOException {
+        if (!(userObject instanceof HttpExchange)) {
+            throw new IOException("Require HttpExchange to proceed but we got: " + userObject);
+        }
+
+        HttpExchange exchange = (HttpExchange) userObject;
+        Headers responseHeaders = exchange.getResponseHeaders();
+        responseHeaders.set(HEADER_CONTENT_TYPE, Format.TXT.mimeType());
+        exchange.sendResponseHeaders(200, 0L);
+        try (OutputStream out = exchange.getResponseBody()) {
+            writeConfig(out);
+        }
+    }
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         // id, query, format, compression, parameters
-        final String method = exchange.getRequestMethod();
-        final URI requestUri = exchange.getRequestURI();
-        final Map<String, String> params = Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', false);
-        final Map<String, String> headers = new HashMap<>();
-        for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
-            List<String> value = entry.getValue();
-            headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
-        }
+        final String method;
+        final URI requestUri;
+        final Map<String, String> headers;
 
         try {
-            dispatch(method, requestUri.getPath(), headers, params, exchange);
-        } catch (Exception e) {
-            log.error("Failed to dispatch request[%s, url=%s, headers=%s]", method, requestUri, headers, e);
-            throw e;
+            method = exchange.getRequestMethod();
+            requestUri = exchange.getRequestURI();
+            headers = new HashMap<>();
+            for (Entry<String, List<String>> entry : exchange.getRequestHeaders().entrySet()) {
+                List<String> value = entry.getValue();
+                headers.put(entry.getKey().toLowerCase(Locale.ROOT), value.get(value.size() - 1));
+            }
+            log.debug("Handling request[%s, url=%s, headers=%s]", method, requestUri, headers);
+
+            dispatch(method, requestUri.getPath(), headers, Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', true),
+                    exchange);
+        } catch (Throwable e) { // NOSONAR
+            log.error("Failed to handle request", e);
+            try {
+                exchange.sendResponseHeaders(500, -1L);
+            } catch (IOException ex) {
+                // ignore
+            }
         } finally {
-            exchange.close();
+            try {
+                exchange.close();
+            } catch (Throwable e) { // NOSONAR
+                // ignore
+            }
         }
     }
 
     @Override
     public void start() {
         server.start();
-        log.info("Server started: %s", baseUrl);
-    }
-
-    @Override
-    public boolean test() {
-        return true;
+        log.info("Bridge server %s started: %s", Version.current().toCompactString(), baseUrl);
     }
 
     @Override
@@ -179,5 +205,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         log.info("Shutting down server...");
         server.stop(0);
         log.info("Server is shutdown");
+
+        super.stop();
     }
 }

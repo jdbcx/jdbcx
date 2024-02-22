@@ -15,11 +15,14 @@
  */
 package io.github.jdbcx.server;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +34,7 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Format;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.Stream;
@@ -55,12 +59,12 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testDefaultUrl() throws Exception {
+    public void testDefaultUrl() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<?, ?> headers = new HashMap<>();
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
@@ -76,12 +80,12 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testNonExistentUrl() throws Exception {
+    public void testNonExistentUrl() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<?, ?> headers = new HashMap<>();
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "non-exist-query.id"), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
@@ -95,14 +99,31 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testSubmitQuery() throws Exception {
+    public void testWriteConfig() throws IOException {
+        final String url = getServerUrl();
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(null, config);
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        HttpURLConnection conn = web.openConnection(new URL(url + BridgeServer.PATH_CONFIG), config, headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        try (InputStream input = conn.getInputStream()) {
+            config.clear();
+            config.load(input);
+            Assert.assertEquals(config, server.getConfig());
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testSubmitQuery() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
         headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
         headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?q=select+1"), config, headers);
         Assert.assertNull(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE),
@@ -128,14 +149,14 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testSubmitAndRedirectQuery() throws Exception {
+    public void testSubmitAndRedirectQuery() throws IOException {
         final String url = getServerUrl();
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
         headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
         headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
-        WebExecutor web = new WebExecutor(config);
+        WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?m=r&q=select+1"), config, headers);
         String queryUrl = conn.getHeaderField(BridgeServer.HEADER_LOCATION);
@@ -163,6 +184,36 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testDirectQuery() throws IOException {
+        final String url = getServerUrl();
+        final String query = "select 1 a, 'one' b union all select 2, 'two'";
+        final String expected = "{\"a\":1,\"b\":\"one\"}\n{\"a\":2,\"b\":\"two\"}";
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        // use query parameters
+        WebExecutor web = new WebExecutor(null, config);
+        HttpURLConnection conn = web.openConnection(new URL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
+                headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
+
+        // mixed
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        headers.put(BridgeServer.HEADER_ACCEPT, "application/jsonl");
+        web = new WebExecutor(null, config);
+        conn = web.openConnection(new URL(url + "?m=d"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, query);
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.JSONL.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
+    }
+
+    @Test(groups = { "integration" })
     public void testJdbcQuery() throws Exception {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
@@ -186,7 +237,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
                         .executeQuery("select * from url('{{web(url.template=" + getServerUrl() + "):select '" + uuid
-                                + "' r}}','TSVWithNames')")) {
+                                + "' r}}','CSVWithNames')")) {
             // final String qid = server.findIdOfCachedQuery(uuid);
             // Assert.assertNotNull(qid, "Query should have been cached");
             Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
@@ -195,6 +246,62 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             Assert.assertEquals(rs.getString(1), uuid);
             // Assert.assertTrue(rs.getString(1).indexOf(qid) > 0);
             Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testDefaultBridge() throws IOException, SQLException {
+        final String bridgeUrl = getServerUrl();
+        final String chServerUrl = getClickHouseServer();
+        final String jdbcUrl = "jdbc:ch://" + chServerUrl;
+
+        Properties props = new Properties();
+        props.setProperty("jdbcx.bridge.url", bridgeUrl);
+        WrappedDriver d = new WrappedDriver();
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            final String url;
+            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                url = rs.getString(1);
+                Assert.assertTrue(url.startsWith("http"));
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ web(base.url=%s) }}", url))) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "'x'\nx");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:duckdb:", props); Statement stmt = conn.createStatement();) {
+            stmt.execute("install httpfs");
+
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format(
+                            "select * from read_csv('{{ bridge.db(url=%s): select 'x' }}', header=true, auto_detect=true)",
+                            jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                // Assert.assertEquals(rs.getString(1), "'x'");
+                // Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "x");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:ch://" + chServerUrl, props);
+                Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format(
+                            "select * from url('{{ bridge.db(url=%s): select 'x' }}', 'CSVWithNames')", jdbcUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "x");
+                Assert.assertFalse(rs.next());
+            }
         }
     }
 }

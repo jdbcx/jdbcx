@@ -39,6 +39,7 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.WebExecutor;
 
@@ -87,16 +88,10 @@ public class WebInterpreter extends AbstractInterpreter {
             Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),
             Field.of("socket_timeout_ms", JDBCType.BIGINT), Field.of(KEY_HEADERS), Executor.FIELD_OPTIONS));
 
-    private final Map<String, String> defaultHeaders;
-    private final String defaultTemplate;
-    private final String defaultUrl;
-
-    private final WebExecutor executor;
-
-    static final Map<String, String> getHeaders(Properties config) {
+    static final Map<String, String> getHeaders(VariableTag tag, Properties config) {
         Map<String, String> headers = new HashMap<>(Utils
-                .toKeyValuePairs(Utils.applyVariables(OPTION_REQUEST_HEADERS.getValue(config), config)));
-        String secret = Utils.applyVariables(OPTION_AUTH_BEARER_TOKEN.getValue(config), config);
+                .toKeyValuePairs(Utils.applyVariables(OPTION_REQUEST_HEADERS.getValue(config), tag, config)));
+        String secret = Utils.applyVariables(OPTION_AUTH_BEARER_TOKEN.getValue(config), tag, config);
         if (!Checker.isNullOrBlank(secret)) { // recommended
             headers.put(HEADER_AUTHORIZATION, AUTH_SCHEME_BEARER.concat(secret));
         } else { // less secure
@@ -115,7 +110,9 @@ public class WebInterpreter extends AbstractInterpreter {
         String template = OPTION_REQUEST_TEMPLATE.getValue(config, defaultTemplate);
         if (Checker.isNullOrEmpty(template)) {
             String file = Utils
-                    .normalizePath(Utils.applyVariables(OPTION_REQUEST_TEMPLATE_FILE.getValue(config), config)).trim();
+                    .normalizePath(Utils.applyVariables(OPTION_REQUEST_TEMPLATE_FILE.getValue(config),
+                            VariableTag.valueOf(Option.TAG.getValue(config)), config))
+                    .trim();
             if (!Checker.isNullOrEmpty(file)) {
                 try {
                     template = Stream.readAllAsString(new FileInputStream(file),
@@ -131,13 +128,21 @@ public class WebInterpreter extends AbstractInterpreter {
         return template;
     }
 
+    private final Map<String, String> defaultHeaders;
+    private final String defaultTemplate;
+    private final String defaultUrl;
+
+    private final WebExecutor executor;
+
     public WebInterpreter(QueryContext context, Properties config) {
         super(context);
 
-        this.defaultHeaders = Collections.unmodifiableMap(getHeaders(config));
+        final VariableTag tag = getVariableTag();
+        this.defaultHeaders = Collections.unmodifiableMap(getHeaders(tag, config));
         this.defaultTemplate = getRequestTemplate(config, Constants.EMPTY_STRING);
-        this.defaultUrl = Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(config), config);
-        this.executor = new WebExecutor(config);
+
+        this.defaultUrl = Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(config), tag, config);
+        this.executor = new WebExecutor(tag, config);
     }
 
     public final Map<String, String> getDefaultRequestHeaders() {
@@ -156,10 +161,12 @@ public class WebInterpreter extends AbstractInterpreter {
     public Result<?> interpret(String query, Properties props) {
         InputStream input = null;
         try {
-            final URL url = new URL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), props));
+            final VariableTag tag = getVariableTag();
+            final URL url = new URL(
+                    Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag, props));
             Map<?, ?> headers = (Map<?, ?>) getContext().get(KEY_HEADERS);
             if (headers == null || headers.isEmpty()) {
-                headers = getHeaders(props);
+                headers = getHeaders(tag, props);
                 if (headers.isEmpty()) {
                     headers = getDefaultRequestHeaders();
                 }
@@ -181,7 +188,7 @@ public class WebInterpreter extends AbstractInterpreter {
                             Checker.isNullOrEmpty(escapeTarget) || Checker.isNullOrEmpty(escapeChar) ? query
                                     : Utils.escape(query, escapeTarget.charAt(0), escapeChar.charAt(0)));
                 }
-                request = Utils.applyVariables(template, newProps);
+                request = Utils.applyVariables(template, tag, newProps);
             }
 
             if (executor.getDryRun(props)) {

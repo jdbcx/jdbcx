@@ -68,7 +68,8 @@ public class ScriptInterpreter extends AbstractInterpreter {
         if (!Checker.isNullOrEmpty(varHelper)) {
             vars.put(varHelper, ScriptHelper.getInstance());
         }
-        executor = new ScriptExecutor(ScriptExecutor.OPTION_LANGUAGE.getValue(config), config, vars, loader);
+        executor = new ScriptExecutor(ScriptExecutor.OPTION_LANGUAGE.getValue(config), getVariableTag(), config, vars,
+                loader);
     }
 
     @Override

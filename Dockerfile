@@ -6,7 +6,7 @@
 FROM eclipse-temurin:21-jdk-jammy AS jdk
 
 RUN jlink --add-modules \
-    java.base,java.compiler,java.logging,java.naming,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver \
+    java.base,java.compiler,java.logging,java.naming,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver,jdk.management \
     --output /min-jre --strip-debug --no-man-pages --no-header-files --verbose
 
 # Stage 2 - build jdbcx
@@ -20,7 +20,7 @@ ARG JDBCX_VERSION=0.4.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
-    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" SLF4J_VERSION=2.0.11 \
+    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" SLF4J_VERSION=2.0.12 \
     JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.4.0}
 
 # Labels
@@ -70,9 +70,9 @@ RUN chmod +x /*.sh \
     && wget -nv -P ./drivers/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
         https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar \
-        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.9.2/duckdb_jdbc-0.9.2.jar \
-        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.1/postgresql-42.7.1.jar \
-        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.0.0/sqlite-jdbc-3.45.0.0.jar \
+        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.0/duckdb_jdbc-0.10.0.jar \
+        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.2/postgresql-42.7.2.jar \
+        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.1.0/sqlite-jdbc-3.45.1.0.jar \
         https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar \
         https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/${SLF4J_VERSION}/slf4j-simple-${SLF4J_VERSION}.jar \
         https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \

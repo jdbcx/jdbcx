@@ -18,10 +18,10 @@ package io.github.jdbcx;
 import java.util.Locale;
 
 public enum Format {
-    // https://www.iana.org/assignments/media-types/text/tab-separated-values
-    TSV("text/tab-separated-values", "tsv"),
     // https://www.iana.org/assignments/media-types/text/csv
     CSV("text/csv", "csv"),
+    // https://www.iana.org/assignments/media-types/text/tab-separated-values
+    TSV("text/tab-separated-values", "tsv"),
     TXT("text/plain", "txt"),
     // https://www.iana.org/assignments/media-types/application/json
     JSON("application/json", "json"),
@@ -33,6 +33,7 @@ public enum Format {
     AVROB("application/vnd.apache.avro+binary", "avro"),
     AVRO("application/vnd.apache.avro+json", "avroj"),
     BSON("application/bson", "bson"),
+    JSONL("application/jsonl", "jsonl"),
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET("application/vnd.apache.parquet", "parquet");
 
@@ -64,12 +65,12 @@ public enum Format {
      * @param mimeTypes     acceptable MIME types, for example:
      *                      {@code text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, *_/_*;q=0.8}
      * @param defaultFormat optional default format, {@code null} is same as
-     *                      {@link #TSV}
+     *                      {@link #CSV}
      * @return non-null data format
      */
     public static Format fromMimeType(String mimeTypes, Format defaultFormat) {
         if (defaultFormat == null) {
-            defaultFormat = TSV;
+            defaultFormat = CSV;
         }
 
         for (String part : Utils.split(mimeTypes, ',')) {
@@ -100,7 +101,7 @@ public enum Format {
      * Get format based on given file name.
      *
      * @param file file name
-     * @return format, could be null
+     * @return format, could be {@code null}
      */
     public static Format fromFileName(String file) {
         String ext = null;

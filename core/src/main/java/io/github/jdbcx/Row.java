@@ -20,8 +20,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import io.github.jdbcx.data.DefaultRow;
-import io.github.jdbcx.data.LongValue;
-import io.github.jdbcx.data.StringValue;
 
 public interface Row extends Serializable {
     static final Row EMPTY = DefaultRow.EMPTY;
@@ -41,9 +39,9 @@ public interface Row extends Serializable {
         } else if (value instanceof Object[]) {
             row = of(fields, (Object[]) value);
         } else if (value instanceof Number) {
-            row = of(fields, new LongValue(((Number) value).longValue()));
+            row = of(fields, Values.of(((Number) value).longValue()));
         } else {
-            row = of(fields, new StringValue(value));
+            row = of(fields, Values.of(value));
         }
         return row;
     }
@@ -55,7 +53,7 @@ public interface Row extends Serializable {
 
         List<Value> list = new LinkedList<>();
         for (Object obj : iterable) {
-            list.add(new StringValue(obj));
+            list.add(Values.of(obj));
         }
         return new DefaultRow(fields, list.toArray(new Value[0]));
     }
@@ -68,9 +66,9 @@ public interface Row extends Serializable {
             return (Row) array[0];
         }
 
-        StringValue[] values = new StringValue[len];
+        Value[] values = new Value[len];
         for (int i = 0; i < len; i++) {
-            values[i] = new StringValue(array[i]);
+            values[i] = Values.of(array[i]);
         }
         return new DefaultRow(fields, values);
     }
@@ -81,9 +79,9 @@ public interface Row extends Serializable {
             return new DefaultRow(fields);
         }
 
-        StringValue[] values = new StringValue[len];
+        Value[] values = new Value[len];
         for (int i = 0; i < len; i++) {
-            values[i] = new StringValue(array[i]);
+            values[i] = Values.of(array[i]);
         }
         return new DefaultRow(fields, values);
     }
@@ -94,19 +92,25 @@ public interface Row extends Serializable {
             return new DefaultRow(fields);
         }
 
-        StringValue[] values = new StringValue[len];
+        Value[] values = new Value[len];
         for (int i = 0; i < len; i++) {
-            values[i] = new StringValue(array[i]);
+            values[i] = Values.of(array[i]);
         }
         return new DefaultRow(fields, values);
     }
 
     static Row of(Long value) {
-        return new DefaultRow(new LongValue(value));
+        final Value v;
+        if (value == null) {
+            v = Values.of(0L).resetToNull();
+        } else {
+            v = Values.of(value.longValue());
+        }
+        return new DefaultRow(v);
     }
 
     static Row of(String value) {
-        return new DefaultRow(new StringValue(value));
+        return new DefaultRow(Values.of(value));
     }
 
     static Row of(List<Field> fields, Value value) {

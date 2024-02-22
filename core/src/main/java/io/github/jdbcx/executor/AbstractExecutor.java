@@ -43,6 +43,7 @@ import io.github.jdbcx.Executor;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 abstract class AbstractExecutor implements Executor {
     static final void cancelAllTasks(Logger log, CompletableFuture<?>[] tasks) {
@@ -168,6 +169,8 @@ abstract class AbstractExecutor implements Executor {
         scheduler = Executors.newSingleThreadScheduledExecutor(new CustomThreadFactory("JdbcxScheduler-"));
     }
 
+    protected final VariableTag defaultTag;
+
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
     protected final Charset defaultInputCharset;
@@ -176,7 +179,9 @@ abstract class AbstractExecutor implements Executor {
     protected final int defaultTimeout;
     protected final Path defaultWorkDir;
 
-    protected AbstractExecutor(Properties props) {
+    protected AbstractExecutor(VariableTag tag, Properties props) {
+        this.defaultTag = tag != null ? tag : VariableTag.BRACE;
+
         String inputCharset = Option.INPUT_CHARSET.getValue(props);
         String outputCharset = Option.OUTPUT_CHARSET.getValue(props);
         String workDir = Option.WORK_DIRECTORY.getValue(props);
@@ -243,11 +248,12 @@ abstract class AbstractExecutor implements Executor {
      * Schedules the {@code task} to run only when {@code current} run has been
      * completed/cancelled or does not exist.
      *
-     * @param current  current task, which could be null or in running status
+     * @param current  current task, which could be {@code null} or in running
+     *                 status
      * @param task     scheduled task to run
      * @param interval interval between each run
-     * @return future object representing the scheduled task, could be null when no
-     *         scheduler available
+     * @return future object representing the scheduled task, could be {@code null}
+     *         when no scheduler available
      */
     protected final ScheduledFuture<?> schedule(ScheduledFuture<?> current, Runnable task, long interval) {
         if (scheduler == null || task == null || (current != null && !current.isDone() && !current.isCancelled())) {

@@ -63,7 +63,7 @@ public class PrqlInterpreter extends AbstractInterpreter {
         this.defaultCompileTarget = Checker.isNullOrEmpty(target) || "any".equals(target) ? Constants.EMPTY_STRING
                 : target;
         this.defaultCompileOptions = OPTION_COMPILE_TARGET.getValue(config).trim();
-        this.executor = new CommandLineExecutor(DEFAULT_COMMAND, config);
+        this.executor = new CommandLineExecutor(DEFAULT_COMMAND, getVariableTag(), config);
     }
 
     @Override
