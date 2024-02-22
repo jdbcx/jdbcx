@@ -86,7 +86,7 @@
         <brotli4j.version>1.16.0</brotli4j.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <compress.version>1.25.0</compress.version>
+        <compress.version>1.26.0</compress.version>
         <!--
             wget https://parsers.org/download/congocc.jar
             mvn install:install-file -Dfile=congocc.jar -DgroupId=org.parsers -DartifactId=congocc -Dversion=0.0.1 -Dpackaging=jar
