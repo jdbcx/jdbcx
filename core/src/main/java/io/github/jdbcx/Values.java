@@ -21,20 +21,20 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import io.github.jdbcx.data.BigDecimalValue;
-import io.github.jdbcx.data.BigIntegerValue;
-import io.github.jdbcx.data.BooleanValue;
-import io.github.jdbcx.data.ByteValue;
-import io.github.jdbcx.data.DateTimeValue;
-import io.github.jdbcx.data.DateValue;
-import io.github.jdbcx.data.DoubleValue;
-import io.github.jdbcx.data.FloatValue;
-import io.github.jdbcx.data.IntValue;
-import io.github.jdbcx.data.LongValue;
-import io.github.jdbcx.data.NullValue;
-import io.github.jdbcx.data.ShortValue;
-import io.github.jdbcx.data.StringValue;
-import io.github.jdbcx.data.TimeValue;
+import io.github.jdbcx.value.BigDecimalValue;
+import io.github.jdbcx.value.BigIntegerValue;
+import io.github.jdbcx.value.BooleanValue;
+import io.github.jdbcx.value.ByteValue;
+import io.github.jdbcx.value.DateTimeValue;
+import io.github.jdbcx.value.DateValue;
+import io.github.jdbcx.value.DoubleValue;
+import io.github.jdbcx.value.FloatValue;
+import io.github.jdbcx.value.IntValue;
+import io.github.jdbcx.value.LongValue;
+import io.github.jdbcx.value.NullValue;
+import io.github.jdbcx.value.ShortValue;
+import io.github.jdbcx.value.StringValue;
+import io.github.jdbcx.value.TimeValue;
 
 final class Values {
     static final Class<? extends Value> DEFAULT_VALUE_TYPE = StringValue.class;

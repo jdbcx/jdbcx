@@ -21,8 +21,8 @@ import java.sql.Types;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.data.LongValue;
-import io.github.jdbcx.data.StringValue;
+import io.github.jdbcx.value.LongValue;
+import io.github.jdbcx.value.StringValue;
 
 public class TypeMappingTest {
     static abstract class AbstractValue implements Value {

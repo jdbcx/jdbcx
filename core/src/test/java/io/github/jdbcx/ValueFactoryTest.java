@@ -31,7 +31,7 @@ import java.util.TimeZone;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.data.StringValue;
+import io.github.jdbcx.value.StringValue;
 
 public class ValueFactoryTest {
     @Test(groups = { "unit" })
