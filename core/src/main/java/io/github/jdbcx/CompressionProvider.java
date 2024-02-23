@@ -33,6 +33,10 @@ public interface CompressionProvider {
         return !Boolean.parseBoolean(OPTION_USE_DEFAULT.getEffectiveDefaultValue(Option.PROPERTY_PREFIX));
     }
 
+    default OutputStream compress(OutputStream output) throws IOException {
+        return compress(output, -1, 0);
+    }
+
     /**
      * Compresses data into the output stream.
      *

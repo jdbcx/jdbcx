@@ -16,7 +16,11 @@
 package io.github.jdbcx.server;
 
 public enum QueryMode {
-    SUBMIT_QUERY("s"), SUBMIT_REDIRECT("r"), DIRECT_QUERY("d"), MUTATION("m");
+    SUBMIT_QUERY("s"), // submit query without execution
+    SUBMIT_REDIRECT("r"), // submit query and redirect
+    ASYNC_QUERY("a"),
+    DIRECT_QUERY("d"), // execute query
+    MUTATION("m"); // mutation
 
     private String code;
 
@@ -34,6 +38,10 @@ public enum QueryMode {
             mode = SUBMIT_QUERY;
         } else if (str.length() == 1) {
             switch (str.charAt(0)) {
+                case 'a':
+                case 'A':
+                    mode = ASYNC_QUERY;
+                    break;
                 case 's':
                 case 'S':
                     mode = SUBMIT_QUERY;

@@ -110,7 +110,7 @@ public class CompressionTest {
             int bufferSize = 0;
             int level = -1;
             try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    OutputStream compressedOut = c.compress(out, bufferSize, level)) {
+                    OutputStream compressedOut = c.provider().compress(out, bufferSize, level)) {
                 compressedOut.write(new byte[] { 1, 2, 3 });
                 compressedOut.close();
                 bytes = out.toByteArray();
@@ -123,7 +123,7 @@ public class CompressionTest {
             }
 
             try (ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-                    InputStream decompressedIn = c.decompress(in, bufferSize, level)) {
+                    InputStream decompressedIn = c.provider().decompress(in, bufferSize, level)) {
                 Assert.assertEquals(decompressedIn.read(), 1);
                 Assert.assertEquals(decompressedIn.read(), 2);
                 Assert.assertEquals(decompressedIn.read(), 3);

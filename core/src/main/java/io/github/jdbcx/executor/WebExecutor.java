@@ -58,6 +58,7 @@ public class WebExecutor extends AbstractExecutor {
     public static final String HEADER_ACCEPT = "Accept";
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String HEADER_USER_AGENT = "User-Agent";
+    public static final String HEADER_QUERY_USER = "X-Query-User";
 
     public static final Option OPTION_CONNECT_TIMEOUT = Option
             .of(new String[] { "connect.timeout",

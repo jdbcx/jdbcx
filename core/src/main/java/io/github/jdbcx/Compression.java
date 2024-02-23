@@ -15,9 +15,6 @@
  */
 package io.github.jdbcx;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Locale;
 
 import io.github.jdbcx.compress.BrotliSupport;
@@ -79,26 +76,13 @@ public enum Compression {
     }
 
     /**
-     * Checks if the provide for this compression algorithm is available or not.
+     * Gets provider for this compression algorithm.
+     *
+     * @return non-null provider for compressing and decompressing
+     * @throws NoClassDefFoundError when corresponding lib is missing
      */
-    public void checkProvider() {
-        Compression.getProvider(this);
-    }
-
-    public OutputStream compress(OutputStream output) throws IOException {
-        return compress(output, 0, -1);
-    }
-
-    public OutputStream compress(OutputStream output, int level, int bufferSize) throws IOException {
-        return getProvider(this).compress(output, level, bufferSize);
-    }
-
-    public InputStream decompress(InputStream input) throws IOException {
-        return decompress(input, 0, -1);
-    }
-
-    public InputStream decompress(InputStream input, int level, int bufferSize) throws IOException {
-        return getProvider(this).decompress(input, level, bufferSize);
+    public CompressionProvider provider() throws NoClassDefFoundError {
+        return Compression.getProvider(this);
     }
 
     static CompressionProvider getProvider(Compression compress) {
@@ -251,9 +235,9 @@ public enum Compression {
     public static Compression fromMagicNumber(byte[] bytes) {
         Compression compression = null;
 
-        int len = bytes != null ? bytes.length : 0;
-        if (len > 0) {
-            outer_loop: for (Compression c : values()) {// NOSONAR
+        final int len;
+        if (bytes != null && (len = bytes.length) > 0) {
+            outer_loop: for (Compression c : values()) { // NOSONAR
                 if (!c.hasMagicNumber()) {
                     continue;
                 }

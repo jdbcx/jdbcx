@@ -36,6 +36,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Utils;
@@ -69,12 +70,12 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
     @Override
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, Object userObject) throws IOException {
+            Compression compress, JdbcDialect dialect, Object userObject) throws IOException {
         if (mode != QueryMode.MUTATION && Checker.isNullOrBlank(query)) {
             HttpExchange exchange = (HttpExchange) userObject;
             query = Stream.readAllAsString(exchange.getRequestBody());
         }
-        return super.create(method, mode, qid, query, txid, format, compress, userObject);
+        return super.create(method, mode, qid, query, txid, format, compress, dialect, userObject);
     }
 
     @Override

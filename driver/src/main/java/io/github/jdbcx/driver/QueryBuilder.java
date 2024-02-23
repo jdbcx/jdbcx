@@ -37,6 +37,7 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
+import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
@@ -61,9 +62,17 @@ public final class QueryBuilder {
         for (int i = 0, len = blocks.length; i < len; i++) {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
+                ConnectionMetaData md = manager.getMetaData();
                 Properties props = manager.getBridgeConfig();
                 VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
                 WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
+                StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT)
+                        .append('=').append(Utils.escape(md.getProduct(), ','));
+                if (md.hasUserName()) {
+                    builder.append(',').append(WebExecutor.HEADER_QUERY_USER).append('=')
+                            .append(Utils.escape(md.getUserName(), ','));
+                }
+                WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props, builder.toString());
                 final String fullQuery;
                 if (block.hasOutput()) {
                     fullQuery = tag.function(block.getContent());

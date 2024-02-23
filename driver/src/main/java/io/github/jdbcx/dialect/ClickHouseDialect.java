@@ -21,14 +21,8 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
-public final class DefaultDialect implements JdbcDialect {
-    private static final JdbcDialect instance = new DefaultDialect();
-
-    static final DefaultMapper mapper = new DefaultMapper();
-
-    public static JdbcDialect getInstance() {
-        return instance;
-    }
+public class ClickHouseDialect implements JdbcDialect {
+    static final ClickHouseMapper mapper = new ClickHouseMapper();
 
     @Override
     public ResultMapper getMapper() {
@@ -39,8 +33,5 @@ public final class DefaultDialect implements JdbcDialect {
     public void createTemporaryTable(String table, Field... fields) throws SQLException {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'createTemporaryTable'");
-    }
-
-    private DefaultDialect() {
     }
 }

@@ -32,6 +32,8 @@ public interface JdbcDialect {
         return String.join("\nunion all\n", queries);
     }
 
+    ResultMapper getMapper();
+
     void createTemporaryTable(String table, Field... fields) throws SQLException;
 
     /**

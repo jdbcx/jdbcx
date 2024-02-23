@@ -35,8 +35,8 @@ public final class LogMessage {
         String message = String.valueOf(format);
         Throwable t = null;
 
-        int len = arguments != null ? arguments.length : 0;
-        if (len > 0) {
+        final int len;
+        if (arguments != null && (len = arguments.length) > 0) {
             Object lastArg = arguments[len - 1];
             if (lastArg instanceof Throwable) {
                 t = (Throwable) lastArg;

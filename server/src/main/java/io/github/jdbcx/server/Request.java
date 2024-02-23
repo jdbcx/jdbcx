@@ -23,6 +23,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.JdbcDialect;
 
 public class Request implements Serializable {
     protected final QueryMode mode;
@@ -34,10 +35,12 @@ public class Request implements Serializable {
     protected final Format format;
     protected final Compression compress;
 
+    protected final transient JdbcDialect dialect;
+
     protected final transient Object userObject;
 
     protected Request(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, Object userObject) {
+            Compression compress, JdbcDialect dialect, Object userObject) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT_QUERY;
         if (Checker.isNullOrEmpty(qid)) {
@@ -51,6 +54,8 @@ public class Request implements Serializable {
         this.txid = txid != null ? txid : Constants.EMPTY_STRING;
         this.format = format != null ? format : Format.TSV;
         this.compress = compress != null ? compress : Compression.NONE;
+
+        this.dialect = dialect;
         this.userObject = userObject;
     }
 
@@ -96,6 +101,10 @@ public class Request implements Serializable {
 
     public Compression getCompression() {
         return compress;
+    }
+
+    public JdbcDialect getDialect() {
+        return dialect;
     }
 
     public <T> T getUserObject(Class<T> clazz) {

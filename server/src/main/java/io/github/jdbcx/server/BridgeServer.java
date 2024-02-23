@@ -27,7 +27,9 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -41,12 +43,15 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
+import io.github.jdbcx.driver.ConnectionManager;
+import io.github.jdbcx.executor.WebExecutor;
 
 public abstract class BridgeServer {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
@@ -57,8 +62,9 @@ public abstract class BridgeServer {
     public static final String HEADER_CONTENT_TYPE = "content-type";
     public static final String HEADER_LOCATION = "location";
     public static final String HEADER_QUERY_ID = "x-query-id";
-    public static final String HEADER_QUERY_USER = "x-query-user";
+    public static final String HEADER_QUERY_USER = WebExecutor.HEADER_QUERY_USER.toLowerCase(Locale.ROOT);
     public static final String HEADER_TRANSACTION_ID = "x-transaction-id";
+    public static final String HEADER_USER_AGENT = WebExecutor.HEADER_USER_AGENT.toLowerCase(Locale.ROOT);
 
     public static final String METHOD_HEAD = "HEAD";
 
@@ -225,12 +231,12 @@ public abstract class BridgeServer {
     }
 
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, Object userObject) throws IOException { // NOSONAR
+            Compression compress, JdbcDialect dialect, Object userObject) throws IOException { // NOSONAR
         if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid)) {
             query = queries.getIfPresent(qid);
             log.debug("Loaded query [%s] from cache:\n%s", qid, query);
         }
-        return new Request(method, mode, qid, query, txid, format, compress, userObject);
+        return new Request(method, mode, qid, query, txid, format, compress, dialect, userObject);
     }
 
     protected final Properties getConfig() {
@@ -243,7 +249,6 @@ public abstract class BridgeServer {
         essentials.store(out, Utils.format("Bridge server %s configuration", Version.current().toShortString()));
     }
 
-    @SuppressWarnings("resource")
     protected void query(Request request) throws IOException {
         log.debug("Executing query [%s]...", request.getQueryId());
         boolean success = false;
@@ -251,18 +256,18 @@ public abstract class BridgeServer {
                 Statement stmt = conn.createStatement();
                 Result<?> result = request.isMutation() ? Result.of(stmt.executeLargeUpdate(request.getQuery()))
                         : Result.of(stmt.executeQuery(request.getQuery()))) {
-            final Compression compress = request.getCompression();
-            compress.checkProvider();
-            try (OutputStream out = compress.compress(getResponseOutputStream(request))) {
-                success = true; // query was a success and we got response output stream without any issue
-                // final SQLWarning warning = stmt.getWarnings();
-                // if (warning != null) {
-                // log.warn("Warning from [%s]", stmt, warning);
-                // }
+            try (OutputStream out = request.getCompression().provider().compress(getResponseOutputStream(request))) {
+                success = true; // query was a success and we got the response output stream without any issue
+                final SQLWarning warning = stmt.getWarnings();
+                if (warning != null) {
+                    log.warn("SQLWarning from [%s]", stmt, warning);
+                }
                 Result.writeTo(result, request.getFormat(), null, out);
             }
+            // in case the query took too long
+            queries.put(request.getQueryId(), request.getQuery());
         } catch (SQLException e) {
-            // invalidate the query so that client-side retry later will end up with 404
+            // invalidate the query now so that client-side retry later will end up with 404
             queries.invalidate(request.getQueryId());
             log.debug("Invalidated query [%s] due to error: %s", request.getQueryId(), e.getMessage());
             throw new IOException(e);
@@ -271,6 +276,7 @@ public abstract class BridgeServer {
                 respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
         }
+        log.debug("Query [%s] finished successfully", request.getQueryId());
     }
 
     protected abstract void execute(Request request) throws IOException;
@@ -308,6 +314,8 @@ public abstract class BridgeServer {
                 path = path.substring(1);
             }
         }
+
+        final JdbcDialect dialect = ConnectionManager.findDialect(headers.get(HEADER_USER_AGENT));
 
         String qid = headers.get(HEADER_QUERY_ID);
         String txid = headers.get(HEADER_TRANSACTION_ID);
@@ -360,7 +368,8 @@ public abstract class BridgeServer {
         } else {
             mode = QueryMode.of(queryMode);
         }
-        Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, userObject);
+        Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, dialect,
+                userObject);
         log.debug("Dispatching %s", request);
         if (Checker.isNullOrBlank(request.getQuery())) {
             log.warn("Non-existent or expired %s", request);
