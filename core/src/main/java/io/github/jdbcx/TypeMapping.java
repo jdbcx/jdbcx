@@ -18,7 +18,7 @@ package io.github.jdbcx;
 import java.lang.reflect.Modifier;
 import java.sql.JDBCType;
 
-import io.github.jdbcx.data.StringValue;
+import io.github.jdbcx.value.StringValue;
 
 public class TypeMapping {
     public static final String ANY_TYPE = "*";

@@ -33,7 +33,8 @@ public enum Format {
     AVROB("application/vnd.apache.avro+binary", "avro"),
     AVRO("application/vnd.apache.avro+json", "avroj"),
     BSON("application/bson", "bson"),
-    JSONL("application/jsonl", "jsonl"),
+    JSONL("application/jsonl", "jsonl"), // or application/json-lines?
+    NDJSON("application/x-ndjson", "ndjson"), // or application/json-seq?
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET("application/vnd.apache.parquet", "parquet");
 

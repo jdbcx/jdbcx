@@ -29,6 +29,7 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
 import io.github.jdbcx.ValueFactory;
+import io.github.jdbcx.value.WrappedValue;
 
 public final class IterableResultSet implements Iterable<Row> {
     static final class ResultSetValue extends WrappedValue {

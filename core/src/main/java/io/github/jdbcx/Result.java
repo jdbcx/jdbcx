@@ -30,17 +30,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import io.github.jdbcx.data.CsvSerde;
 import io.github.jdbcx.data.IterableArray;
 import io.github.jdbcx.data.IterableInputStream;
 import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableWrapper;
-import io.github.jdbcx.data.JsonlSerde;
-import io.github.jdbcx.data.TsvSerde;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
+import io.github.jdbcx.format.CsvSerde;
+import io.github.jdbcx.format.JsonlSerde;
+import io.github.jdbcx.format.NdJsonSerde;
+import io.github.jdbcx.format.TsvSerde;
 
 public final class Result<T> implements AutoCloseable {
     public static final class Builder {
@@ -172,6 +174,9 @@ public final class Result<T> implements AutoCloseable {
                 break;
             case JSONL:
                 serde = new JsonlSerde(config);
+                break;
+            case NDJSON:
+                serde = new NdJsonSerde(config);
                 break;
             default:
                 throw new IllegalArgumentException("Unsupport format: " + format);
@@ -312,11 +317,29 @@ public final class Result<T> implements AutoCloseable {
 
     private final DeferredValue<Iterable<Row>> rows;
 
+    private final AtomicBoolean active;
+
     public Builder update() {
         return new Builder(this);
     }
 
+    /**
+     * Checks whether this result object is active for reading, meaning that
+     * either {@code get(*)} or {@link #rows()} has been called at least once.
+     *
+     * @return true if the the result object is active for reading; false otherwise
+     */
+    public boolean isActive() {
+        return active.get();
+    }
+
+    /**
+     * Gets raw value.
+     *
+     * @return raw value, could be {@code null}
+     */
     public T get() {
+        active.compareAndSet(false, true);
         return rawValue;
     }
 
@@ -343,8 +366,8 @@ public final class Result<T> implements AutoCloseable {
      * @throws CompletionException      when failed to retrieve or convert value
      * @throws IllegalArgumentException when the given {@code clazz} is null
      */
-    @SuppressWarnings("resource")
     public <R> R get(Class<R> clazz, ErrorHandler handler) {
+        active.compareAndSet(false, true);
         if (clazz == null) {
             throw new IllegalArgumentException("Non-null class is required");
         } else if (Result.class.equals(clazz) || clazz.isAssignableFrom(valueType)) {
@@ -428,6 +451,7 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public Iterable<Row> rows() {
+        active.compareAndSet(false, true);
         return rows.get();
     }
 
@@ -453,5 +477,7 @@ public final class Result<T> implements AutoCloseable {
         this.rawValue = rawValue;
         this.valueType = valueType;
         this.rows = rows;
+
+        this.active = new AtomicBoolean(false);
     }
 }

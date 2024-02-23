@@ -17,48 +17,154 @@ specific language governing permissions and limitations
 under the License.
 
 This project includes:
+  aircompressor under Apache License 2.0
+  Animal Sniffer Annotations under MIT license
+  Apache Avro under Apache-2.0
+  Apache Commons BeanUtils under Apache License, Version 2.0
+  Apache Commons Codec under Apache-2.0
+  Apache Commons Collections under Apache License, Version 2.0
   Apache Commons Compress under Apache-2.0
+  Apache Commons Configuration under Apache License, Version 2.0
+  Apache Commons IO under Apache-2.0
+  Apache Commons Lang under Apache-2.0
+  Apache Commons Net under Apache License, Version 2.0
+  Apache Commons Text under Apache License, Version 2.0
   Apache Groovy under The Apache Software License, Version 2.0
+  Apache Hadoop Annotations under Apache License, Version 2.0
+  Apache Hadoop Auth under Apache License, Version 2.0
+  Apache Hadoop Common under Apache License, Version 2.0
+  Apache Hadoop shaded Guava under Apache License, Version 2.0
+  Apache Hadoop shaded Protobuf 3.7 under Apache License, Version 2.0
+  Apache HttpClient under Apache License, Version 2.0
+  Apache HttpCore under Apache License, Version 2.0
+  Apache Log4j under The Apache Software License, Version 2.0
+  Apache Parquet Avro under The Apache Software License, Version 2.0
+  Apache Parquet Column under The Apache Software License, Version 2.0
+  Apache Parquet Common under The Apache Software License, Version 2.0
+  Apache Parquet Encodings under The Apache Software License, Version 2.0
+  Apache Parquet Format Structures under The Apache Software License, Version 2.0
+  Apache Parquet Hadoop under The Apache Software License, Version 2.0
+  Apache Parquet Jackson under The Apache Software License, Version 2.0
+  Apache Yetus - Audience Annotations under Apache License, Version 2.0
+  Apache ZooKeeper - Jute under Apache License, Version 2.0
+  Apache ZooKeeper - Server under Apache License, Version 2.0
+  Arrow Format under Apache License, Version 2.0
+  Arrow Memory - Core under Apache License, Version 2.0
+  Arrow Vectors under Apache License, Version 2.0
   brotli4j under Apache License 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
+  Commons CLI under The Apache Software License, Version 2.0
+  Commons Logging under The Apache Software License, Version 2.0
+  Commons Math under The Apache Software License, Version 2.0
+  Commons Pool under The Apache Software License, Version 2.0
+  Curator Client under The Apache Software License, Version 2.0
+  Curator Framework under The Apache Software License, Version 2.0
+  Curator Recipes under The Apache Software License, Version 2.0
+  dnsjava under BSD 2-Clause license
   docker-java-api under The Apache Software License, Version 2.0
   docker-java-transport under The Apache Software License, Version 2.0
   docker-java-transport-zerodep under The Apache Software License, Version 2.0
   DuckDB JDBC Driver under MIT License
   Duct Tape under MIT
+  Eclipse Collections API under Eclipse Public License - v 1.0 or Eclipse Distribution License - v 1.0
+  Eclipse Collections Main Library under Eclipse Public License - v 1.0 or Eclipse Distribution License - v 1.0
   error-prone annotations under Apache 2.0
+  FindBugs-jsr305 under The Apache Software License, Version 2.0
+  FlatBuffers Java API under Apache License V2.0
   Gson under Apache-2.0
+  Guava InternalFutureFailureAccess and InternalFutures under The Apache Software License, Version 2.0
+  Guava ListenableFuture only under The Apache Software License, Version 2.0
+  Guava: Google Core Libraries for Java under The Apache Software License, Version 2.0
   Hamcrest Core under New BSD License
   HikariCP under The Apache Software License, Version 2.0
+  J2ObjC Annotations under The Apache Software License, Version 2.0
+  Jackson datatype: JSR310 under The Apache Software License, Version 2.0
   Jackson-annotations under The Apache Software License, Version 2.0
+  Jackson-core under The Apache Software License, Version 2.0
+  jackson-databind under The Apache Software License, Version 2.0
   Java Native Access under LGPL-2.1-or-later or Apache-2.0
+  Java Servlet API under CDDL + GPLv2 with classpath exception
+  JavaBeans Activation Framework (JAF) under Common Development and Distribution License (CDDL) v1.0
+  JavaBeans Activation Framework API jar under EDL 1.0
+  JAXB API bundle for GlassFish V3 under CDDL 1.1 or GPL2 w/ CPE
+  JAXB RI under CDDL 1.1 or GPL2 w/ CPE
+  JCIP Annotations under Apache License under Apache License, Version 2.0
   jcommander under Apache License, Version 2.0
   jdbcx under The Apache Software License, Version 2.0
   jdbcx-core under The Apache Software License, Version 2.0
   jdbcx-driver under The Apache Software License, Version 2.0
   jdbcx-server under The Apache Software License, Version 2.0
+  jersey-core under CDDL 1.1 or GPL2 w/ CPE
+  jersey-json under CDDL 1.1 or GPL2 w/ CPE
+  jersey-server under CDDL 1.1 or GPL2 w/ CPE
+  jersey-servlet under CDDL 1.1 or GPL2 w/ CPE
   JetBrains Java Annotations under The Apache Software License, Version 2.0
+  Jettison under Apache License, Version 2.0
+  Jetty :: Http Utility under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: IO Utility under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Security under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Server Core under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Servlet Handling under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Utilities under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Utilities :: Ajax(JSON) under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: Webapp Application Support under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
+  Jetty :: XML utilities under Apache Software License - Version 2.0 or Eclipse Public License - Version 1.0
   JMESPath Core under BSD 3-Clause
   JMESPath GSON under BSD 3-Clause
   jquery under MIT License
+  JSch under Revised BSD
+  jsp-api under Commons Development and Distribution License, Version 1.0
+  jsr311-api under CDDL License
   JUnit under Eclipse Public License 1.0
+  Kerb Simple Kdc under Apache License, Version 2.0
+  Kerby ASN1 Project under Apache License, Version 2.0
+  Kerby Config under Apache License, Version 2.0
+  Kerby PKIX Project under Apache License, Version 2.0
+  Kerby Util under Apache License, Version 2.0
+  Kerby XDR Project under Apache License, Version 2.0
+  Kerby-kerb Admin under Apache License, Version 2.0
+  Kerby-kerb Client under Apache License, Version 2.0
+  Kerby-kerb Common under Apache License, Version 2.0
+  Kerby-kerb core under Apache License, Version 2.0
+  Kerby-kerb Crypto under Apache License, Version 2.0
+  Kerby-kerb Identity under Apache License, Version 2.0
+  Kerby-kerb Server under Apache License, Version 2.0
+  Kerby-kerb Util under Apache License, Version 2.0
   LZ4 and xxHash under The Apache Software License, Version 2.0
+  Metrics Core under Apache License 2.0
   MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
+  Netty/Buffer under Apache License, Version 2.0
+  Netty/Codec under Apache License, Version 2.0
+  Netty/Common under Apache License, Version 2.0
+  Netty/Handler under Apache License, Version 2.0
+  Netty/Resolver under Apache License, Version 2.0
+  Netty/Transport under Apache License, Version 2.0
+  Netty/Transport/Native/Epoll under Apache License, Version 2.0
+  Netty/Transport/Native/Unix/Common under Apache License, Version 2.0
+  Nimbus JOSE+JWT under The Apache Software License, Version 2.0
   org.brotli:dec under MIT License
   PostgreSQL JDBC Driver under BSD-2-Clause
+  Protocol Buffer Java API under New BSD license
   Protocol Buffers [Core] under BSD-3-Clause
+  re2j under The Go license
+  reload4j under The Apache Software License, Version 2.0
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0
   SLF4J API Module under MIT License
+  SLF4J LOG4J-12 Binding under MIT License
+  SLF4J Reload4j Binding under MIT License
   SLF4J Simple Provider under MIT License
   snappy-java under Apache-2.0
   SQLite JDBC under The Apache Software License, Version 2.0
+  Stax2 API under The BSD License
+  Streaming API for XML under Sun Binary Code License
   Testcontainers :: Toxiproxy under MIT
   Testcontainers Core under MIT
   testng under Apache License, Version 2.0
+  Token provider under Apache License, Version 2.0
   Toxiproxy Java Client under The Apache License, Version 2.0
+  Woodstox under The Apache License, Version 2.0
   XZ for Java under Public Domain
   zstd-jni under BSD 2-Clause License
-
