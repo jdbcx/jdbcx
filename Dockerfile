@@ -16,12 +16,12 @@ FROM ubuntu:jammy
 LABEL maintainer="zhicwu@gmail.com"
 
 ARG PRQLC_VERSION=0.11.1
-ARG JDBCX_VERSION=0.4.0
+ARG JDBCX_VERSION=0.5.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
     JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" SLF4J_VERSION=2.0.12 \
-    JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.4.0}
+    JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.5.0}
 
 # Labels
 LABEL os.dist=Ubuntu os.version=22.04 app.name=JDBCX app.version=${JDBCX_VERSION}
