@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.data;
 
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -91,7 +92,14 @@ public final class IterableResultSet implements Iterable<Row> {
                     values = new Value[columns];
                     for (int i = 0; i < columns; i++) {
                         int index = i + 1;
-                        Field f = Field.of(metaData.getColumnName(index), metaData.getColumnType(index));
+                        int precision = metaData.getPrecision(index);
+                        if (precision <= 0) {
+                            precision = metaData.getColumnDisplaySize(index);
+                        }
+                        Field f = Field.of(metaData.getColumnName(index),
+                                JDBCType.valueOf(metaData.getColumnType(index)),
+                                metaData.isNullable(index) != ResultSetMetaData.columnNoNulls,
+                                precision, metaData.getScale(index), metaData.isSigned(index));
                         fields.add(f);
                         values[i] = new ResultSetValue(factory.newValue(f, metaData.getColumnTypeName(index)), rs,
                                 index);
@@ -136,7 +144,7 @@ public final class IterableResultSet implements Iterable<Row> {
     }
 
     public IterableResultSet(ResultSet rs, List<Field> fields) {
-        this.rs = Checker.nonNull(rs, ResultSet.class.getSimpleName());
+        this.rs = Checker.nonNull(rs, ResultSet.class);
         this.fields = fields;
     }
 

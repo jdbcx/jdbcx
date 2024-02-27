@@ -125,13 +125,21 @@ public final class Field implements Serializable {
             case TIME:
             case TIME_WITH_TIMEZONE:
                 this.precision = precision > 0 ? precision : 10;
-                this.scale = 0;
+                this.scale = scale > 0 ? scale : 0;
                 this.signed = false;
                 break;
             case TIMESTAMP:
             case TIMESTAMP_WITH_TIMEZONE:
                 this.precision = precision > 0 ? precision : 29;
                 this.scale = scale > 0 ? scale : 0;
+                this.signed = false;
+                break;
+            case CHAR:
+            case NCHAR:
+            case VARCHAR:
+            case NVARCHAR:
+                this.precision = precision > 0 ? precision : 0;
+                this.scale = 0;
                 this.signed = false;
                 break;
             default:

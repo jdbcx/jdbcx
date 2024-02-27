@@ -25,6 +25,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -147,6 +148,7 @@ public final class ConnectionManager implements AutoCloseable {
     private final Connection conn;
     private final String bridgeUrl;
     private final Properties bridgeConfig;
+    private final String bridgeToken;
     private final String jdbcUrl;
     private final Properties props;
     private final Properties normalizedProps;
@@ -184,6 +186,10 @@ public final class ConnectionManager implements AutoCloseable {
         }
         this.bridgeUrl = bridge;
         this.bridgeConfig = new Properties();
+
+        String token = Option.SERVER_TOKEN.getJdbcxValue(originalProps).trim();
+        this.bridgeToken = Checker.isNullOrEmpty(token) ? token
+                : Base64.getEncoder().encodeToString(token.getBytes(Constants.DEFAULT_CHARSET));
 
         this.jdbcUrl = url;
         this.props = extensionProps;
@@ -341,6 +347,15 @@ public final class ConnectionManager implements AutoCloseable {
             }
         }
         return new Properties(bridgeConfig);
+    }
+
+    /**
+     * Gets base64 encoded token to access bridge server.
+     *
+     * @return non-null base64 encoded token
+     */
+    public String getBridgeToken() {
+        return bridgeToken;
     }
 
     public String getJdbcUrl() {

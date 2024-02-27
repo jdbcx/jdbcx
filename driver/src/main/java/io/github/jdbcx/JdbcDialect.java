@@ -17,7 +17,6 @@ package io.github.jdbcx;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
 
 public interface JdbcDialect {
     default VariableTag getVariableTag() {
@@ -28,13 +27,7 @@ public interface JdbcDialect {
         return ValueFactory.getInstance();
     }
 
-    default String union(List<String> queries) {
-        return String.join("\nunion all\n", queries);
-    }
-
     ResultMapper getMapper();
-
-    void createTemporaryTable(String table, Field... fields) throws SQLException;
 
     /**
      * Gets table representing the given URL. This is typically used in a query like

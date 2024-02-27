@@ -18,8 +18,8 @@ package io.github.jdbcx.dialect;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
-public class ClickHouseDialect implements JdbcDialect {
-    static final ClickHouseMapper mapper = new ClickHouseMapper();
+public class DuckDBDialect implements JdbcDialect {
+    static final DuckDBMapper mapper = new DuckDBMapper();
 
     @Override
     public ResultMapper getMapper() {

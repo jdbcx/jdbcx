@@ -22,20 +22,31 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.RemovalListener;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -43,25 +54,27 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
-import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.executor.WebExecutor;
 
-public abstract class BridgeServer {
+public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
 
     public static final String HEADER_ACCEPT = "accept"; // format
     public static final String HEADER_ACCEPT_ENCODING = "accept-encoding"; // compression
+    public static final String HEADER_AUTHORIZATION = WebExecutor.HEADER_AUTHORIZATION.toLowerCase(Locale.ROOT);
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
     public static final String HEADER_LOCATION = "location";
     public static final String HEADER_QUERY_ID = "x-query-id";
+    public static final String HEADER_QUERY_MODE = WebExecutor.HEADER_QUERY_MODE.toLowerCase(Locale.ROOT);
     public static final String HEADER_QUERY_USER = WebExecutor.HEADER_QUERY_USER.toLowerCase(Locale.ROOT);
     public static final String HEADER_TRANSACTION_ID = "x-transaction-id";
     public static final String HEADER_USER_AGENT = WebExecutor.HEADER_USER_AGENT.toLowerCase(Locale.ROOT);
@@ -95,8 +108,65 @@ public abstract class BridgeServer {
             Format.class);
     public static final Option OPTION_COMPRESSION = Option.ofEnum("server.compress", "Server response compression",
             null, Compression.class);
+    public static final Option OPTION_ACL = Option.of("server.acl",
+            "Server access control list, defaults to acl.properties in current directory", "acl.properties");
+    public static final Option OPTION_SECRET = Option
+            .of(new String[] { "server.secret",
+                    "Server secret for ACL encryption, only used when authentication & authorization are enabled" });
 
-    protected static final Properties load() {
+    protected static final List<ServerAcl> loadAcl() {
+        final String fileName = Utils
+                .normalizePath(System.getProperty(Option.PROPERTY_PREFIX.concat(OPTION_ACL.getName()),
+                        OPTION_ACL.getDefaultValue()));
+        if (Checker.isNullOrEmpty(fileName)) {
+            log.debug("No ACL config file specified");
+            return Collections.emptyList();
+        }
+
+        final List<ServerAcl> acl;
+        Path path = Paths.get(fileName);
+        if (!path.isAbsolute()) {
+            path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
+        }
+        File file = path.toFile();
+        if (file.exists() && file.canRead()) {
+            Properties props = new Properties();
+            try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
+                props.load(reader);
+                log.debug("Loaded ACL config from file \"%s\".", fileName);
+            } catch (IOException e) {
+                log.warn("Failed to load ACL config from file \"%s\"", fileName, e);
+            }
+
+            final String suffix = ".token";
+            Set<String> list = new LinkedHashSet<>();
+            for (Entry<Object, Object> e : props.entrySet()) {
+                String key = (String) e.getKey();
+                String val = ((String) e.getValue()).trim();
+                if (key.endsWith(suffix) && !val.isEmpty()) {
+                    list.add(key.substring(0, key.length() - suffix.length()));
+                }
+            }
+
+            if (list.isEmpty()) {
+                acl = Collections.emptyList();
+            } else {
+                List<ServerAcl> items = new ArrayList<>(list.size());
+                for (String key : list) {
+                    // TODO decrypt token using server.secret
+                    items.add(new ServerAcl(props.getProperty(key + suffix), props.getProperty(key + ".hosts"),
+                            props.getProperty(key + ".ips")));
+                }
+                acl = Collections.unmodifiableList(items);
+            }
+        } else {
+            log.debug("Skip loading ACL config as file \"%s\" is not accessible.", fileName);
+            acl = Collections.emptyList();
+        }
+        return acl;
+    }
+
+    protected static final Properties loadConfig() {
         Properties sysProps = System.getProperties();
         final String fileName = Utils
                 .normalizePath(sysProps.getProperty(Option.PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
@@ -126,11 +196,12 @@ public abstract class BridgeServer {
         return defProps;
     }
 
-    private final Cache<String, String> queries;
+    private final Cache<String, QueryInfo> queries;
 
     protected final HikariDataSource datasource;
     protected final long queryTimeout;
 
+    protected final boolean auth;
     protected final String host;
     protected final int port;
     protected final String baseUrl;
@@ -143,6 +214,7 @@ public abstract class BridgeServer {
     protected final Format defaultFormat;
     protected final Compression defaultCompress;
 
+    private final List<ServerAcl> acl;
     private final Properties essentials;
 
     protected BridgeServer(Properties props) {
@@ -169,13 +241,14 @@ public abstract class BridgeServer {
         final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getJdbcxValue(props));
 
         // TODO load persistent requests from disk file or database
-        Caffeine<Object, Object> builder = Caffeine.newBuilder()
-                .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT);
+        Caffeine<String, QueryInfo> builder = Caffeine.newBuilder()
+                .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT).evictionListener(this);
         if (requestTimeout > 0L) {
             builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS);
         }
-        queries = builder.recordStats().<String, String>build();
+        queries = builder.recordStats().build();
 
+        auth = Boolean.parseBoolean(Option.SERVER_AUTH.getJdbcxValue(props));
         host = Option.SERVER_HOST.getJdbcxValue(props);
         port = Integer.parseInt(Option.SERVER_PORT.getJdbcxValue(props));
 
@@ -216,7 +289,9 @@ public abstract class BridgeServer {
         defaultFormat = Format.valueOf(OPTION_FORMAT.getJdbcxValue(props));
         defaultCompress = Compression.valueOf(OPTION_COMPRESSION.getJdbcxValue(props));
 
+        acl = auth ? loadAcl() : Collections.emptyList();
         essentials = new Properties();
+        Option.SERVER_AUTH.setValue(essentials, Boolean.toString(auth));
         Option.SERVER_URL.setValue(essentials, baseUrl);
         if (!Checker.isNullOrEmpty(tag)) {
             Option.TAG.setValue(essentials, tag);
@@ -231,12 +306,24 @@ public abstract class BridgeServer {
     }
 
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, JdbcDialect dialect, Object userObject) throws IOException { // NOSONAR
-        if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid)) {
-            query = queries.getIfPresent(qid);
-            log.debug("Loaded query [%s] from cache:\n%s", qid, query);
+            Compression compress, String token, String user, String client, Object implementation) throws IOException { // NOSONAR
+        final QueryInfo info;
+        final Request request;
+        if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid) && (info = queries.getIfPresent(qid)) != null) {
+            log.debug("Loaded query from cache: %s", info);
+            request = new Request(method, mode, info, ConnectionManager.findDialect(info.client), implementation);
+        } else {
+            if (!Checker.isNullOrEmpty(token)) {
+                try {
+                    token = new String(Base64.getDecoder().decode(token), Constants.DEFAULT_CHARSET);
+                } catch (Exception e) {
+                    log.warn("Failed to decode token [%s] due to: %s", token, e.getMessage());
+                }
+            }
+            request = new Request(method, mode, qid, query, txid, format, compress, token, user, client,
+                    ConnectionManager.findDialect(client), implementation);
         }
-        return new Request(method, mode, qid, query, txid, format, compress, dialect, userObject);
+        return request;
     }
 
     protected final Properties getConfig() {
@@ -250,45 +337,84 @@ public abstract class BridgeServer {
     }
 
     protected void query(Request request) throws IOException {
-        log.debug("Executing query [%s]...", request.getQueryId());
+        final QueryInfo info = request.getQueryInfo();
+        log.debug("Executing query [%s]...", info.qid);
         boolean success = false;
         try (Connection conn = datasource.getConnection();
                 Statement stmt = conn.createStatement();
-                Result<?> result = request.isMutation() ? Result.of(stmt.executeLargeUpdate(request.getQuery()))
-                        : Result.of(stmt.executeQuery(request.getQuery()))) {
-            try (OutputStream out = request.getCompression().provider().compress(getResponseOutputStream(request))) {
+                Result<?> result = request.isMutation() ? Result.of(stmt.executeLargeUpdate(info.query))
+                        : Result.of(stmt.executeQuery(info.query))) {
+            try (OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
                 success = true; // query was a success and we got the response output stream without any issue
                 final SQLWarning warning = stmt.getWarnings();
                 if (warning != null) {
                     log.warn("SQLWarning from [%s]", stmt, warning);
                 }
-                Result.writeTo(result, request.getFormat(), null, out);
+                Result.writeTo(result, info.format, null, out);
             }
             // in case the query took too long
-            queries.put(request.getQueryId(), request.getQuery());
+            queries.put(info.qid, info);
         } catch (SQLException e) {
             // invalidate the query now so that client-side retry later will end up with 404
-            queries.invalidate(request.getQueryId());
-            log.debug("Invalidated query [%s] due to error: %s", request.getQueryId(), e.getMessage());
+            queries.invalidate(info.qid);
+            log.debug("Invalidated query [%s] due to error: %s", info.qid, e.getMessage());
             throw new IOException(e);
         } finally {
             if (!success) {
                 respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR);
             }
         }
-        log.debug("Query [%s] finished successfully", request.getQueryId());
+        log.debug("Query [%s] finished successfully", info.qid);
     }
 
-    protected abstract void execute(Request request) throws IOException;
+    protected void queryAsync(Request request) throws IOException { // NOSONAR
+        final QueryInfo info = request.getQueryInfo();
+        log.debug("Executing async query [%s]...", info.qid);
+
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = datasource.getConnection();
+            stmt = conn.createStatement();
+            final Result<?> result;
+            if (request.isMutation()) {
+                result = Result.of(stmt.executeQuery(info.query));
+            } else {
+                result = Result.of(rs = stmt.executeQuery(info.query));
+            }
+            queries.put(info.qid, info.setResult(result));
+            log.debug("Async query [%s] returned successfully", info.qid);
+            respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
+        } catch (SQLException e) {
+            // invalidate the query now so that client-side retry later will end up with 404
+            queries.invalidate(info.qid);
+            log.debug("Invalidated query [%s] due to error: %s", info.qid, e.getMessage());
+            throw new IOException(e);
+        } finally {
+            if (rs != null || stmt != null || conn != null) {
+                info.setResources(rs, stmt, conn);
+            }
+        }
+    }
 
     /**
-     * Sets response code to 200 and gets raw response output stream.
+     * Sets necessary response headers like {@code Content-Type} and
+     * {@code Content-Encoding} before writing any data.
+     *
+     * @param request non-null request object
+     * @throws IOException when failed to set response headers
+     */
+    protected abstract void setResponseHeaders(Request request) throws IOException;
+
+    /**
+     * Sets response code to 200 and gets raw response output stream for writing.
      *
      * @param request non-null request object
      * @return raw response output stream
      * @throws IOException when failed to get response output stream
      */
-    protected abstract OutputStream getResponseOutputStream(Request request) throws IOException;
+    protected abstract OutputStream prepareResponse(Request request) throws IOException;
 
     protected abstract void redirect(Request request) throws IOException;
 
@@ -298,15 +424,25 @@ public abstract class BridgeServer {
         respond(request, code, null);
     }
 
-    protected abstract void showConfig(Object userObject) throws IOException;
+    protected final boolean checkAcl(String token, InetAddress address) {
+        log.debug("Checking ACL...");
+        for (ServerAcl sa : acl) {
+            if (sa.token.equals(token) && sa.isValid(address)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    protected void dispatch(String method, String path, Map<String, String> headers, Map<String, String> params,
-            Object userObject) throws IOException {
+    protected abstract void showConfig(Object implementation) throws IOException;
+
+    protected void dispatch(String method, String path, InetSocketAddress clientAddress, String encodedToken,
+            Map<String, String> headers, Map<String, String> params, Object implementation) throws IOException {
         if (!path.startsWith(context)) {
             throw new IOException(Utils.format("Request URI must starts with [%s]", context));
         } else if (path.endsWith(PATH_CONFIG) && (path.length() == context.length() + PATH_CONFIG.length())) {
-            log.debug("Sending server configuration");
-            showConfig(userObject);
+            log.debug("Sending server configuration to %s", clientAddress);
+            showConfig(implementation);
             return;
         } else {
             path = path.substring(context.length());
@@ -314,8 +450,6 @@ public abstract class BridgeServer {
                 path = path.substring(1);
             }
         }
-
-        final JdbcDialect dialect = ConnectionManager.findDialect(headers.get(HEADER_USER_AGENT));
 
         String qid = headers.get(HEADER_QUERY_ID);
         String txid = headers.get(HEADER_TRANSACTION_ID);
@@ -361,15 +495,15 @@ public abstract class BridgeServer {
             }
         }
 
-        final String queryMode = params.get(PARAM_QUERY_MODE);
+        final String queryMode = params.getOrDefault(PARAM_QUERY_MODE, headers.get(HEADER_QUERY_MODE));
         final QueryMode mode;
         if (Checker.isNullOrEmpty(queryMode)) {
-            mode = Checker.isNullOrEmpty(qid) ? QueryMode.SUBMIT_QUERY : QueryMode.DIRECT_QUERY;
+            mode = Checker.isNullOrEmpty(qid) ? QueryMode.SUBMIT : QueryMode.DIRECT;
         } else {
             mode = QueryMode.of(queryMode);
         }
-        Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, dialect,
-                userObject);
+        Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, encodedToken,
+                headers.get(HEADER_QUERY_USER), headers.get(HEADER_USER_AGENT), implementation);
         log.debug("Dispatching %s", request);
         if (Checker.isNullOrBlank(request.getQuery())) {
             log.warn("Non-existent or expired %s", request);
@@ -378,21 +512,44 @@ public abstract class BridgeServer {
             respond(request, HttpURLConnection.HTTP_OK);
         } else {
             switch (request.getQueryMode()) {
-                case SUBMIT_QUERY: { // submit query only
-                    queries.put(request.getQueryId(), request.getQuery());
+                case SUBMIT: {
+                    queries.put(request.getQueryId(), request.getQueryInfo());
                     respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
                     break;
                 }
-                case SUBMIT_REDIRECT: { // submit query and then redirect
-                    queries.put(request.getQueryId(), request.getQuery());
+                case REDIRECT: {
+                    queries.put(request.getQueryId(), request.getQueryInfo());
                     redirect(request);
                     break;
                 }
-                case DIRECT_QUERY:
+                case ASYNC: {
+                    if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+                        respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+                    } else {
+                        setResponseHeaders(request);
+                        queryAsync(request);
+                    }
+                    break;
+                }
+                case DIRECT:
                 case MUTATION: {
-                    execute(request);
-                    // queries.invalidate(request.getQueryId());
-                    // log.debug("Explicitly removed cached query [%s]", request.getQueryId());
+                    if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+                        respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+                    } else {
+                        setResponseHeaders(request);
+                        if (request.hasResult()) {
+                            log.debug("Reusing cached result for query [%s]...", request.getQueryId());
+                            try (QueryInfo info = request.getQueryInfo();
+                                    Result<?> result = info.getResult();
+                                    OutputStream out = request.getCompression().provider()
+                                            .compress(prepareResponse(request))) {
+                                Result.writeTo(result, info.format, null, out);
+                                log.debug("Query [%s] finished successfully", info.qid);
+                            }
+                        } else {
+                            query(request);
+                        }
+                    }
                     break;
                 }
                 default:
@@ -426,5 +583,19 @@ public abstract class BridgeServer {
         Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
 
         server.start();
+    }
+
+    @Override
+    public void onRemoval(String key, QueryInfo value, RemovalCause cause) {
+        if (value != null) {
+            log.debug("Releasing cached query [%s] due to %s", key, cause);
+            final Result<?> result = value.getResult();
+            if (result != null && result.isActive()) {
+                log.debug("Skip active result and relevant resources as they are being used somewhere else");
+            } else {
+                value.close();
+                log.debug("Released cached query [%s] due to %s", key, cause);
+            }
+        }
     }
 }

@@ -16,6 +16,10 @@
 package io.github.jdbcx;
 
 public interface ResultMapper {
+    default String quoteIdentifier(String name) {
+        return new StringBuilder().append('"').append(Utils.escape(name, '"', '"')).append('"').toString();
+    }
+
     String toColumnType(Field f);
 
     default String toColumnDefinition(Field... fields) {
@@ -25,20 +29,16 @@ public interface ResultMapper {
         }
 
         Field f = fields[0];
-        char quote = '`';
-        char escape = '\\';
         StringBuilder builder = new StringBuilder();
-        builder.append(quote).append(Utils.escape(f.name(), quote, escape)).append(quote).append(' ')
-                .append(toColumnType(f));
+        builder.append(quoteIdentifier(f.name())).append(' ').append(toColumnType(f));
         for (int i = 1; i < len; i++) {
             f = fields[i];
-            builder.append(',').append(quote).append(Utils.escape(f.name(), quote, escape)).append(quote).append(' ')
-                    .append(toColumnType(f));
+            builder.append(',').append(quoteIdentifier(f.name())).append(' ').append(toColumnType(f));
         }
         return builder.toString();
     }
 
     default String toRemoteTable(String url, Format format, Compression compress, Result<?> result) {
-        return url;
+        return new StringBuilder((url != null ? url.length() : 4) + 2).append('\'').append(url).append('\'').toString();
     }
 }

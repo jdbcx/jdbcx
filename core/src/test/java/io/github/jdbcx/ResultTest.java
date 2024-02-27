@@ -197,4 +197,42 @@ public class ResultTest {
         Assert.assertEquals(r.type(), DefaultRow.class);
         Assert.assertEquals(r.get(String.class), "a");
     }
+
+    @Test(groups = "unit")
+    public void testActive() {
+        Result<?> result = Result.of("123");
+        Assert.assertFalse(result.isActive());
+        Assert.assertEquals(result.fields(), Collections.singletonList(Field.DEFAULT));
+        Assert.assertFalse(result.isActive());
+        Assert.assertEquals(result.get(), "123");
+        Assert.assertTrue(result.isActive());
+        result.close();
+        Assert.assertFalse(result.isActive());
+        Assert.assertEquals(result.get(), "123");
+        Assert.assertTrue(result.isActive());
+
+        try (Result<?> r = result.update().build()) {
+            Assert.assertTrue(result.isActive());
+            Assert.assertFalse(r.isActive());
+            Assert.assertEquals(r.get(String.class), "123");
+            Assert.assertTrue(r.isActive());
+            Assert.assertTrue(result.isActive());
+        }
+
+        try (Result<?> r = result.update().build()) {
+            Assert.assertTrue(result.isActive());
+            Assert.assertFalse(r.isActive());
+            Assert.assertEquals(r.get(String.class, new ErrorHandler("321")), "123");
+            Assert.assertTrue(r.isActive());
+            Assert.assertTrue(result.isActive());
+        }
+
+        try (Result<?> r = result.update().build()) {
+            Assert.assertTrue(result.isActive());
+            Assert.assertFalse(r.isActive());
+            Assert.assertNotNull(r.rows());
+            Assert.assertTrue(r.isActive());
+            Assert.assertTrue(result.isActive());
+        }
+    }
 }

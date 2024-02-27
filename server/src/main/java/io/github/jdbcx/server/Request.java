@@ -15,60 +15,58 @@
  */
 package io.github.jdbcx.server;
 
-import java.io.Serializable;
 import java.util.Objects;
-import java.util.UUID;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcDialect;
+import io.github.jdbcx.QueryMode;
+import io.github.jdbcx.Result;
 
-public class Request implements Serializable {
+public class Request {
     protected final QueryMode mode;
     protected final String method;
     protected final boolean hasQid;
-    protected final String qid;
-    protected final String query;
-    protected final String txid;
-    protected final Format format;
-    protected final Compression compress;
+    protected final QueryInfo info;
+    protected final JdbcDialect dialect;
+    protected final Object implementation;
 
-    protected final transient JdbcDialect dialect;
-
-    protected final transient Object userObject;
+    protected Request(String method, QueryMode mode, QueryInfo info, JdbcDialect dialect, Object implementation) {
+        this.method = method != null ? method : Constants.EMPTY_STRING;
+        this.mode = mode != null ? mode : QueryMode.SUBMIT;
+        this.hasQid = true;
+        this.info = Checker.nonNull(info, QueryInfo.class);
+        this.dialect = dialect;
+        this.implementation = implementation;
+    }
 
     protected Request(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, JdbcDialect dialect, Object userObject) {
+            Compression compress, String accessToken, String user, String client, JdbcDialect dialect,
+            Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
-        this.mode = mode != null ? mode : QueryMode.SUBMIT_QUERY;
-        if (Checker.isNullOrEmpty(qid)) {
-            this.hasQid = false;
-            this.qid = UUID.randomUUID().toString();
-        } else {
-            this.hasQid = true;
-            this.qid = qid;
-        }
-        this.query = Checker.isNullOrBlank(query) ? Constants.EMPTY_STRING : query;
-        this.txid = txid != null ? txid : Constants.EMPTY_STRING;
-        this.format = format != null ? format : Format.TSV;
-        this.compress = compress != null ? compress : Compression.NONE;
-
+        this.mode = mode != null ? mode : QueryMode.SUBMIT;
+        this.hasQid = !Checker.isNullOrEmpty(qid);
+        this.info = new QueryInfo(qid, query, txid, format, compress, accessToken, user, client);
         this.dialect = dialect;
-        this.userObject = userObject;
+        this.implementation = implementation;
     }
 
     public boolean hasCompression() {
-        return compress != Compression.NONE;
+        return info.compress != Compression.NONE;
     }
 
     public boolean hasQueryId() {
         return hasQid;
     }
 
+    public boolean hasResult() {
+        return info.getResult() != null;
+    }
+
     public boolean isTransactional() {
-        return !txid.isEmpty();
+        return !info.txid.isEmpty();
     }
 
     public boolean isMutation() {
@@ -84,35 +82,35 @@ public class Request implements Serializable {
     }
 
     public String getQueryId() {
-        return qid;
+        return info.qid;
+    }
+
+    public QueryInfo getQueryInfo() {
+        return info;
     }
 
     public String getQuery() {
-        return query;
+        return info.query;
     }
 
     public String getTransactionId() {
-        return txid;
+        return info.txid;
     }
 
     public Format getFormat() {
-        return format;
+        return info.format;
     }
 
     public Compression getCompression() {
-        return compress;
+        return info.compress;
     }
 
     public JdbcDialect getDialect() {
         return dialect;
     }
 
-    public <T> T getUserObject(Class<T> clazz) {
-        return clazz.cast(userObject);
-    }
-
-    public String toUrl() {
-        return toUrl(null);
+    public <T> T getImplementation(Class<T> clazz) {
+        return clazz.cast(implementation);
     }
 
     public String toUrl(String baseUrl) {
@@ -120,11 +118,17 @@ public class Request implements Serializable {
         if (!Checker.isNullOrEmpty(baseUrl)) {
             builder.append(baseUrl);
         }
-        builder.append(getQueryId()).append(format.fileExtension());
-        if (compress != Compression.NONE) {
-            builder.append(compress.fileExtension());
+        builder.append(info.qid).append(info.format.fileExtension());
+        if (info.compress != Compression.NONE) {
+            builder.append(info.compress.fileExtension());
         }
-        return builder.toString();
+
+        String url = builder.toString();
+        Result<?> result = info.getResult();
+        if (result != null) {
+            url = dialect.getMapper().toRemoteTable(url, info.format, info.compress, result);
+        }
+        return url;
     }
 
     @Override
@@ -133,12 +137,9 @@ public class Request implements Serializable {
         int result = prime + mode.hashCode();
         result = prime * result + method.hashCode();
         result = prime * result + (hasQid ? 1231 : 1237);
-        result = prime * result + qid.hashCode();
-        result = prime * result + query.hashCode();
-        result = prime * result + txid.hashCode();
-        result = prime * result + format.hashCode();
-        result = prime * result + compress.hashCode();
-        result = prime * result + userObject.hashCode();
+        result = prime * result + info.hashCode();
+        result = prime * result + dialect.hashCode();
+        result = prime * result + (implementation == null ? 0 : implementation.hashCode());
         return result;
     }
 
@@ -151,9 +152,8 @@ public class Request implements Serializable {
         }
 
         Request other = (Request) obj;
-        return method.equals(other.method) && mode == other.mode && hasQid == other.hasQid
-                && qid.equals(other.qid) && query.equals(other.query) && txid.equals(other.txid)
-                && format == other.format && compress == other.compress && Objects.equals(userObject, other.userObject);
+        return method.equals(other.method) && mode == other.mode && info.equals(other.info)
+                && dialect.equals(other.dialect) && Objects.equals(implementation, other.implementation);
     }
 
     @Override
@@ -163,7 +163,9 @@ public class Request implements Serializable {
         if (!hasQid) {
             builder.append('?');
         }
-        return builder.append(qid).append(", tx=").append(txid).append(", fmt=").append(format).append(", comp=")
-                .append(compress).append(", impl=").append(userObject).append("]:\n").append(query).toString();
+        return builder.append(info.qid).append(", tx=").append(info.txid).append(", fmt=").append(info.format)
+                .append(", comp=").append(info.compress).append(", user=").append(info.user).append(", client=")
+                .append(info.client).append(", impl=").append(implementation).append("]:\n").append(info.query)
+                .toString();
     }
 }

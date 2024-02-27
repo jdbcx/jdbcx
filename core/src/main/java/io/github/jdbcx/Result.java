@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -264,9 +265,14 @@ public final class Result<T> implements AutoCloseable {
             ResultSetMetaData metaData = rs.getMetaData();
             int columns = metaData.getColumnCount();
             List<Field> fields = new ArrayList<>(columns);
-            for (int i = 0; i < columns; i++) {
-                int index = i + 1;
-                fields.add(Field.of(metaData.getColumnName(index), metaData.getColumnType(index)));
+            for (int index = 1; index <= columns; index++) {
+                int precision = metaData.getPrecision(index);
+                if (precision <= 0) {
+                    precision = metaData.getColumnDisplaySize(index);
+                }
+                fields.add(Field.of(metaData.getColumnName(index), JDBCType.valueOf(metaData.getColumnType(index)),
+                        metaData.isNullable(index) != ResultSetMetaData.columnNoNulls, precision,
+                        metaData.getScale(index), metaData.isSigned(index)));
             }
             fields = Collections.unmodifiableList(fields);
             return new Result<>(fields, rs, ResultSet.class, new IterableResultSet(rs, fields));
@@ -291,7 +297,7 @@ public final class Result<T> implements AutoCloseable {
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        return new Result<>(fields, Checker.nonNull(input, InputStream.class.getSimpleName()), input.getClass(),
+        return new Result<>(fields, Checker.nonNull(input, InputStream.class), input.getClass(),
                 new IterableInputStream(fields, input, delimiter));
     }
 
@@ -303,7 +309,7 @@ public final class Result<T> implements AutoCloseable {
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        return new Result<>(fields, Checker.nonNull(reader, Reader.class.getSimpleName()), reader.getClass(),
+        return new Result<>(fields, Checker.nonNull(reader, Reader.class), reader.getClass(),
                 new IterableReader(fields, reader, delimiter));
     }
 
@@ -324,8 +330,8 @@ public final class Result<T> implements AutoCloseable {
     }
 
     /**
-     * Checks whether this result object is active for reading, meaning that
-     * either {@code get(*)} or {@link #rows()} has been called at least once.
+     * Checks whether this result object is active for reading, meaning that one of
+     * {@code get(*)} and {@link #rows()} has been called at least once.
      *
      * @return true if the the result object is active for reading; false otherwise
      */
@@ -466,6 +472,7 @@ public final class Result<T> implements AutoCloseable {
                 throw new IllegalStateException(e);
             }
         }
+        active.compareAndSet(true, false);
     }
 
     private Result(List<Field> fields, T rawValue, Class<?> valueType, Iterable<Row> rows) {

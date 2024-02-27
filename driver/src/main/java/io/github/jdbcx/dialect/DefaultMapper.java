@@ -43,7 +43,11 @@ public class DefaultMapper implements ResultMapper {
                 break;
             case CHAR:
             case NCHAR:
-                type.append("CHAR(").append(f.precision()).append(')');
+                if (f.precision() < 1) {
+                    type.append("VARCHAR");
+                } else {
+                    type.append("CHAR(").append(f.precision()).append(')');
+                }
                 break;
             case BOOLEAN:
             case TINYINT:
@@ -53,7 +57,7 @@ public class DefaultMapper implements ResultMapper {
                 type.append("SMALLINT");
                 break;
             case INTEGER:
-                type.append("INT");
+                type.append("INTEGER");
                 break;
             case BIGINT:
                 type.append("BIGINT");
@@ -89,9 +93,6 @@ public class DefaultMapper implements ResultMapper {
                     type.append('(').append(f.precision()).append(')');
                 }
                 break;
-            // case ARRAY:
-            // case OTHER:
-            // case NULL:
             default:
                 log.warn("Not sure how to map JDBC type [%s], use VARCHAR instead", f.type());
                 type.append("VARCHAR");

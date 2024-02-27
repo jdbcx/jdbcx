@@ -15,9 +15,6 @@
  */
 package io.github.jdbcx.dialect;
 
-import java.sql.SQLException;
-
-import io.github.jdbcx.Field;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
@@ -33,12 +30,6 @@ public final class DefaultDialect implements JdbcDialect {
     @Override
     public ResultMapper getMapper() {
         return mapper;
-    }
-
-    @Override
-    public void createTemporaryTable(String table, Field... fields) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createTemporaryTable'");
     }
 
     private DefaultDialect() {

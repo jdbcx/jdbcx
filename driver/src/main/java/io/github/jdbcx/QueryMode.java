@@ -13,13 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.server;
+package io.github.jdbcx;
+
+import java.util.Locale;
 
 public enum QueryMode {
-    SUBMIT_QUERY("s"), // submit query without execution
-    SUBMIT_REDIRECT("r"), // submit query and redirect
-    ASYNC_QUERY("a"),
-    DIRECT_QUERY("d"), // execute query
+    /**
+     * Submits the query for execution later.
+     */
+    SUBMIT("s"),
+    /**
+     * Submits the query and expects a redirect to the URL for retrieving results.
+     */
+    REDIRECT("r"),
+    /**
+     * Executes the query asynchronously immediately.
+     */
+    ASYNC("a"),
+    /**
+     * Executes the query and waits the result.
+     */
+    DIRECT("d"), // execute query
+    /**
+     * Executes a mutation and waits for the result.
+     */
     MUTATION("m"); // mutation
 
     private String code;
@@ -35,24 +52,24 @@ public enum QueryMode {
     public static QueryMode of(String str) {
         QueryMode mode = null;
         if (str == null || str.isEmpty()) {
-            mode = SUBMIT_QUERY;
+            mode = SUBMIT;
         } else if (str.length() == 1) {
             switch (str.charAt(0)) {
                 case 'a':
                 case 'A':
-                    mode = ASYNC_QUERY;
+                    mode = ASYNC;
                     break;
                 case 's':
                 case 'S':
-                    mode = SUBMIT_QUERY;
+                    mode = SUBMIT;
                     break;
                 case 'r':
                 case 'R':
-                    mode = SUBMIT_REDIRECT;
+                    mode = REDIRECT;
                     break;
                 case 'd':
                 case 'D':
-                    mode = DIRECT_QUERY;
+                    mode = DIRECT;
                     break;
                 case 'm':
                 case 'M':
@@ -61,6 +78,8 @@ public enum QueryMode {
                 default:
                     break;
             }
+        } else {
+            mode = valueOf(str.toUpperCase(Locale.ROOT));
         }
         if (mode == null) {
             throw new IllegalArgumentException("Unsupported query mode: " + str);

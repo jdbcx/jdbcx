@@ -44,10 +44,6 @@ import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.WebExecutor;
 
 public class WebInterpreter extends AbstractInterpreter {
-    static final String HEADER_AUTHORIZATION = "Authorization";
-    static final String AUTH_SCHEME_BASIC = "Basic ";
-    static final String AUTH_SCHEME_BEARER = "Bearer ";
-
     public static final String KEY_HEADERS = "headers";
 
     public static final Option OPTION_BASE_URL = Option
@@ -91,14 +87,14 @@ public class WebInterpreter extends AbstractInterpreter {
     static final Map<String, String> getHeaders(VariableTag tag, Properties config) {
         Map<String, String> headers = new HashMap<>(Utils
                 .toKeyValuePairs(Utils.applyVariables(OPTION_REQUEST_HEADERS.getValue(config), tag, config)));
-        String secret = Utils.applyVariables(OPTION_AUTH_BEARER_TOKEN.getValue(config), tag, config);
-        if (!Checker.isNullOrBlank(secret)) { // recommended
-            headers.put(HEADER_AUTHORIZATION, AUTH_SCHEME_BEARER.concat(secret));
+        String token = Utils.applyVariables(OPTION_AUTH_BEARER_TOKEN.getValue(config), tag, config);
+        if (!Checker.isNullOrBlank(token)) { // recommended
+            headers.put(WebExecutor.HEADER_AUTHORIZATION, WebExecutor.AUTH_SCHEME_BEARER.concat(token));
         } else { // less secure
-            secret = OPTION_AUTH_BASIC_USER.getValue(config);
-            if (!Checker.isNullOrBlank(secret)) {
-                headers.put(HEADER_AUTHORIZATION, AUTH_SCHEME_BASIC.concat(Base64.getEncoder()
-                        .encodeToString(new StringBuilder(secret).append(':')
+            token = OPTION_AUTH_BASIC_USER.getValue(config);
+            if (!Checker.isNullOrBlank(token)) {
+                headers.put(WebExecutor.HEADER_AUTHORIZATION, WebExecutor.AUTH_SCHEME_BASIC.concat(Base64.getEncoder()
+                        .encodeToString(new StringBuilder(token).append(':')
                                 .append(OPTION_AUTH_BASIC_PASSWORD.getValue(config)).toString()
                                 .getBytes(Constants.DEFAULT_CHARSET))));
             }

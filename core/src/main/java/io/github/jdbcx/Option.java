@@ -189,12 +189,17 @@ public final class Option implements Serializable {
             .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
                     "stream" });
 
+    public static final Option SERVER_AUTH = Option.of(new String[] { "server.auth",
+            "Whether to enable server-side authentication, which requires bearer token for submitting query for execution",
+            Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option SERVER_URL = Option
             .of(new String[] { "server.url", "Bridge server URL used for executing the query remotely." });
     public static final Option SERVER_HOST = Option.of(new String[] { "server.host", "Bridge server host." });
     public static final Option SERVER_PORT = Option.of("server.port", "Bridge server port.", "8080");
     public static final Option SERVER_CONTEXT = Option.of("server.context",
             "Server web context starts and ends with backslash", "/");
+    public static final Option SERVER_TOKEN = Option.of(new String[] { "server.token",
+            "Token required to access bridge server with authentication and authorization enabled." });
 
     public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert",
             "Path to the client SSL/TLS certificate file to use for authenticated requests." });
