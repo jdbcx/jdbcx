@@ -62,7 +62,7 @@ import java.util.function.UnaryOperator;
  */
 public final class Utils {
     private static <T> T findFirstService(Class<? extends T> serviceInterface, boolean preferCustomImpl) {
-        Checker.nonNull(serviceInterface, "serviceInterface");
+        Checker.nonNull(serviceInterface, Class.class);
 
         String className = Utils.class.getName();
         String packageName = className.substring(0, className.lastIndexOf('.') + 1);

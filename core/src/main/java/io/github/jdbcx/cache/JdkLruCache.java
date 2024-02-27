@@ -90,6 +90,6 @@ public class JdkLruCache<K, V> implements Cache<K, V> {
 
     @Override
     public <T> T unwrap(Class<T> clazz) {
-        return Checker.nonNull(clazz, Class.class.getName()).cast(cache);
+        return Checker.nonNull(clazz, Class.class).cast(cache);
     }
 }

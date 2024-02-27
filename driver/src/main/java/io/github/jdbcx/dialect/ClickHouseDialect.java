@@ -18,20 +18,11 @@ package io.github.jdbcx.dialect;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
-public final class DefaultDialect implements JdbcDialect {
-    private static final JdbcDialect instance = new DefaultDialect();
-
-    static final DefaultMapper mapper = new DefaultMapper();
-
-    public static JdbcDialect getInstance() {
-        return instance;
-    }
+public class ClickHouseDialect implements JdbcDialect {
+    static final ClickHouseMapper mapper = new ClickHouseMapper();
 
     @Override
     public ResultMapper getMapper() {
         return mapper;
-    }
-
-    private DefaultDialect() {
     }
 }

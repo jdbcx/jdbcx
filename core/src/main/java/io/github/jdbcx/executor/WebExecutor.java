@@ -55,9 +55,14 @@ public class WebExecutor extends AbstractExecutor {
 
     static final String DEFAULT_USER_AGENT = "JDBCX/" + Version.current().toShortString();
 
+    public static final String AUTH_SCHEME_BASIC = "Basic ";
+    public static final String AUTH_SCHEME_BEARER = "Bearer ";
+
     public static final String HEADER_ACCEPT = "Accept";
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String HEADER_USER_AGENT = "User-Agent";
+    public static final String HEADER_QUERY_MODE = "X-Query-Mode";
+    public static final String HEADER_QUERY_USER = "X-Query-User";
 
     public static final Option OPTION_CONNECT_TIMEOUT = Option
             .of(new String[] { "connect.timeout",

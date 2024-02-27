@@ -46,16 +46,45 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
     @Test(groups = { "integration" })
     public void testConnect() throws Exception {
-        // Properties props = new Properties();
-        // WrappedDriver d = new WrappedDriver();
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
 
-        // try (Connection conn = d.connect("jdbc:ch://" + getClickHouseServer(),
-        // props);
-        // Statement stmt = conn.createStatement();
-        // ResultSet rs = stmt.executeQuery("select * from url('" + getServerUrl() + "',
-        // 'LineAsString')")) {
-        // Assert.assertFalse(rs.next());
-        // }
+        try (Connection conn = d.connect("jdbc:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery("select * from url('" + getServerUrl() + "?q=select%201','LineAsString')")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertTrue(rs.getString(1).length() > 0);
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "select * from url('" + getServerUrl() + "?m=d&q=select+1+as+r','CSVWithNames')")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertEquals(rs.getMetaData().getColumnName(1), "r");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "1");
+                Assert.assertFalse(rs.next());
+            }
+
+            int count = 70000;
+            String query = "select *, b::string as c from (select generate_series a, a*random() b from generate_series("
+                    + count + ",1,-1))";
+            try (ResultSet rs = stmt.executeQuery(
+                    "select * from url('" + getServerUrl() + "?m=d&q=" + Utils.encode(query) + "','CSVWithNames')")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 3);
+                Assert.assertEquals(rs.getMetaData().getColumnName(1), "a");
+                Assert.assertEquals(rs.getMetaData().getColumnName(2), "b");
+                Assert.assertEquals(rs.getMetaData().getColumnName(3), "c");
+                while (rs.next()) {
+                    Assert.assertEquals(rs.getInt(1), count--);
+                    Assert.assertEquals(rs.getString(2), rs.getString(3));
+                }
+                Assert.assertEquals(count, 0);
+            }
+        }
     }
 
     @Test(groups = { "integration" })
@@ -256,7 +285,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         final String jdbcUrl = "jdbc:ch://" + chServerUrl;
 
         Properties props = new Properties();
-        props.setProperty("jdbcx.bridge.url", bridgeUrl);
+        props.setProperty("jdbcx.server.url", bridgeUrl);
         WrappedDriver d = new WrappedDriver();
 
         try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
@@ -265,7 +294,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
                 url = rs.getString(1);
-                Assert.assertTrue(url.startsWith("http"));
+                Assert.assertTrue(url.startsWith("'http"));
                 Assert.assertFalse(rs.next());
             }
 
@@ -280,13 +309,9 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             stmt.execute("install httpfs");
 
             try (ResultSet rs = stmt
-                    .executeQuery(Utils.format(
-                            "select * from read_csv('{{ bridge.db(url=%s): select 'x' }}', header=true, auto_detect=true)",
-                            jdbcUrl))) {
+                    .executeQuery(Utils.format("select * from {{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
-                // Assert.assertEquals(rs.getString(1), "'x'");
-                // Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getString(1), "x");
                 Assert.assertFalse(rs.next());
             }
@@ -296,7 +321,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();) {
             try (ResultSet rs = stmt
                     .executeQuery(Utils.format(
-                            "select * from url('{{ bridge.db(url=%s): select 'x' }}', 'CSVWithNames')", jdbcUrl))) {
+                            "select * from {{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getString(1), "x");

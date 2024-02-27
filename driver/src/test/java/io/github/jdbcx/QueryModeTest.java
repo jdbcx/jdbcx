@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.server;
+package io.github.jdbcx;
 
 import java.util.Locale;
 
@@ -23,10 +23,12 @@ import org.testng.annotations.Test;
 public class QueryModeTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertEquals(QueryMode.of(null), QueryMode.SUBMIT_QUERY);
-        Assert.assertEquals(QueryMode.of(""), QueryMode.SUBMIT_QUERY);
+        Assert.assertEquals(QueryMode.of(null), QueryMode.SUBMIT);
+        Assert.assertEquals(QueryMode.of(""), QueryMode.SUBMIT);
         for (QueryMode m : QueryMode.values()) {
             Assert.assertEquals(QueryMode.of(m.code()), m);
+            Assert.assertEquals(QueryMode.of(m.name()), m);
+            Assert.assertEquals(QueryMode.of(m.name().toLowerCase()), m);
             Assert.assertEquals(QueryMode.of(m.code().toLowerCase(Locale.ROOT)), m);
             Assert.assertEquals(QueryMode.of(m.code().toUpperCase(Locale.ROOT)), m);
         }

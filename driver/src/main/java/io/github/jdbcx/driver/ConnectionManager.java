@@ -25,9 +25,11 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
@@ -59,7 +61,7 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 public final class ConnectionManager implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(ConnectionManager.class);
 
-    private static final Cache<String, JdbcDialect> cache = Cache.create(50, 0, ConnectionManager::getDialect);
+    private static final Cache<String, JdbcDialect> cache = Cache.create(50, 0, ConnectionManager::createDialect);
 
     private static final List<Field> detailFields = Collections.unmodifiableList(
             Arrays.asList(Field.of("name"), Field.of("value"), Field.of("default_value"), Field.of("description"),
@@ -116,29 +118,26 @@ public final class ConnectionManager implements AutoCloseable {
         }
     }
 
-    static final String getDatabaseProduct(Connection conn) {
-        if (conn == null) {
-            return Constants.EMPTY_STRING;
-        }
-        StringBuilder builder = new StringBuilder();
-        try {
-            DatabaseMetaData metaData = conn.getMetaData();
-            builder.append(metaData.getDatabaseProductName()).append(' ').append(metaData.getDatabaseMajorVersion())
-                    .append('.').append(metaData.getDatabaseMinorVersion());
-        } catch (SQLException e) {
-            log.warn("Failed to retrieve database product information, use class name of %s insteadd", conn, e);
-            builder.append(conn.getClass().getName());
-        }
-        return builder.toString();
+    public static final JdbcDialect findDialect(String product) {
+        return cache.get(product);
     }
 
-    static final JdbcDialect getDialect(String product) {
+    static final JdbcDialect createDialect(String product) {
         if (product != null) {
-            final int index = product.indexOf('-');
+            int index = product.indexOf('/');
             if (index != -1) {
-                product = product.substring(0, index);
+                product = product.substring(0, index).concat("Dialect");
+            } else {
+                index = product.lastIndexOf('.');
+                if (index != -1) {
+                    product = product.substring(index + 1);
+                }
+                if (!product.isEmpty()) {
+                    product = new StringBuilder(product.length())
+                            .append(product.substring(0, 1).toLowerCase(Locale.ROOT)).append(product.substring(1))
+                            .toString();
+                }
             }
-            product += "Dialect";
         }
         return Utils.createInstance(JdbcDialect.class, product, DefaultDialect.getInstance());
     }
@@ -149,6 +148,7 @@ public final class ConnectionManager implements AutoCloseable {
     private final Connection conn;
     private final String bridgeUrl;
     private final Properties bridgeConfig;
+    private final String bridgeToken;
     private final String jdbcUrl;
     private final Properties props;
     private final Properties normalizedProps;
@@ -158,6 +158,7 @@ public final class ConnectionManager implements AutoCloseable {
 
     private final ClassLoader classLoader;
 
+    private final AtomicReference<ConnectionMetaData> metaDataRef;
     private final AtomicReference<JdbcDialect> dialectRef;
 
     ConnectionManager(DriverInfo info) throws SQLException {
@@ -186,6 +187,10 @@ public final class ConnectionManager implements AutoCloseable {
         this.bridgeUrl = bridge;
         this.bridgeConfig = new Properties();
 
+        String token = Option.SERVER_TOKEN.getJdbcxValue(originalProps).trim();
+        this.bridgeToken = Checker.isNullOrEmpty(token) ? token
+                : Base64.getEncoder().encodeToString(token.getBytes(Constants.DEFAULT_CHARSET));
+
         this.jdbcUrl = url;
         this.props = extensionProps;
         this.normalizedProps = normalizedProps;
@@ -198,6 +203,7 @@ public final class ConnectionManager implements AutoCloseable {
                 Utils.normalizePath(originalProps.getProperty(Option.CUSTOM_CLASSPATH.getJdbcxName(),
                         Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX))));
 
+        this.metaDataRef = new AtomicReference<>();
         this.dialectRef = new AtomicReference<>();
     }
 
@@ -247,10 +253,27 @@ public final class ConnectionManager implements AutoCloseable {
         return tag != null ? tag : getDialect().getVariableTag();
     }
 
+    public ConnectionMetaData getMetaData() {
+        ConnectionMetaData metaData = metaDataRef.get();
+        if (metaData == null) {
+            try {
+                metaData = new ConnectionMetaData(conn.getMetaData());
+            } catch (Exception e) {
+                log.warn("Failed to get database meta data from %s, use class name instead", conn, e);
+                metaData = new ConnectionMetaData(conn.getClass().getPackage().getName());
+            }
+
+            if (!metaDataRef.compareAndSet(null, metaData)) {
+                metaData = metaDataRef.get();
+            }
+        }
+        return metaData;
+    }
+
     public JdbcDialect getDialect() {
         JdbcDialect dialect = dialectRef.get();
         if (dialect == null) {
-            dialect = cache.get(ConnectionManager.getDatabaseProduct(conn));
+            dialect = cache.get(getMetaData().getProduct());
             if (!dialectRef.compareAndSet(null, dialect)) {
                 dialect = dialectRef.get();
             }
@@ -324,6 +347,15 @@ public final class ConnectionManager implements AutoCloseable {
             }
         }
         return new Properties(bridgeConfig);
+    }
+
+    /**
+     * Gets base64 encoded token to access bridge server.
+     *
+     * @return non-null base64 encoded token
+     */
+    public String getBridgeToken() {
+        return bridgeToken;
     }
 
     public String getJdbcUrl() {

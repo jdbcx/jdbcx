@@ -28,15 +28,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
+import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
+import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
@@ -61,10 +64,24 @@ public final class QueryBuilder {
         for (int i = 0, len = blocks.length; i < len; i++) {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
+                ConnectionMetaData md = manager.getMetaData();
                 Properties props = manager.getBridgeConfig();
                 VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
                 WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
+                StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT).append('=')
+                        .append(Utils.escape(md.getProduct(), ',')).append(',').append(WebExecutor.HEADER_QUERY_MODE)
+                        .append('=').append(QueryMode.ASYNC.code());
+                if (md.hasUserName()) {
+                    builder.append(',').append(WebExecutor.HEADER_QUERY_USER).append('=')
+                            .append(Utils.escape(md.getUserName(), ','));
+                }
+                WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props, builder.toString());
+                final String token = manager.getBridgeToken();
+                if (!Checker.isNullOrEmpty(token) && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(props))) {
+                    WebInterpreter.OPTION_AUTH_BEARER_TOKEN.setValue(props, token);
+                }
                 final String fullQuery;
+                // TODO escaping when server uses different variable tag
                 if (block.hasOutput()) {
                     fullQuery = tag.function(block.getContent());
                 } else {

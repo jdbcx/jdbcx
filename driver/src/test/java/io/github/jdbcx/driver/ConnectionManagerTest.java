@@ -34,10 +34,10 @@ public class ConnectionManagerTest extends BaseIntegrationTest {
     public Object[][] getDatabaseProducts() {
         return new Object[][] {
                 // jdbcUrl, expected product name
-                { "jdbcx:", "JDBCX " },
-                { "jdbcx:sqlite::memory:", "SQLite " },
-                { "jdbcx:duckdb:", "DuckDB " },
-                { "jdbcx:ch://" + getClickHouseServer(), "ClickHouse " }
+                { "jdbcx:", "JDBCX/" },
+                { "jdbcx:sqlite::memory:", "SQLite/" },
+                { "jdbcx:duckdb:", "DuckDB/" },
+                { "jdbcx:ch://" + getClickHouseServer(), "ClickHouse/" }
         };
     }
 
@@ -75,7 +75,7 @@ public class ConnectionManagerTest extends BaseIntegrationTest {
             Assert.assertTrue(conn instanceof ManagedConnection, "Should return managed connection");
             ConnectionManager manager = ((ManagedConnection) conn).getManager();
             Assert.assertNotNull(manager, "Should have non-null connection manager");
-            Assert.assertTrue(ConnectionManager.getDatabaseProduct(conn).startsWith(productName),
+            Assert.assertTrue(manager.getMetaData().getProduct().startsWith(productName),
                     Utils.format("Product name should start with '%s'", productName));
         }
     }
