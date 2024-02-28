@@ -15,7 +15,7 @@ FROM ubuntu:jammy
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
 
-ARG PRQLC_VERSION=0.11.1
+ARG PRQLC_VERSION=0.11.4
 ARG JDBCX_VERSION=0.5.0
 
 # Environment variables
