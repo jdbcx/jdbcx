@@ -34,7 +34,7 @@ docker stop bridge
 
 ### Server
 
-Bridge server uses the same `~/.jdbcx/config.properties` file for configuration. Please refer to [this](/jdbcx/jdbcx/blob/main/docker/app/.jdbcx/config.properties) used in docker image, and named database connections configured at [here](/jdbcx/jdbcx/tree/main/docker/app/.jdbcx/db).
+Bridge server uses the same `~/.jdbcx/config.properties` file for configuration. Please refer to [this](/docker/app/.jdbcx/config.properties) used in docker image, and named database connections configured at [here](/docker/app/.jdbcx/db).
 
 | Key | Value | Remark |
 | --- | ----- | ------ |
@@ -46,11 +46,11 @@ Bridge server uses the same `~/.jdbcx/config.properties` file for configuration.
 
 ### Datasource
 
-`datasource.properties` defines the default database used by bridge server. Please refer to [this](/jdbcx/jdbcx/blob/main/docker/app/datasource.properties) used in docker image.
+`datasource.properties` defines the default database used by bridge server. Please refer to [this](/docker/app/datasource.properties) used in docker image.
 
 ### Access Control
 
-`acl.properties` must be specified when authentication is enabled. Please refer to [this](/jdbcx/jdbcx/blob/main/docker/app/acl.properties) used in docker image. ACL will be ignored when `jdbcx.server.auth` is set to `false`.
+`acl.properties` must be specified when authentication is enabled. Please refer to [this](/docker/app/acl.properties) used in docker image. ACL will be ignored when `jdbcx.server.auth` is set to `false`.
 
 | Key | Value | Remark |
 | --- | ----- | ------ |
