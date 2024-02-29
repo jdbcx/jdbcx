@@ -376,7 +376,12 @@ public final class ConnectionManager implements AutoCloseable {
 
     public DatabaseMetaData getMetaData(DatabaseMetaData metaData) throws SQLException {
         try (QueryContext context = createContext()) {
-            return createDefaultListener(context).onMetaData(metaData != null ? metaData : conn.getMetaData());
+            if (metaData != null) {
+                metaDataRef.compareAndSet(null, new ConnectionMetaData(metaData));
+            } else {
+                metaData = conn.getMetaData();
+            }
+            return createDefaultListener(context).onMetaData(metaData);
         } catch (SQLException e) {
             throw e;
         } catch (Exception e) {
