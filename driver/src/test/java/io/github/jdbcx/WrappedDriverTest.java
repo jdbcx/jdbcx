@@ -43,10 +43,18 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @DataProvider(name = "queryMethod")
-    public static Object[][] getQueryMethod() {
+    public Object[][] getQueryMethod() {
         return new Object[][] {
                 { true }, // use executeQuery()
                 { false } // use execute()
+        };
+    }
+
+    @DataProvider(name = "simpleUrlAndQuery")
+    public Object[][] getSimpleUrlAndQuery() {
+        return new Object[][] {
+                { "jdbcx:shell", "echo 1" },
+                { "jdbcx:script", "1" },
         };
     }
 
@@ -79,7 +87,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "unit" })
-    public void testVariable() throws Exception {
+    public void testVariable() throws SQLException {
         String url = "jdbcx:sqlite::memory:";
         Properties props = new Properties();
         try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
@@ -103,7 +111,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "unit" })
-    public void testErrorHandling() throws Exception {
+    public void testErrorHandling() throws SQLException {
         String url = "jdbcx:script:sqlite::memory:";
         WrappedDriver d = new WrappedDriver();
         Assert.assertNotNull(d.getPropertyInfo(url, null));
@@ -162,7 +170,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testConnect() throws Exception {
+    public void testConnect() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -204,7 +212,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testGetDriverProperties() throws Exception {
+    public void testGetDriverProperties() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -222,7 +230,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testMultiLanguageQuery() throws Exception {
+    public void testMultiLanguageQuery() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -241,7 +249,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testVariableTags() throws Exception {
+    public void testVariableTags() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -287,7 +295,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(dataProvider = "queryMethod", groups = { "integration" })
-    public void testCombinedQueryResult(boolean useExecuteQuery) throws Exception {
+    public void testCombinedQueryResult(boolean useExecuteQuery) throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -323,7 +331,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testDirectQuery() throws Exception {
+    public void testDirectQuery() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -362,7 +370,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testExecTimeout() throws Exception {
+    public void testExecTimeout() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -404,7 +412,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "unit" })
-    public void testConnectToLocal() throws Exception {
+    public void testConnectToLocal() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -423,7 +431,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testInspection() throws Exception {
+    public void testInspection() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
 
@@ -437,6 +445,20 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                     Assert.assertNotNull(rs.getMetaData());
                 }
             }
+        }
+    }
+
+    @Test(dataProvider = "simpleUrlAndQuery", groups = { "integration" })
+    public void testSimpleUrlAndQuery(String url, String query) throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getString(1).trim(), "1");
+            Assert.assertFalse(rs.next());
         }
     }
 }
