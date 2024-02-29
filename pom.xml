@@ -103,6 +103,7 @@
         <jctools.version>4.0.3</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
+        <micrometer.version>1.12.3</micrometer.version>
         <msgpack.version>0.9.8</msgpack.version>
         <mysql.version>8.3.0</mysql.version>
         <parquet.version>1.13.1</parquet.version>
@@ -227,6 +228,11 @@
                 <groupId>io.burt</groupId>
                 <artifactId>jmespath-gson</artifactId>
                 <version>${jmespath.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-registry-prometheus</artifactId>
+                <version>${micrometer.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-codec</groupId>

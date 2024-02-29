@@ -145,6 +145,25 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testWriteMetrics() throws Exception {
+        final String url = getServerUrl();
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(null, config);
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        HttpURLConnection conn = web.openConnection(new URL(url + BridgeServer.PATH_METRICS), config, headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        try (InputStream input = conn.getInputStream()) {
+            String str = Stream.readAllAsString(input);
+            Assert.assertTrue(str.startsWith("# HELP"), "Should have prometheus metrics output");
+            Assert.assertTrue(str.contains("process_uptime_seconds{"), "Should have uptime metric");
+            Assert.assertTrue(str.contains("cache_evictions_total{"), "Should have cache metric");
+            Assert.assertTrue(str.contains("hikaricp_connections_max{"), "Should have connection pool metric");
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testSubmitQuery() throws IOException {
         final String url = getServerUrl();
 

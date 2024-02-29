@@ -68,6 +68,13 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         server.setExecutor(null); // Use the default executor
     }
 
+    private HttpExchange check(Object implementation) throws IOException {
+        if (!(implementation instanceof HttpExchange)) {
+            throw new IOException("Require HttpExchange to proceed but we got: " + implementation);
+        }
+        return (HttpExchange) implementation;
+    }
+
     @Override
     protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
             Compression compress, String token, String user, String client, Object implementation) throws IOException {
@@ -137,16 +144,25 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
     @Override
     protected void showConfig(Object implementation) throws IOException {
-        if (!(implementation instanceof HttpExchange)) {
-            throw new IOException("Require HttpExchange to proceed but we got: " + implementation);
-        }
-        HttpExchange exchange = (HttpExchange) implementation;
+        HttpExchange exchange = check(implementation);
 
         Headers responseHeaders = exchange.getResponseHeaders();
         responseHeaders.set(HEADER_CONTENT_TYPE, Format.TXT.mimeType());
         exchange.sendResponseHeaders(200, 0L);
         try (OutputStream out = exchange.getResponseBody()) {
             writeConfig(out);
+        }
+    }
+
+    @Override
+    protected void showMetrics(Object implementation) throws IOException {
+        HttpExchange exchange = check(implementation);
+
+        Headers responseHeaders = exchange.getResponseHeaders();
+        responseHeaders.set(HEADER_CONTENT_TYPE, Format.TXT.mimeType());
+        exchange.sendResponseHeaders(200, 0L);
+        try (OutputStream out = exchange.getResponseBody()) {
+            writeMetrics(out);
         }
     }
 

@@ -15,6 +15,9 @@ docker run --rm -it -p8080:8080 --name bridge -d jdbcx/jdbcx server
 # check server configuration
 curl 'http://localhost:8080/config'
 
+# get prometheus metrics for monitoring
+curl 'http://localhost:8080/metrics'
+
 # execute query and get result in CSV format
 curl -H 'X-Query-Mode: DIRECT' --data "select 1 as a, '2' as b" 'http://localhost:8080/'
 # same as above but uses query parameters
