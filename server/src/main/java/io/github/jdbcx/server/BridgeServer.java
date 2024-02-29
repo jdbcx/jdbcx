@@ -15,12 +15,15 @@
  */
 package io.github.jdbcx.server;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -47,6 +50,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -63,6 +67,10 @@ import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.executor.WebExecutor;
+import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
+import io.micrometer.core.instrument.binder.system.UptimeMetrics;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 
 public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
@@ -88,6 +96,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String PARAM_QUERY_MODE = "m";
 
     public static final String PATH_CONFIG = "config";
+    public static final String PATH_METRICS = "metrics";
 
     public static final long DEFAULT_REQUEST_LIMIT = 10000L;
 
@@ -196,6 +205,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return defProps;
     }
 
+    private final PrometheusMeterRegistry promRegistry;
+
     private final Cache<String, QueryInfo> queries;
 
     protected final HikariDataSource datasource;
@@ -218,36 +229,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     private final Properties essentials;
 
     protected BridgeServer(Properties props) {
-        String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
-        HikariConfig config = null;
-        if (!Checker.isNullOrEmpty(dsConfigFile)) {
-            try {
-                config = new HikariConfig(dsConfigFile);
-            } catch (Exception e) {
-                log.warn(e.getMessage());
-            }
-        }
-        if (config == null) {
-            Properties properties = new Properties(props);
-            String key = "jdbcUrl";
-            properties.setProperty(key, properties.getProperty(key, "jdbcx:"));
-            config = new HikariConfig(properties);
-        }
-        datasource = new HikariDataSource(config);
-
-        queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getJdbcxValue(props));
-
-        final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getJdbcxValue(props));
-        final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getJdbcxValue(props));
-
-        // TODO load persistent requests from disk file or database
-        Caffeine<String, QueryInfo> builder = Caffeine.newBuilder()
-                .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT).evictionListener(this);
-        if (requestTimeout > 0L) {
-            builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS);
-        }
-        queries = builder.recordStats().build();
-
         auth = Boolean.parseBoolean(Option.SERVER_AUTH.getJdbcxValue(props));
         host = Option.SERVER_HOST.getJdbcxValue(props);
         port = Integer.parseInt(Option.SERVER_PORT.getJdbcxValue(props));
@@ -281,6 +262,43 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 context = baseUrl.substring(index);
             }
         }
+
+        promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        promRegistry.config().commonTags("instance", baseUrl);
+        new UptimeMetrics().bindTo(promRegistry);
+
+        String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
+        HikariConfig config = null;
+        if (!Checker.isNullOrEmpty(dsConfigFile)) {
+            try {
+                config = new HikariConfig(dsConfigFile);
+            } catch (Exception e) {
+                log.warn(e.getMessage());
+            }
+        }
+        if (config == null) {
+            Properties properties = new Properties(props);
+            String key = "jdbcUrl";
+            properties.setProperty(key, properties.getProperty(key, "jdbcx:"));
+            config = new HikariConfig(properties);
+        }
+        config.setPoolName("default");
+        config.setMetricRegistry(promRegistry);
+        datasource = new HikariDataSource(config);
+
+        queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getJdbcxValue(props));
+
+        final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getJdbcxValue(props));
+        final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getJdbcxValue(props));
+
+        // TODO load persistent requests from disk file or database
+        Caffeine<String, QueryInfo> builder = Caffeine.newBuilder()
+                .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT).removalListener(this);
+        if (requestTimeout > 0L) {
+            builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS);
+        }
+        queries = builder.recordStats().scheduler(Scheduler.systemScheduler()).build();
+        CaffeineCacheMetrics.monitor(promRegistry, queries, "query");
 
         backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
 
@@ -334,6 +352,13 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected final void writeConfig(OutputStream out) throws IOException {
         essentials.store(out, Utils.format("Bridge server %s configuration", Version.current().toShortString()));
+    }
+
+    protected final void writeMetrics(OutputStream out) throws IOException {
+        try (Writer writer = new BufferedWriter(new OutputStreamWriter(out, Constants.DEFAULT_CHARSET),
+                Constants.DEFAULT_BUFFER_SIZE)) {
+            promRegistry.scrape(writer);
+        }
     }
 
     protected void query(Request request) throws IOException {
@@ -436,19 +461,27 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected abstract void showConfig(Object implementation) throws IOException;
 
+    protected abstract void showMetrics(Object implementation) throws IOException;
+
     protected void dispatch(String method, String path, InetSocketAddress clientAddress, String encodedToken,
             Map<String, String> headers, Map<String, String> params, Object implementation) throws IOException {
         if (!path.startsWith(context)) {
             throw new IOException(Utils.format("Request URI must starts with [%s]", context));
-        } else if (path.endsWith(PATH_CONFIG) && (path.length() == context.length() + PATH_CONFIG.length())) {
-            log.debug("Sending server configuration to %s", clientAddress);
-            showConfig(implementation);
-            return;
         } else {
             path = path.substring(context.length());
             if (!path.isEmpty() && path.charAt(0) == '/') {
                 path = path.substring(1);
             }
+        }
+
+        if (PATH_CONFIG.equals(path)) {
+            log.debug("Sending server configuration to %s", clientAddress);
+            showConfig(implementation);
+            return;
+        } else if (PATH_METRICS.equals(path)) {
+            log.debug("Sending server metrics to %s", clientAddress);
+            showMetrics(implementation);
+            return;
         }
 
         String qid = headers.get(HEADER_QUERY_ID);

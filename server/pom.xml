@@ -23,6 +23,11 @@
             <version>${revision}</version>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
@@ -168,6 +173,8 @@
                                     <include>com.github.ben-manes.caffeine:caffeine</include>
                                     <include>com.zaxxer:HikariCP</include>
                                     <include>io.github.jdbcx:jdbcx-driver</include>
+                                    <include>io.micrometer:*</include>
+                                    <include>io.prometheus:*</include>
                                 </includes>
                             </artifactSet>
                             <relocations>
@@ -178,6 +185,14 @@
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
                                     <shadedPattern>${shade.base}.hikari</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.micrometer</pattern>
+                                    <shadedPattern>${shade.base}.micrometer</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.prometheus</pattern>
+                                    <shadedPattern>${shade.base}.prometheus</shadedPattern>
                                 </relocation>
                             </relocations>
                             <transformers>
