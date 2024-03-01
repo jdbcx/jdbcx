@@ -39,10 +39,10 @@ public class JdbcInterpreterTest {
 
     @Test(groups = { "unit" })
     public void testGetDriverByUrl() throws SQLException {
-        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByUrl(null, null));
+        Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByUrl("", null));
         Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByUrl("jdbc:unknown:driver", null));
         Assert.assertThrows(SQLException.class,
-                () -> JdbcInterpreter.getDriverByUrl(null, getClass().getClassLoader()));
+                () -> JdbcInterpreter.getDriverByUrl("", getClass().getClassLoader()));
 
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", null), "Should have driver");
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", getClass().getClassLoader()),

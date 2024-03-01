@@ -49,8 +49,8 @@ public class ClickHouseMapperTest extends ResultMapperTest {
         Assert.assertEquals(mapper.toColumnDefinition(), "");
         Assert.assertEquals(mapper.toColumnDefinition(Field.of("a`b", JDBCType.BLOB)), "`a\\`b` Nullable(String)");
         Assert.assertEquals(
-                mapper.toColumnDefinition(Field.of("a", JDBCType.INTEGER, true, 24, 0, false),
-                        Field.of("b", JDBCType.CHAR, false, 3, 0, false)),
+                mapper.toColumnDefinition(Field.of("a", null, JDBCType.INTEGER, true, 24, 0, false),
+                        Field.of("b", null, JDBCType.CHAR, false, 3, 0, false)),
                 "`a` Nullable(UInt32),`b` FixedString(3)");
     }
 
@@ -60,7 +60,7 @@ public class ClickHouseMapperTest extends ResultMapperTest {
         Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR, false)), "String");
         Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR)), "Nullable(String)");
 
-        Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.TIMESTAMP, false, 0, 5, false)),
+        Assert.assertEquals(mapper.toColumnType(Field.of("f", null, JDBCType.TIMESTAMP, false, 0, 5, false)),
                 "DateTime64(5)");
     }
 
@@ -76,7 +76,7 @@ public class ClickHouseMapperTest extends ResultMapperTest {
                 "url('',TSVWithNames,headers('accept'='text/tab-separated-values'))");
 
         Result<?> result = Result.of(
-                Arrays.asList(Field.of("a`b", JDBCType.BIT), Field.of("c", JDBCType.DECIMAL, false, 18, 3, true)),
+                Arrays.asList(Field.of("a`b", JDBCType.BIT), Field.of("c", null, JDBCType.DECIMAL, false, 18, 3, true)),
                 new Object[0]);
         Assert.assertEquals(mapper.toRemoteTable("", null, null, result),
                 "url('',CSVWithNames,'`a\\\\`b` Nullable(Boolean),`c` Decimal(18,3)')");

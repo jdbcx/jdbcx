@@ -59,7 +59,7 @@ public class JdbcExecutor extends AbstractExecutor {
         } else {
             try {
                 return stmt.getLargeUpdateCount();
-            } catch (SQLFeatureNotSupportedException e) {
+            } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
                 return (long) stmt.getUpdateCount();
             } finally {
                 stmt.close();

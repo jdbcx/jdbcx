@@ -17,12 +17,10 @@ package io.github.jdbcx.driver;
 
 import java.sql.Array;
 import java.sql.Blob;
-import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
-import java.sql.PreparedStatement;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -55,6 +53,40 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
  */
 public class WrappedConnection implements ManagedConnection {
     private static final Logger log = LoggerFactory.getLogger(WrappedConnection.class);
+
+    static final void copy(Statement from, Statement to) throws SQLException {
+        int value = from.getFetchDirection();
+        if (to.getFetchDirection() != value) {
+            to.setFetchDirection(value);
+        }
+
+        value = from.getFetchSize();
+        if (to.getFetchSize() != value) {
+            to.setFetchSize(value);
+        }
+
+        value = from.getMaxFieldSize();
+        if (to.getMaxFieldSize() != value) {
+            to.setMaxFieldSize(value);
+        }
+
+        try {
+            long l = from.getLargeMaxRows();
+            if (to.getLargeMaxRows() != l) {
+                to.setLargeMaxRows(l);
+            }
+        } catch (UnsupportedOperationException | SQLException e) {
+            value = from.getMaxRows();
+            if (to.getMaxRows() != value) {
+                to.setMaxRows(value);
+            }
+        }
+
+        value = from.getQueryTimeout();
+        if (to.getQueryTimeout() != value) {
+            to.setQueryTimeout(value);
+        }
+    }
 
     protected final ConnectionManager manager;
 
@@ -205,17 +237,19 @@ public class WrappedConnection implements ManagedConnection {
 
     @Override
     public WrappedStatement createStatement() throws SQLException {
-        return new WrappedStatement(this, manager.getConnection().createStatement()); // NOSONAR
+        return new WrappedStatement(this, manager.getConnection().createStatement(), false); // NOSONAR
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query) throws SQLException {
-        return new WrappedPreparedStatement(this, query, manager.getConnection().prepareStatement(handleString(query))); // NOSONAR
+        return new WrappedPreparedStatement(this, query, manager.getConnection().prepareStatement(handleString(query)), // NOSONAR
+                false);
     }
 
     @Override
     public WrappedCallableStatement prepareCall(String query) throws SQLException {
-        return new WrappedCallableStatement(this, query, manager.getConnection().prepareCall(handleString(query))); // NOSONAR
+        return new WrappedCallableStatement(this, query, manager.getConnection().prepareCall(handleString(query)), // NOSONAR
+                false);
     }
 
     @Override
@@ -311,22 +345,24 @@ public class WrappedConnection implements ManagedConnection {
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-        return new WrappedStatement(this, manager.getConnection().createStatement(resultSetType, resultSetConcurrency)); // NOSONAR
+    public WrappedStatement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
+        return new WrappedStatement(this, manager.getConnection().createStatement(resultSetType, resultSetConcurrency), // NOSONAR
+                false);
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency)
+    public WrappedPreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         return new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency)); // NOSONAR
+                manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency), // NOSONAR
+                false);
     }
 
     @Override
-    public CallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency)
+    public WrappedCallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         return new WrappedCallableStatement(this, query,
-                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency)); // NOSONAR
+                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency), false); // NOSONAR
     }
 
     @Override
@@ -370,44 +406,47 @@ public class WrappedConnection implements ManagedConnection {
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+    public WrappedStatement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
         return new WrappedStatement(this,
-                manager.getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability)); // NOSONAR
+                manager.getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), // NOSONAR
+                false);
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency,
+    public WrappedPreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
         return new WrappedPreparedStatement(this, query,
                 manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
-                        resultSetHoldability));
+                        resultSetHoldability),
+                false);
     }
 
     @Override
-    public CallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency,
+    public WrappedCallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
         return new WrappedCallableStatement(this, query,
                 manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
-                        resultSetHoldability));
+                        resultSetHoldability),
+                false);
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query, int autoGeneratedKeys) throws SQLException {
+    public WrappedPreparedStatement prepareStatement(String query, int autoGeneratedKeys) throws SQLException {
         return new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), autoGeneratedKeys)); // NOSONAR
+                manager.getConnection().prepareStatement(handleString(query), autoGeneratedKeys), false); // NOSONAR
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query, int[] columnIndexes) throws SQLException {
+    public WrappedPreparedStatement prepareStatement(String query, int[] columnIndexes) throws SQLException {
         return new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), columnIndexes)); // NOSONAR
+                manager.getConnection().prepareStatement(handleString(query), columnIndexes), false); // NOSONAR
     }
 
     @Override
-    public PreparedStatement prepareStatement(String query, String[] columnNames) throws SQLException {
+    public WrappedPreparedStatement prepareStatement(String query, String[] columnNames) throws SQLException {
         return new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), columnNames)); // NOSONAR
+                manager.getConnection().prepareStatement(handleString(query), columnNames), false); // NOSONAR
     }
 
     @Override

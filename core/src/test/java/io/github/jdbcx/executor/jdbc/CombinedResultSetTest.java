@@ -23,25 +23,38 @@ import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 
 public class CombinedResultSetTest extends BaseIntegrationTest {
-    @Test(groups = { "integration" })
-    public void testMultipleResultSets() throws SQLException {
-        String url = "jdbc:ch://" + getClickHouseServer();
+    @DataProvider(name = "numberQueries")
+    public Object[][] getNumberQueries() {
+        return new Object[][] {
+                { "jdbc:ch://" + getClickHouseServer(), "select * from numbers(2)",
+                        "select 2 + number from numbers(3)" },
+                { "jdbc:duckdb:", "select 0 union select 1 order by 1",
+                        "select 2 union select 3 union select 4 order by 1" },
+                { "jdbc:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres",
+                        "select 0 union select 1 union select 2 union select 3 order by 1", "select 4" },
+                { "jdbc:sqlite::memory:", "select 0 union select 1 union select 2 order by 1",
+                        "select 3 union select 4 order by 1" },
+        };
+    }
+
+    @Test(dataProvider = "numberQueries", groups = { "integration" })
+    public void testMultipleResultSets(String url, String q1, String q2) throws SQLException {
         Properties props = new Properties();
         try (Connection conn = DriverManager.getConnection(url, props);
                 Statement stmt1 = conn.createStatement();
                 Statement stmt2 = conn.createStatement()) {
-            try (ResultSet rs = new CombinedResultSet(stmt1.executeQuery("select * from numbers(10)"),
-                    stmt2.executeQuery("select 10 + number from numbers(10)"))) {
+            try (ResultSet rs = new CombinedResultSet(stmt1.executeQuery(q1), stmt2.executeQuery(q2))) {
                 int counter = 0;
                 while (rs.next()) {
                     Assert.assertEquals(rs.getInt(1), counter++);
                 }
-                Assert.assertEquals(counter, 20);
+                Assert.assertEquals(counter, 5);
             }
         }
     }

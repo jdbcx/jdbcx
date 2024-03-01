@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
@@ -23,12 +24,15 @@ import java.sql.DriverPropertyInfo;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeoutException;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import io.github.jdbcx.executor.Stream;
 
 public class WrappedDriverTest extends BaseIntegrationTest {
     private ResultSet executeQuery(Statement stmt, String query, boolean useExecuteQuery) throws SQLException {
@@ -40,6 +44,17 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             rs = stmt.getResultSet();
         }
         return rs;
+    }
+
+    @DataProvider(name = "databaseTypes")
+    public Object[][] getDatabaseTypes() {
+        return new Object[][] {
+                {
+                        "jdbcx:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres", // url
+                        "/postgres/" // prefix
+                },
+                { "jdbcx:duckdb:", "/duckdb/" },
+        };
     }
 
     @DataProvider(name = "queryMethod")
@@ -459,6 +474,38 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1).trim(), "1");
             Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test(dataProvider = "databaseTypes", groups = { "integration" })
+    public void testDatabaseTypes(String url, String prefix) throws IOException, SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement()) {
+            Assert.assertFalse(stmt.execute("drop table if exists basic_types"));
+            // Assert.assertEquals(stmt.getUpdateCount(), 0);
+            Assert.assertFalse(stmt.execute(
+                    Stream.readAllAsString(getClass().getResourceAsStream(prefix + "create-basic-types.sql"))));
+            // Assert.assertEquals(stmt.getUpdateCount(), 0);
+            Properties expected = new Properties();
+            expected.load(getClass().getResourceAsStream(prefix + "mapped-basic-types.properties"));
+            try (Result<ResultSet> rs = Result.of(stmt.executeQuery("select * from basic_types"))) {
+                int counter = 0;
+                for (Field f : rs.fields()) {
+                    counter++;
+                    String str = expected.getProperty(f.name());
+                    String msg = f.toString() + " vs " + str;
+                    List<String> value = Utils.split(str, ';');
+                    Assert.assertEquals(f.columnType(), value.get(0), msg);
+                    Assert.assertEquals(f.type().getVendorTypeNumber(), Integer.parseInt(value.get(1)), msg);
+                    Assert.assertEquals(f.precision(), Integer.parseInt(value.get(2)), msg);
+                    Assert.assertEquals(f.scale(), Integer.parseInt(value.get(3)), msg);
+                    Assert.assertEquals(f.isSigned(), Boolean.parseBoolean(value.get(4)), msg);
+                    Assert.assertEquals(f.isNullable(), !f.name().endsWith("serial"), msg);
+                }
+                Assert.assertEquals(counter, expected.size());
+            }
         }
     }
 }

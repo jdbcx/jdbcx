@@ -270,7 +270,8 @@ public final class Result<T> implements AutoCloseable {
                 if (precision <= 0) {
                     precision = metaData.getColumnDisplaySize(index);
                 }
-                fields.add(Field.of(metaData.getColumnName(index), JDBCType.valueOf(metaData.getColumnType(index)),
+                fields.add(Field.of(metaData.getColumnName(index), metaData.getColumnTypeName(index),
+                        JDBCType.valueOf(metaData.getColumnType(index)),
                         metaData.isNullable(index) != ResultSetMetaData.columnNoNulls, precision,
                         metaData.getScale(index), metaData.isSigned(index)));
             }

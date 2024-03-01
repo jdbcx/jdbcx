@@ -44,8 +44,8 @@ public class WrappedPreparedStatement extends WrappedStatement implements Prepar
 
     private final PreparedStatement stmt;
 
-    protected WrappedPreparedStatement(WrappedConnection conn, String query, PreparedStatement stmt) {
-        super(conn, stmt);
+    protected WrappedPreparedStatement(WrappedConnection conn, String query, PreparedStatement stmt, boolean orphan) {
+        super(conn, stmt, orphan);
         this.query = query;
         this.stmt = stmt;
     }

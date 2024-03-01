@@ -19,6 +19,16 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 public interface JdbcDialect {
+    /**
+     * Whether a {@link java.sql.Statement} supports multiple
+     * {@link java.sql.ResultSet} in open status.
+     *
+     * @return true multiple ResultSets are supported; false otherwise
+     */
+    default boolean supportMultipleResultSetsPerStatement() {
+        return false;
+    }
+
     default VariableTag getVariableTag() {
         return VariableTag.BRACE;
     }

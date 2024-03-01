@@ -38,8 +38,8 @@ public class DuckDBMapperTest extends ResultMapperTest {
         Assert.assertEquals(((DuckDBMapper) mapper).toStructDefinition(Field.of("a\"b", JDBCType.BLOB)),
                 "{\"a\"\"b\":'BLOB'}");
         Assert.assertEquals(
-                ((DuckDBMapper) mapper).toStructDefinition(Field.of("a", JDBCType.INTEGER, true, 24, 0, false),
-                        Field.of("b", JDBCType.CHAR, false, 3, 0, false)),
+                ((DuckDBMapper) mapper).toStructDefinition(Field.of("a", null, JDBCType.INTEGER, true, 24, 0, false),
+                        Field.of("b", null, JDBCType.CHAR, false, 3, 0, false)),
                 "{\"a\":'UINTEGER',\"b\":'VARCHAR(3) NOT NULL'}");
     }
 
@@ -49,18 +49,18 @@ public class DuckDBMapperTest extends ResultMapperTest {
         Assert.assertEquals(mapper.toColumnDefinition(), "");
         Assert.assertEquals(mapper.toColumnDefinition(Field.of("a\"b", JDBCType.BLOB)), "\"a\"\"b\" BLOB");
         Assert.assertEquals(
-                mapper.toColumnDefinition(Field.of("a", JDBCType.INTEGER, true, 24, 0, false),
-                        Field.of("b", JDBCType.CHAR, false, 3, 0, false)),
+                mapper.toColumnDefinition(Field.of("a", null, JDBCType.INTEGER, true, 24, 0, false),
+                        Field.of("b", null, JDBCType.CHAR, false, 3, 0, false)),
                 "\"a\" UINTEGER,\"b\" VARCHAR(3) NOT NULL");
     }
 
     @Test(groups = { "unit" })
     @Override
     public void testToColumnType() {
-        Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR, false, 3, 0, false)),
+        Assert.assertEquals(mapper.toColumnType(Field.of("f", null, JDBCType.CHAR, false, 3, 0, false)),
                 "VARCHAR(3) NOT NULL");
         Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR)), "VARCHAR");
-        Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.TIMESTAMP, false, 0, 5, false)),
+        Assert.assertEquals(mapper.toColumnType(Field.of("f", null, JDBCType.TIMESTAMP, false, 0, 5, false)),
                 "TIMESTAMP_MS NOT NULL");
     }
 
@@ -74,7 +74,8 @@ public class DuckDBMapperTest extends ResultMapperTest {
         Assert.assertEquals(mapper.toRemoteTable("", Format.TSV, Compression.NONE, null), "''");
 
         Result<?> result = Result.of(
-                Arrays.asList(Field.of("a\"b", JDBCType.BIT), Field.of("c", JDBCType.DECIMAL, false, 18, 3, true)),
+                Arrays.asList(Field.of("a\"b", JDBCType.BIT),
+                        Field.of("c", null, JDBCType.DECIMAL, false, 18, 3, true)),
                 new Object[0]);
         Assert.assertEquals(mapper.toRemoteTable("", null, null, result), "''");
         Assert.assertEquals(mapper.toRemoteTable("", null, Compression.NONE, result), "''");

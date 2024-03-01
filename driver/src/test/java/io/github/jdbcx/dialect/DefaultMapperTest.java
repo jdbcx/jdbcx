@@ -34,17 +34,18 @@ public class DefaultMapperTest extends ResultMapperTest {
         Assert.assertEquals(mapper.toColumnDefinition(), "");
         Assert.assertEquals(mapper.toColumnDefinition(Field.of("a\"b", JDBCType.BLOB)), "\"a\"\"b\" VARCHAR NULL");
         Assert.assertEquals(
-                mapper.toColumnDefinition(Field.of("a", JDBCType.INTEGER, true, 24, 0, false),
-                        Field.of("b", JDBCType.CHAR, false, 3, 0, false)),
+                mapper.toColumnDefinition(Field.of("a", null, JDBCType.INTEGER, true, 24, 0, false),
+                        Field.of("b", null, JDBCType.CHAR, false, 3, 0, false)),
                 "\"a\" INTEGER NULL,\"b\" CHAR(3) NOT NULL");
     }
 
     @Test(groups = { "unit" })
     @Override
     public void testToColumnType() {
-        Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR, false, 3, 0, false)), "CHAR(3) NOT NULL");
+        Assert.assertEquals(mapper.toColumnType(Field.of("f", null, JDBCType.CHAR, false, 3, 0, false)),
+                "CHAR(3) NOT NULL");
         Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.CHAR)), "VARCHAR NULL");
-        Assert.assertEquals(mapper.toColumnType(Field.of("f", JDBCType.TIMESTAMP, false, 0, 5, false)),
+        Assert.assertEquals(mapper.toColumnType(Field.of("f", null, JDBCType.TIMESTAMP, false, 0, 5, false)),
                 "DATETIME NOT NULL");
     }
 }
