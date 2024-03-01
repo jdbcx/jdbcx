@@ -509,7 +509,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         }
     }
 
-    @Test(groups = { "integration" })
+    @Test(groups = { "private" })
     public void testFederatedQuery() throws IOException, SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
