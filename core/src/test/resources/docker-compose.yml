@@ -5,7 +5,7 @@
 
 # https://hub.docker.com/_/postgres
 postgresql:
-  image: postgres:16.1
+  image: postgres:16.2
   environment:
     POSTGRES_HOST_AUTH_METHOD: "trust"
 
@@ -17,6 +17,6 @@ clickhouse:
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
-  image: zhicwu/toxiproxy:2.7.0
+  image: zhicwu/toxiproxy:2.8.0
   links:
     - clickhouse
