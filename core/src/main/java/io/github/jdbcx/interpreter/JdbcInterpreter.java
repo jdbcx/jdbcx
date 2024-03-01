@@ -22,10 +22,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
@@ -137,9 +139,13 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         final Properties filtered = new Properties();
+        Set<String> reservedKeys = new HashSet<>();
+        for (Option o : OPTIONS) {
+            reservedKeys.add(o.getName());
+        }
         for (Entry<Object, Object> entry : config.entrySet()) {
             String key = (String) entry.getKey();
-            if (!key.startsWith(Option.PROPERTY_PREFIX)) {
+            if (!key.startsWith(Option.PROPERTY_PREFIX) && !reservedKeys.contains(key)) {
                 filtered.put(key, entry.getValue());
             }
         }
