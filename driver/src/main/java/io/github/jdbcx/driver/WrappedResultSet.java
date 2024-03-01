@@ -76,7 +76,13 @@ public class WrappedResultSet implements ResultSet {
     @Override
     public void close() throws SQLException {
         warning.set(null);
-        rs.close();
+        try {
+            rs.close();
+        } finally {
+            if (stmt.orphan) {
+                stmt.close();
+            }
+        }
     }
 
     @Override

@@ -96,7 +96,7 @@ public final class IterableResultSet implements Iterable<Row> {
                         if (precision <= 0) {
                             precision = metaData.getColumnDisplaySize(index);
                         }
-                        Field f = Field.of(metaData.getColumnName(index),
+                        Field f = Field.of(metaData.getColumnName(index), metaData.getColumnTypeName(index),
                                 JDBCType.valueOf(metaData.getColumnType(index)),
                                 metaData.isNullable(index) != ResultSetMetaData.columnNoNulls,
                                 precision, metaData.getScale(index), metaData.isSigned(index));

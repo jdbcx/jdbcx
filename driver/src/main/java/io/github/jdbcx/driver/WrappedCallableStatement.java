@@ -40,8 +40,8 @@ import java.util.Map;
 public class WrappedCallableStatement extends WrappedPreparedStatement implements CallableStatement {
     private final CallableStatement stmt;
 
-    protected WrappedCallableStatement(WrappedConnection conn, String query, CallableStatement stmt) {
-        super(conn, query, stmt);
+    protected WrappedCallableStatement(WrappedConnection conn, String query, CallableStatement stmt, boolean orphan) {
+        super(conn, query, stmt, orphan);
         this.stmt = stmt;
     }
 

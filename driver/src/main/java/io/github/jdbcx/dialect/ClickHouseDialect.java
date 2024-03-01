@@ -22,6 +22,11 @@ public class ClickHouseDialect implements JdbcDialect {
     static final ClickHouseMapper mapper = new ClickHouseMapper();
 
     @Override
+    public boolean supportMultipleResultSetsPerStatement() {
+        return true;
+    }
+
+    @Override
     public ResultMapper getMapper() {
         return mapper;
     }

@@ -29,23 +29,25 @@ public class FieldTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> Field.of(null, JDBCType.VARCHAR));
         Assert.assertThrows(IllegalArgumentException.class, () -> Field.of(null, JDBCType.VARCHAR, false));
         Assert.assertThrows(IllegalArgumentException.class,
-                () -> Field.of(null, JDBCType.VARCHAR, true, -1, -1, false));
+                () -> Field.of(null, null, JDBCType.VARCHAR, true, -1, -1, false));
 
         Assert.assertEquals(Field.of("f1"), Field.of("f1", Types.VARCHAR));
 
-        Field f = Field.of("f2", JDBCType.SMALLINT, false, 1, 1, false);
+        Field f = Field.of("f2", "SmallInt", JDBCType.SMALLINT, false, 1, 1, false);
         Assert.assertEquals(f.name(), "f2");
+        Assert.assertEquals(f.columnType(), "SmallInt");
         Assert.assertEquals(f.type(), JDBCType.SMALLINT);
         Assert.assertEquals(f.isNullable(), false);
         Assert.assertEquals(f.precision(), 1);
         Assert.assertEquals(f.scale(), 0);
         Assert.assertEquals(f.isSigned(), false);
 
-        f = Field.of("f3", JDBCType.LONGNVARCHAR, true, 100, 2, true);
+        f = Field.of("f3", null, JDBCType.LONGNVARCHAR, true, 100, 2, true);
         Assert.assertEquals(f.name(), "f3");
+        Assert.assertEquals(f.columnType(), "");
         Assert.assertEquals(f.type(), JDBCType.LONGNVARCHAR);
         Assert.assertEquals(f.isNullable(), true);
-        Assert.assertEquals(f.precision(), 0);
+        Assert.assertEquals(f.precision(), 100);
         Assert.assertEquals(f.scale(), 0);
         Assert.assertEquals(f.isSigned(), false);
     }

@@ -35,16 +35,20 @@ public class WrappedStatement implements Statement {
     private static final Logger log = LoggerFactory.getLogger(WrappedStatement.class);
 
     protected final WrappedConnection conn;
+    protected final AtomicReference<SQLWarning> warning;
+    protected final QueryResult queryResult;
+    protected final boolean orphan;
 
     private final Statement stmt;
 
-    protected final AtomicReference<SQLWarning> warning;
+    final Statement getImplementation() {
+        return stmt;
+    }
 
-    protected final QueryResult queryResult;
-
-    protected WrappedStatement(WrappedConnection conn, Statement stmt) {
+    protected WrappedStatement(WrappedConnection conn, Statement stmt, boolean orphan) {
         this.conn = conn;
         this.stmt = stmt;
+        this.orphan = orphan;
 
         this.warning = new AtomicReference<>();
         this.queryResult = new QueryResult(this.warning);
@@ -58,6 +62,26 @@ public class WrappedStatement implements Statement {
             log.debug("Failed to get generated keys due to lack of support from the driver");
         }
         return rs;
+    }
+
+    protected WrappedStatement newOrphanStatement() throws SQLException {
+        final WrappedStatement newStmt;
+        try {
+            final int resultSetType = stmt.getResultSetType();
+            final int resultSetConcurrency = stmt.getResultSetConcurrency();
+            final int resultSetHoldability = stmt.getResultSetHoldability();
+
+            newStmt = new WrappedStatement(conn, // NOSONAR
+                    conn.getManager().getConnection().createStatement(resultSetType, resultSetConcurrency, // NOSONAR
+                            resultSetHoldability),
+                    true);
+        } catch (SQLException e) {
+            log.warn("Failed to create new statement by copying the current one: ", e.getMessage());
+            return new WrappedStatement(conn, conn.getManager().getConnection().createStatement(), true); // NOSONAR
+        }
+
+        WrappedConnection.copy(stmt, newStmt);
+        return newStmt;
     }
 
     protected boolean execute(String query, ExecuteCallback callback) throws SQLException {
@@ -75,7 +99,7 @@ public class WrappedStatement implements Statement {
             int size = queries.size();
             if (size == 1) {
                 String newQuery = queries.get(0);
-                log.debug("Executing update: [%s]", newQuery);
+                log.debug("Executing statement: [%s]", newQuery);
                 result = stmt.execute(newQuery);
             } else {
                 ResultSet[] keys = new ResultSet[size];
@@ -85,10 +109,10 @@ public class WrappedStatement implements Statement {
                     String q = queries.get(i);
                     log.debug("Executing %d of %d: [%s]", i + 1, size, q);
                     if (result |= callback.execute(q)) {
-                        results[i] = stmt.getResultSet();
+                        results[i] = callback.getResultSet();
                     } else {
-                        affectedRows += stmt.getUpdateCount();
-                        keys[i] = getGeneratedKeysSafely();
+                        affectedRows += callback.getUpdateCount();
+                        keys[i] = callback.getGeneratedKeys();
                     }
                 }
                 queryResult.updateAll(rs[0], rs[1], affectedRows);
@@ -130,7 +154,7 @@ public class WrappedStatement implements Statement {
                     String q = queries.get(i);
                     log.debug("Executing update %d of %d: [%s]", i + 1, size, q);
                     affectedRows += callback.executeUpdate(q);
-                    arr[i] = getGeneratedKeysSafely();
+                    arr[i] = callback.getGeneratedKeys();
                 }
             }
             queryResult.updateKeys(rs, affectedRows);
@@ -175,12 +199,17 @@ public class WrappedStatement implements Statement {
                 log.debug("Executing query: [%s]", newQuery);
                 rs = new WrappedResultSet(this, stmt.executeQuery(newQuery));
             } else {
+                final boolean newStmt = !conn.getManager().getDialect().supportMultipleResultSetsPerStatement();
                 ResultSet[] arr = new ResultSet[size];
                 rs = new CombinedResultSet(arr);
+                Statement s = stmt;
                 for (int i = 0; i < size; i++) {
                     String q = queries.get(i);
                     log.debug("Executing query %d of %d: [%s]", i + 1, size, q);
-                    arr[i] = stmt.executeQuery(q);
+                    if (newStmt) {
+                        s = newOrphanStatement(); // NOSONAR
+                    }
+                    arr[i] = s.executeQuery(q);
                 }
             }
             queryResult.updateResult(rs);
@@ -200,7 +229,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public int executeUpdate(String query) throws SQLException {
-        return executeUpdate(query, new BaseExecuteCallback(stmt));
+        return executeUpdate(query, new BaseExecuteCallback(this));
     }
 
     @Override
@@ -278,7 +307,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public boolean execute(String query) throws SQLException {
-        return execute(query, new BaseExecuteCallback(stmt));
+        return execute(query, new BaseExecuteCallback(this));
     }
 
     @Override
@@ -369,32 +398,32 @@ public class WrappedStatement implements Statement {
 
     @Override
     public int executeUpdate(String query, int autoGeneratedKeys) throws SQLException {
-        return executeUpdate(query, new ExecuteWithFlag(stmt, autoGeneratedKeys));
+        return executeUpdate(query, new ExecuteWithFlag(this, autoGeneratedKeys));
     }
 
     @Override
     public int executeUpdate(String query, int[] columnIndexes) throws SQLException {
-        return executeUpdate(query, new ExecuteWithIndex(stmt, columnIndexes));
+        return executeUpdate(query, new ExecuteWithIndex(this, columnIndexes));
     }
 
     @Override
     public int executeUpdate(String query, String[] columnNames) throws SQLException {
-        return executeUpdate(query, new ExecuteWithNames(stmt, columnNames));
+        return executeUpdate(query, new ExecuteWithNames(this, columnNames));
     }
 
     @Override
     public boolean execute(String query, int autoGeneratedKeys) throws SQLException {
-        return execute(query, new ExecuteWithFlag(stmt, autoGeneratedKeys));
+        return execute(query, new ExecuteWithFlag(this, autoGeneratedKeys));
     }
 
     @Override
     public boolean execute(String query, int[] columnIndexes) throws SQLException {
-        return execute(query, new ExecuteWithIndex(stmt, columnIndexes));
+        return execute(query, new ExecuteWithIndex(this, columnIndexes));
     }
 
     @Override
     public boolean execute(String query, String[] columnNames) throws SQLException {
-        return execute(query, new ExecuteWithNames(stmt, columnNames));
+        return execute(query, new ExecuteWithNames(this, columnNames));
     }
 
     @Override
@@ -424,6 +453,6 @@ public class WrappedStatement implements Statement {
 
     @Override
     public boolean isCloseOnCompletion() throws SQLException {
-        return stmt.isCloseOnCompletion();
+        return orphan || stmt.isCloseOnCompletion();
     }
 }
