@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -38,25 +41,51 @@ import io.github.jdbcx.executor.Stream;
  */
 @SuppressWarnings("squid:S2187")
 public class BaseIntegrationTest {
+    static final class ServiceConfig {
+        final String name;
+        final int port;
+        final String healthCheck;
+        final boolean container;
+        final String address;
+
+        ServiceConfig(String name, int port, Properties props) {
+            this(name, port, null, props);
+        }
+
+        ServiceConfig(String name, int port, String heathCheck, Properties props) {
+            this.name = name;
+            this.port = port;
+            this.healthCheck = heathCheck == null ? Constants.EMPTY_STRING : heathCheck;
+
+            Option option = Option.of(new String[] { name + ".server", name + " server address", "" });
+            String value = option.getValue(props, option.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+            if (Checker.isNullOrEmpty(value)) {
+                this.container = true;
+                this.address = new StringBuilder(name).append(':').append(port).toString();
+            } else {
+                this.container = false;
+                this.address = value;
+            }
+        }
+
+        String getAddress(DockerComposeContainer<?> containers) {
+            return container
+                    ? new StringBuilder(containers.getServiceHost(name, port)).append(':')
+                            .append(containers.getServicePort(name, port)).toString()
+                    : address;
+        }
+    }
+
+    private static final ServiceConfig CLICKHOUSE;
+    private static final ServiceConfig DATABEND;
+    private static final ServiceConfig MARIADB;
+    private static final ServiceConfig MYSQL;
+    private static final ServiceConfig POSTGRESQL;
+    private static final ServiceConfig PROXY; // control port
+    // private static final ServiceConfig TRINO;
+
+    private static final List<ServiceConfig> services;
     private static final DockerComposeContainer<?> containers;
-
-    private static final Option CLICKHOUSE_SERVER = Option
-            .of(new String[] { "clickhouse.server", "ClickHouse server address", "" });
-    private static final String CLICKHOUSE_SERVICE = "clickhouse";
-    private static final int CLICKHOUSE_PORT = 8123;
-
-    private static final Option POSTGRESQL_SERVER = Option
-            .of(new String[] { "postgresql.server", "PostgreSQL server address", "" });
-    private static final String POSTGRESQL_SERVICE = "postgresql";
-    private static final int POSTGRESQL_PORT = 5432;
-
-    private static final Option PROXY_SERVER = Option.of(new String[] { "proxy.server", "Proxy server address", "" });
-    private static final String PROXY_SERVICE = "toxiproxy";
-    private static final int PROXY_PORT = 8474; // control port
-
-    private static final String clickhouseServer;
-    private static final String postgresqlServer;
-    private static final String proxyServer;
 
     private static final String serverUrl;
 
@@ -68,11 +97,15 @@ public class BaseIntegrationTest {
             // ignore
         }
 
-        clickhouseServer = CLICKHOUSE_SERVER.getValue(props,
-                CLICKHOUSE_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
-        postgresqlServer = POSTGRESQL_SERVER.getValue(props,
-                POSTGRESQL_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
-        proxyServer = PROXY_SERVER.getValue(props, PROXY_SERVER.getEffectiveDefaultValue(Constants.EMPTY_STRING));
+        List<ServiceConfig> list = new ArrayList<>();
+        list.add(CLICKHOUSE = new ServiceConfig("clickhouse", 8123, "/ping", props));
+        list.add(DATABEND = new ServiceConfig("databend", 8000, props));
+        list.add(MARIADB = new ServiceConfig("mariadb", 3306, props));
+        list.add(MYSQL = new ServiceConfig("mysql", 3306, props));
+        list.add(POSTGRESQL = new ServiceConfig("postgresql", 5432, props));
+        list.add(PROXY = new ServiceConfig("toxiproxy", 8474, props)); // control port
+        // list.add(TRINO = new ServiceConfig("trino", 8080, "/v1/info", props));
+        services = Collections.unmodifiableList(new ArrayList<>(list));
 
         String url = Option.SERVER_URL.getValue(props,
                 Option.SERVER_URL.getEffectiveDefaultValue(Constants.EMPTY_STRING));
@@ -87,8 +120,7 @@ public class BaseIntegrationTest {
             serverUrl = url;
         }
 
-        if (!Checker.isNullOrEmpty(clickhouseServer) && !Checker.isNullOrEmpty(postgresqlServer)
-                && !Checker.isNullOrEmpty(proxyServer)) {
+        if (!services.stream().anyMatch(s -> s.container)) {
             containers = null;
         } else {
             final File file = new File("target/test-classes/docker-compose.yml");
@@ -101,62 +133,55 @@ public class BaseIntegrationTest {
                 }
             }
 
-            containers = new DockerComposeContainer<>(file)
-                    .withExposedService(CLICKHOUSE_SERVICE, CLICKHOUSE_PORT,
-                            Wait.forHttp("/ping").forStatusCode(200).withStartupTimeout(Duration.ofSeconds(30)))
-                    .withExposedService(POSTGRESQL_SERVICE, POSTGRESQL_PORT,
-                            Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)))
-                    .withExposedService(PROXY_SERVICE, CLICKHOUSE_PORT)
-                    .withExposedService(PROXY_SERVICE, PROXY_PORT,
-                            Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)))
-                    .withLocalCompose(false);
+            DockerComposeContainer<?> cc = new DockerComposeContainer<>(file);
+            for (ServiceConfig s : services) {
+                cc = cc.withExposedService(s.name, s.port,
+                        s.healthCheck.isEmpty()
+                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30))
+                                : Wait.forHttp(s.healthCheck).forStatusCode(200)
+                                        .withStartupTimeout(Duration.ofSeconds(60)));
+            }
+            containers = cc.withExposedService(PROXY.name, CLICKHOUSE.port).withLocalCompose(false);
         }
     }
 
     public static String getDeclaredClickHouseServer() {
-        if (Checker.isNullOrEmpty(clickhouseServer)) {
-            return new StringBuilder(CLICKHOUSE_SERVICE).append(':').append(CLICKHOUSE_PORT).toString();
-        }
-        return clickhouseServer;
-    }
-
-    public static String getDeclaredPostgreSqlServer() {
-        if (Checker.isNullOrEmpty(postgresqlServer)) {
-            return new StringBuilder(POSTGRESQL_SERVICE).append(':').append(POSTGRESQL_PORT).toString();
-        }
-        return postgresqlServer;
+        return CLICKHOUSE.address;
     }
 
     public static String getClickHouseServer() {
-        if (Checker.isNullOrEmpty(clickhouseServer)) {
-            return new StringBuilder(containers.getServiceHost(CLICKHOUSE_SERVICE, CLICKHOUSE_PORT)).append(':')
-                    .append(containers.getServicePort(CLICKHOUSE_SERVICE, CLICKHOUSE_PORT)).toString();
-        }
-        return clickhouseServer;
+        return CLICKHOUSE.getAddress(containers);
+    }
+
+    public static String getDatabendServer() {
+        return DATABEND.getAddress(containers);
+    }
+
+    public static String getMariaDbServer() {
+        return MARIADB.getAddress(containers);
+    }
+
+    public static String getMySqlServer() {
+        return MYSQL.getAddress(containers);
     }
 
     public static String getPostgreSqlServer() {
-        if (Checker.isNullOrEmpty(postgresqlServer)) {
-            return new StringBuilder(containers.getServiceHost(POSTGRESQL_SERVICE, POSTGRESQL_PORT)).append(':')
-                    .append(containers.getServicePort(POSTGRESQL_SERVICE, POSTGRESQL_PORT)).toString();
-        }
-        return postgresqlServer;
+        return POSTGRESQL.getAddress(containers);
     }
 
     public static String getProxyControlServer() {
-        if (Checker.isNullOrEmpty(proxyServer)) {
-            return new StringBuilder(containers.getServiceHost(PROXY_SERVICE, PROXY_PORT)).append(':')
-                    .append(containers.getServicePort(PROXY_SERVICE, PROXY_PORT)).toString();
-        }
-        return proxyServer;
+        return PROXY.getAddress(containers);
     }
 
+    // public static String getTrinoServer() {
+    //     return TRINO.getAddress(containers);
+    // }
+
     public static String getProxyServer() {
-        if (Checker.isNullOrEmpty(proxyServer)) {
-            return new StringBuilder(containers.getServiceHost(PROXY_SERVICE, CLICKHOUSE_PORT)).append(':')
-                    .append(containers.getServicePort(PROXY_SERVICE, CLICKHOUSE_PORT)).toString();
-        }
-        return proxyServer;
+        return PROXY.container && CLICKHOUSE.container
+                ? new StringBuilder(containers.getServiceHost(PROXY.name, CLICKHOUSE.port)).append(':')
+                        .append(containers.getServicePort(PROXY.name, CLICKHOUSE.port)).toString()
+                : PROXY.address;
     }
 
     public static String getServerUrl() {
@@ -166,8 +191,8 @@ public class BaseIntegrationTest {
     @BeforeSuite(groups = { "integration" })
     public static void beforeSuite() {
         if (containers != null) {
-            for (String service : new String[] { CLICKHOUSE_SERVICE, POSTGRESQL_SERVICE, PROXY_SERVICE }) {
-                Optional<ContainerState> state = containers.getContainerByServiceName(service);
+            for (ServiceConfig s : services) {
+                Optional<ContainerState> state = containers.getContainerByServiceName(s.name);
                 if (state.isPresent() && state.get().isRunning()) {
                     return;
                 }
@@ -176,10 +201,9 @@ public class BaseIntegrationTest {
             try {
                 containers.start();
 
-                ToxiproxyClient toxiproxyClient = new ToxiproxyClient(
-                        containers.getServiceHost(PROXY_SERVICE, PROXY_PORT),
-                        containers.getServicePort(PROXY_SERVICE, PROXY_PORT));
-                toxiproxyClient.createProxy(CLICKHOUSE_SERVICE, "0.0.0.0:" + CLICKHOUSE_PORT,
+                ToxiproxyClient toxiproxyClient = new ToxiproxyClient(containers.getServiceHost(PROXY.name, PROXY.port),
+                        containers.getServicePort(PROXY.name, PROXY.port));
+                toxiproxyClient.createProxy(CLICKHOUSE.name, "0.0.0.0:" + CLICKHOUSE.port,
                         getDeclaredClickHouseServer());
             } catch (Exception e) {
                 throw new IllegalStateException(new StringBuilder()

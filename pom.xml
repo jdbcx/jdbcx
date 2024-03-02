@@ -86,6 +86,7 @@
         <brotli4j.version>1.16.0</brotli4j.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
+        <databend.version>0.1.9</databend.version>
         <codec.version>1.16.1</codec.version>
         <compress.version>1.26.0</compress.version>
         <!--
@@ -103,6 +104,7 @@
         <jctools.version>4.0.3</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
+        <mariadb.version>3.3.3</mariadb.version>
         <micrometer.version>1.12.3</micrometer.version>
         <msgpack.version>0.9.8</msgpack.version>
         <mysql.version>8.3.0</mysql.version>
@@ -113,6 +115,7 @@
         <roaring-bitmap.version>1.0.1</roaring-bitmap.version>
         <slf4j.version>2.0.12</slf4j.version>
         <snappy.version>1.1.10.5</snappy.version>
+        <trino.version>439</trino.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-11</zstd-jni.version>
         <testcontainers.version>1.19.5</testcontainers.version>
@@ -195,6 +198,11 @@
                 <version>${clickhouse.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.databend</groupId>
+                <artifactId>databend-jdbc</artifactId>
+                <version>${databend.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.zaxxer</groupId>
                 <artifactId>HikariCP</artifactId>
                 <version>${hikaricp.version}</version>
@@ -233,6 +241,11 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-registry-prometheus</artifactId>
                 <version>${micrometer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-jdbc</artifactId>
+                <version>${trino.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-codec</groupId>
@@ -288,6 +301,11 @@
                 <groupId>org.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>${lz4.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mariadb.jdbc</groupId>
+                <artifactId>mariadb-java-client</artifactId>
+                <version>${mariadb.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.mozilla</groupId>

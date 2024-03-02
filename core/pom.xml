@@ -131,6 +131,21 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.databend</groupId>
+            <artifactId>databend-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.groovy</groupId>
             <artifactId>groovy-jsr223</artifactId>
             <scope>test</scope>
@@ -153,6 +168,11 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-jdbc</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
