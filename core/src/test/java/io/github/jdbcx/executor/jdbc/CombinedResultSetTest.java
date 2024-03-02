@@ -34,12 +34,21 @@ public class CombinedResultSetTest extends BaseIntegrationTest {
         return new Object[][] {
                 { "jdbc:ch://" + getClickHouseServer(), "select * from numbers(2)",
                         "select 2 + number from numbers(3)" },
+                { "jdbc:databend://" + getDatabendServer() + "/default?user=default&password=d",
+                        "select * from numbers(3) order by number",
+                        "select 3 + number from numbers(2) order by number" },
                 { "jdbc:duckdb:", "select 0 union select 1 order by 1",
                         "select 2 union select 3 union select 4 order by 1" },
+                { "jdbc:mariadb://" + getMariaDbServer() + "/sys?user=root",
+                        "select 0", "select 1 union select 2 union select 3 union select 4" },
+                { "jdbc:mysql://root@" + getMySqlServer() + "/mysql",
+                        "select 0", "select 1 union select 2 union select 3 union select 4" },
                 { "jdbc:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres",
                         "select 0 union select 1 union select 2 union select 3 order by 1", "select 4" },
                 { "jdbc:sqlite::memory:", "select 0 union select 1 union select 2 order by 1",
                         "select 3 union select 4 order by 1" },
+                { "jdbc:trino://" + getTrinoServer() + "/memory?user=root",
+                        "select 0 union select 1 union select 2 order by 1", "select 3 union select 4 order by 1" },
         };
     }
 

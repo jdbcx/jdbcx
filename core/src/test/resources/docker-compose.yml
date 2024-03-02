@@ -3,6 +3,28 @@
 # Any changes made to this file should be propagated to class BaseIntegrationTest.
 #
 
+# https://hub.docker.com/r/datafuselabs/databend
+databend:
+  image: datafuselabs/databend:v1.2.344
+  entrypoint: bash
+  command: |-
+    -c 'sed -i -e "s|^\(\[storage\]\)$$|\1\nallow_insecure = true|g" /bootstrap.sh && dumb-init -- /bootstrap.sh'
+  environment:
+    QUERY_DEFAULT_USER: "default"
+    QUERY_DEFAULT_PASSWORD: "d"
+
+# https://hub.docker.com/_/mariadb
+mariadb:
+  image: mariadb:11.3
+  environment:
+    MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+
+# https://hub.docker.com/_/mysql
+mysql:
+  image: mysql:8.3
+  environment:
+    MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
 # https://hub.docker.com/_/postgres
 postgresql:
   image: postgres:16.2
@@ -13,7 +35,12 @@ postgresql:
 clickhouse:
   image: clickhouse/clickhouse-server:23.8
   links:
+    - mysql
     - postgresql
+
+# https://hub.docker.com/r/trinodb/trino
+trino:
+  image: trinodb/trino:439
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:

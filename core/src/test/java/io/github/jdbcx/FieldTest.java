@@ -23,6 +23,19 @@ import org.testng.annotations.Test;
 
 public class FieldTest {
     @Test(groups = { "unit" })
+    public void testNormalization() {
+        Assert.assertThrows(NullPointerException.class, () -> Field.normalize(null, null, 0, 0, false));
+        Assert.assertThrows(NullPointerException.class, () -> Field.normalize("", null, 0, 0, false));
+
+        for (JDBCType t : JDBCType.values()) {
+            int[] results = Field.normalize("", t, -1, -1, false);
+            Assert.assertTrue(results[1] >= 0);
+            Assert.assertTrue(results[2] >= 0);
+            Assert.assertEquals(results[3], 0);
+        }
+    }
+
+    @Test(groups = { "unit" })
     public void testConstructor() {
         Assert.assertThrows(IllegalArgumentException.class, () -> Field.of(null));
         Assert.assertThrows(IllegalArgumentException.class, () -> Field.of(null, Types.VARCHAR));

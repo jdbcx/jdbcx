@@ -62,6 +62,7 @@ This project includes:
   Curator Client under The Apache Software License, Version 2.0
   Curator Framework under The Apache Software License, Version 2.0
   Curator Recipes under The Apache Software License, Version 2.0
+  databend-jdbc under Apache License 2.0
   dnsjava under BSD 2-Clause license
   docker-java-api under The Apache Software License, Version 2.0
   docker-java-transport under The Apache Software License, Version 2.0
@@ -86,12 +87,14 @@ This project includes:
   Jackson-core under The Apache Software License, Version 2.0
   jackson-databind under The Apache Software License, Version 2.0
   Java Native Access under LGPL-2.1-or-later or Apache-2.0
+  Java Native Access Platform under LGPL-2.1-or-later or Apache-2.0
   Java Servlet API under CDDL + GPLv2 with classpath exception
   JavaBeans Activation Framework (JAF) under Common Development and Distribution License (CDDL) v1.0
   JavaBeans Activation Framework API jar under EDL 1.0
   JAXB API bundle for GlassFish V3 under CDDL 1.1 or GPL2 w/ CPE
   JAXB RI under CDDL 1.1 or GPL2 w/ CPE
   JCIP Annotations under Apache License under Apache License, Version 2.0
+  JCL 1.2 implemented over SLF4J under Apache License, Version 2.0
   jcommander under Apache License, Version 2.0
   jdbcx under The Apache Software License, Version 2.0
   jdbcx-core under The Apache Software License, Version 2.0
@@ -135,6 +138,7 @@ This project includes:
   Kerby-kerb Util under Apache License, Version 2.0
   LatencyUtils under Public Domain, per Creative Commons CC0
   LZ4 and xxHash under The Apache Software License, Version 2.0
+  mariadb-java-client under LGPL-2.1
   Metrics Core under Apache License 2.0
   micrometer-commons under The Apache Software License, Version 2.0
   micrometer-core under The Apache Software License, Version 2.0
@@ -176,6 +180,8 @@ This project includes:
   testng under Apache License, Version 2.0
   Token provider under Apache License, Version 2.0
   Toxiproxy Java Client under The Apache License, Version 2.0
+  trino-jdbc under Apache License 2.0
+  waffle-jna under MIT
   Woodstox under The Apache License, Version 2.0
   XZ for Java under Public Domain
   zstd-jni under BSD 2-Clause License
