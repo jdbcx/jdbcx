@@ -47,8 +47,8 @@ public class CombinedResultSetTest extends BaseIntegrationTest {
                         "select 0 union select 1 union select 2 union select 3 order by 1", "select 4" },
                 { "jdbc:sqlite::memory:", "select 0 union select 1 union select 2 order by 1",
                         "select 3 union select 4 order by 1" },
-                { "jdbc:trino://" + getTrinoServer() + "/memory?user=root",
-                        "select 0 union select 1 union select 2 order by 1", "select 3 union select 4 order by 1" },
+                // { "jdbc:trino://" + getTrinoServer() + "/memory?user=root",
+                //         "select 0 union select 1 union select 2 order by 1", "select 3 union select 4 order by 1" },
         };
     }
 

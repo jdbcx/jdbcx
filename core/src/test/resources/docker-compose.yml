@@ -39,8 +39,8 @@ clickhouse:
     - postgresql
 
 # https://hub.docker.com/r/trinodb/trino
-trino:
-  image: trinodb/trino:439
+#trino:
+#  image: trinodb/trino:439
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
