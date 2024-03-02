@@ -44,12 +44,18 @@ public class BaseIntegrationTest {
     static final class ServiceConfig {
         final String name;
         final int port;
+        final String healthCheck;
         final boolean container;
         final String address;
 
         ServiceConfig(String name, int port, Properties props) {
+            this(name, port, null, props);
+        }
+
+        ServiceConfig(String name, int port, String heathCheck, Properties props) {
             this.name = name;
             this.port = port;
+            this.healthCheck = heathCheck == null ? Constants.EMPTY_STRING : heathCheck;
 
             Option option = Option.of(new String[] { name + ".server", name + " server address", "" });
             String value = option.getValue(props, option.getEffectiveDefaultValue(Constants.EMPTY_STRING));
@@ -92,13 +98,13 @@ public class BaseIntegrationTest {
         }
 
         List<ServiceConfig> list = new ArrayList<>();
-        list.add(CLICKHOUSE = new ServiceConfig("clickhouse", 8123, props));
+        list.add(CLICKHOUSE = new ServiceConfig("clickhouse", 8123, "/ping", props));
         list.add(DATABEND = new ServiceConfig("databend", 8000, props));
         list.add(MARIADB = new ServiceConfig("mariadb", 3306, props));
         list.add(MYSQL = new ServiceConfig("mysql", 3306, props));
         list.add(POSTGRESQL = new ServiceConfig("postgresql", 5432, props));
         list.add(PROXY = new ServiceConfig("toxiproxy", 8474, props)); // control port
-        list.add(TRINO = new ServiceConfig("trino", 8080, props));
+        list.add(TRINO = new ServiceConfig("trino", 8080, "/v1/info", props));
         services = Collections.unmodifiableList(new ArrayList<>(list));
 
         String url = Option.SERVER_URL.getValue(props,
@@ -130,7 +136,10 @@ public class BaseIntegrationTest {
             DockerComposeContainer<?> cc = new DockerComposeContainer<>(file);
             for (ServiceConfig s : services) {
                 cc = cc.withExposedService(s.name, s.port,
-                        Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30)));
+                        s.healthCheck.isEmpty()
+                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30))
+                                : Wait.forHttp(s.healthCheck).forStatusCode(200)
+                                        .withStartupTimeout(Duration.ofSeconds(60)));
             }
             containers = cc.withExposedService(PROXY.name, CLICKHOUSE.port).withLocalCompose(false);
         }
