@@ -75,8 +75,10 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
 
-    public static final String HEADER_ACCEPT = "accept"; // format
-    public static final String HEADER_ACCEPT_ENCODING = "accept-encoding"; // compression
+    // format
+    public static final String HEADER_ACCEPT = WebExecutor.HEADER_ACCEPT.toLowerCase(Locale.ROOT);
+    // compression
+    public static final String HEADER_ACCEPT_ENCODING = WebExecutor.HEADER_ACCEPT_ENCODING.toLowerCase(Locale.ROOT);
     public static final String HEADER_AUTHORIZATION = WebExecutor.HEADER_AUTHORIZATION.toLowerCase(Locale.ROOT);
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
@@ -113,10 +115,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             "Maximum query execution time in millisecond", "30000");
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
-    public static final Option OPTION_FORMAT = Option.ofEnum("server.format", "Server response format", null,
-            Format.class);
-    public static final Option OPTION_COMPRESSION = Option.ofEnum("server.compress", "Server response compression",
-            null, Compression.class);
     public static final Option OPTION_ACL = Option.of("server.acl",
             "Server access control list, defaults to acl.properties in current directory", "acl.properties");
     public static final Option OPTION_SECRET = Option
@@ -304,8 +302,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
         tag = Option.TAG.getJdbcxValue(props);
 
-        defaultFormat = Format.valueOf(OPTION_FORMAT.getJdbcxValue(props));
-        defaultCompress = Compression.valueOf(OPTION_COMPRESSION.getJdbcxValue(props));
+        defaultFormat = Format.valueOf(Option.SERVER_FORMAT.getJdbcxValue(props));
+        defaultCompress = Compression.valueOf(Option.SERVER_COMPRESSION.getJdbcxValue(props));
 
         acl = auth ? loadAcl() : Collections.emptyList();
         essentials = new Properties();
@@ -315,10 +313,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             Option.TAG.setValue(essentials, tag);
         }
         if (defaultFormat != null) {
-            OPTION_FORMAT.setValue(essentials, defaultFormat.name());
+            Option.SERVER_FORMAT.setValue(essentials, defaultFormat.name());
         }
         if (defaultCompress != null && defaultCompress != Compression.NONE) {
-            OPTION_COMPRESSION.setValue(essentials, defaultCompress.name());
+            Option.SERVER_COMPRESSION.setValue(essentials, defaultCompress.name());
         }
         log.info("Initialized bridge server with below configuration:\n%s", essentials);
     }

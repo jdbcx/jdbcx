@@ -13,17 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx;
+package io.github.jdbcx.format;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.Properties;
 
-public interface Serialization {
-    static final Option OPTION_BUFFER = Option.of(new String[] { "buffer",
-            "Size of the buffer for reading and writing, zero or negative number means no buffer" });
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-    Result<?> deserialize(InputStream in) throws IOException; // NOSONAR
+import io.github.jdbcx.Result;
 
-    void serialize(Result<?> result, OutputStream out) throws IOException;
+public class ArrowSerdeTest {
+    @Test(groups = { "unit" })
+    public void testSerialize() throws IOException {
+        Properties config = new Properties();
+        ArrowSerde serde = new ArrowSerde(config);
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            serde.serialize(Result.of("123"), out);
+            Assert.assertEquals(out.toByteArray().length, 538);
+        }
+    }
 }

@@ -200,6 +200,10 @@ public final class Option implements Serializable {
             "Server web context starts and ends with backslash", "/");
     public static final Option SERVER_TOKEN = Option.of(new String[] { "server.token",
             "Token required to access bridge server with authentication and authorization enabled." });
+    public static final Option SERVER_FORMAT = Option.ofEnum("server.format", "Server response format", null,
+            Format.class);
+    public static final Option SERVER_COMPRESSION = Option.ofEnum("server.compress", "Server response compression",
+            null, Compression.class);
 
     public static final Option SSL_CERT = Option.of(new String[] { "ssl.cert",
             "Path to the client SSL/TLS certificate file to use for authenticated requests." });

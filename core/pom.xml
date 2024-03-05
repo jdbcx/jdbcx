@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>com.aayushatharva.brotli4j</groupId>
+            <artifactId>native-linux-x86_64</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.aayushatharva.brotli4j</groupId>
             <artifactId>native-osx-aarch64</artifactId>
             <scope>provided</scope>
         </dependency>
@@ -75,6 +80,11 @@
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-unsafe</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
             <scope>provided</scope>
         </dependency>
@@ -91,6 +101,11 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>

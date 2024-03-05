@@ -75,12 +75,12 @@ public class QueryInfoTest {
 
         final String id1 = UUID.randomUUID().toString();
         final String id2 = UUID.randomUUID().toString();
-        try (QueryInfo info = new QueryInfo(id1, "select 5", id2, Format.AVROB, Compression.SNAPPY, "233", "zhicwu",
-                "JDBCX/1.0")) {
+        try (QueryInfo info = new QueryInfo(id1, "select 5", id2, Format.AVRO_BINARY, Compression.SNAPPY, "233",
+                "zhicwu", "JDBCX/1.0")) {
             Assert.assertEquals(info.qid, id1);
             Assert.assertEquals(info.query, "select 5");
             Assert.assertEquals(info.txid, id2);
-            Assert.assertEquals(info.format, Format.AVROB);
+            Assert.assertEquals(info.format, Format.AVRO_BINARY);
             Assert.assertEquals(info.compress, Compression.SNAPPY);
             Assert.assertEquals(info.token, "233");
             Assert.assertEquals(info.user, "zhicwu");

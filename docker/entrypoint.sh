@@ -10,7 +10,9 @@ run_cli() {
 }
 
 start_server() {
-    java ${SERVER_OPTS} -cp jdbcx.jar:slf4j-api.jar:slf4j-simple.jar:. io.github.jdbcx.server.BridgeServer
+    local classpath="$(find /app/lib -type f -name '*.jar' -exec printf '{}:' \;)jdbcx.jar:."
+    java --add-opens=java.base/java.nio=ALL-UNNAMED \
+        ${SERVER_OPTS} -cp ${classpath} io.github.jdbcx.server.BridgeServer
 }
 
 # start clickhouse server

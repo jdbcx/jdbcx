@@ -39,8 +39,8 @@ public class RequestTest {
         Assert.assertEquals(request.getQueryId(), qid);
         Assert.assertNull(request.getImplementation(Object.class));
 
-        request = new Request("HEAD", QueryMode.MUTATION, "123", "321", "tx1", Format.AVROB, Compression.SNAPPY, null,
-                null, null, null, request);
+        request = new Request("HEAD", QueryMode.MUTATION, "123", "321", "tx1", Format.AVRO_JSON, Compression.SNAPPY,
+                null, null, null, null, request);
         Assert.assertTrue(request.hasQueryId());
         Assert.assertTrue(request.isMutation());
         Assert.assertTrue(request.isTransactional());
@@ -49,7 +49,7 @@ public class RequestTest {
         Assert.assertEquals(request.getQuery(), "321");
         Assert.assertEquals(request.getQueryId(), "123");
         Assert.assertEquals(request.getCompression(), Compression.SNAPPY);
-        Assert.assertEquals(request.getFormat(), Format.AVROB);
+        Assert.assertEquals(request.getFormat(), Format.AVRO_JSON);
         Assert.assertNotNull(request.getImplementation(Request.class));
     }
 

@@ -19,21 +19,20 @@ import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
-public class DuckDBDialect implements JdbcDialect {
-    static final DuckDBMapper mapper = new DuckDBMapper();
-
+public class DatabendDialect implements JdbcDialect {
     @Override
     public Format getPreferredFormat() {
-        return Format.CSV;
+        // FIXME Invalid Parquet file. Size is smaller than footer.
+        return Format.PARQUET;
     }
 
     @Override
     public ResultMapper getMapper() {
-        return mapper;
+        return DefaultDialect.mapper;
     }
 
     @Override
     public boolean supports(Format format) {
-        return format == Format.CSV || format == Format.PARQUET;
+        return format == Format.PARQUET;
     }
 }

@@ -26,8 +26,9 @@ import io.github.jdbcx.ResultMapper;
 public class DuckDBMapper implements ResultMapper {
     private static final Logger log = LoggerFactory.getLogger(DuckDBMapper.class);
 
-    static final String FUNC_READ_CSV = "read_csv_auto";
-    static final String FUNC_READ_JSON = "read_json_auto";
+    static final String FUNC_READ_CSV = "read_csv_auto('";
+    static final String FUNC_READ_JSON = "read_json_auto('";
+    static final String FUNC_READ_PARQUET = "read_parquet('";
 
     // https://duckdb.org/docs/sql/data_types/overview.html
     static final String TYPE_BOOLEAN = "BOOLEAN"; // logical boolean (true/false)
@@ -213,14 +214,16 @@ public class DuckDBMapper implements ResultMapper {
         switch (format) {
             case JSONL:
             case NDJSON:
-                builder.append(FUNC_READ_JSON).append("('").append(url).append("',format='newline_delimited'");
+                builder.append(FUNC_READ_JSON).append(url).append("',format='newline_delimited'");
                 break;
+            case PARQUET:
+                return builder.append(FUNC_READ_PARQUET).append(url).append("')").toString();
             case TSV:
-                builder.append(FUNC_READ_CSV).append("('").append(url).append("',delim='\\t',header=true");
+                builder.append(FUNC_READ_CSV).append(url).append("',delim='\\t',header=true");
                 break;
             case CSV:
             default:
-                builder.append(FUNC_READ_CSV).append("('").append(url).append("',header=true");
+                builder.append(FUNC_READ_CSV).append(url).append("',header=true");
                 break;
         }
 
@@ -228,6 +231,6 @@ public class DuckDBMapper implements ResultMapper {
         if (compress != null && compress != Compression.NONE) {
             builder.append(",compression='").append(compress.encoding()).append('\'');
         }
-        return builder.append(")").toString();
+        return builder.append(')').toString();
     }
 }

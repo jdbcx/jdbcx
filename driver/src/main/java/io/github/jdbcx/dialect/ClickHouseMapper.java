@@ -31,10 +31,13 @@ import io.github.jdbcx.Utils;
 public class ClickHouseMapper implements ResultMapper {
     private static final Logger log = LoggerFactory.getLogger(ClickHouseMapper.class);
 
+    static final String FORMAT_ARROW = "Arrow";
+    static final String FORMAT_AVRO = "Avro";
     static final String FORMAT_CSV = "CSVWithNames";
     static final String FORMAT_TSV = "TSVWithNames";
     static final String FORMAT_JSONEACHLINE = "JSONEachLine";
     static final String FORMAT_LINEASSTRING = "LineAsString";
+    static final String FORMAT_PARQUET = "Parquet";
 
     static final String TYPE_NULLABLE = "Nullable";
 
@@ -63,9 +66,18 @@ public class ClickHouseMapper implements ResultMapper {
 
         final String format;
         switch (f) {
+            case ARROW:
+                format = FORMAT_ARROW;
+                break;
+            case AVRO:
+                format = FORMAT_AVRO;
+                break;
             case JSONL:
             case NDJSON:
                 format = FORMAT_JSONEACHLINE;
+                break;
+            case PARQUET:
+                format = FORMAT_PARQUET;
                 break;
             case TSV:
                 format = FORMAT_TSV;
@@ -218,9 +230,17 @@ public class ClickHouseMapper implements ResultMapper {
 
         builder.append(',').append(toClickHouseDataFormat(format));
         if (result != null) {
-            builder.append(",'")
-                    .append(Utils.escape(toColumnDefinition(result.fields().toArray(new Field[0])), '\'', '\\'))
-                    .append('\'');
+            Field[] fields = result.fields().toArray(new Field[0]);
+            if (format == Format.AVRO || format == Format.AVRO_BINARY || format == Format.AVRO_JSON
+                    || format == Format.PARQUET) {
+                // normalize field names
+                for (int i = 0, len = fields.length; i < len; i++) {
+                    Field f = fields[i];
+                    fields[i] = Field.of(Format.normalizeAvroField(i + 1, f.name()), f.columnType(), f.type(),
+                            f.isNullable(), f.precision(), f.scale(), f.isSigned());
+                }
+            }
+            builder.append(",'").append(Utils.escape(toColumnDefinition(fields), '\'', '\\')).append('\'');
         }
         List<String> parts = new ArrayList<>(2);
         if (format != null) {

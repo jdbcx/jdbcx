@@ -59,6 +59,7 @@ public class WebExecutor extends AbstractExecutor {
     public static final String AUTH_SCHEME_BEARER = "Bearer ";
 
     public static final String HEADER_ACCEPT = "Accept";
+    public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String HEADER_USER_AGENT = "User-Agent";
     public static final String HEADER_QUERY_MODE = "X-Query-Mode";

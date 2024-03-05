@@ -88,4 +88,14 @@ public class FormatTest {
                         format),
                 Format.PARQUET);
     }
+
+    @Test(groups = { "unit" })
+    public void testNormalizeAvroField() {
+        Assert.assertEquals(Format.normalizeAvroField(0, null), "f1");
+        Assert.assertEquals(Format.normalizeAvroField(0, "f"), "f");
+        Assert.assertEquals(Format.normalizeAvroField(0, "ff"), "ff");
+        Assert.assertEquals(Format.normalizeAvroField(0, "?"), "f1");
+        Assert.assertEquals(Format.normalizeAvroField(0, "??"), "f1");
+        Assert.assertEquals(Format.normalizeAvroField(0, "123"), "f1_123");
+    }
 }

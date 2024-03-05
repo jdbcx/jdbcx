@@ -15,11 +15,17 @@
  */
 package io.github.jdbcx.dialect;
 
+import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.ResultMapper;
 
 public class ClickHouseDialect implements JdbcDialect {
     static final ClickHouseMapper mapper = new ClickHouseMapper();
+
+    @Override
+    public Format getPreferredFormat() {
+        return Format.ARROW;
+    }
 
     @Override
     public boolean supportMultipleResultSetsPerStatement() {
@@ -29,5 +35,10 @@ public class ClickHouseDialect implements JdbcDialect {
     @Override
     public ResultMapper getMapper() {
         return mapper;
+    }
+
+    @Override
+    public boolean supports(Format format) {
+        return format != null && format != Format.AVRO_BINARY && format != Format.AVRO_JSON;
     }
 }

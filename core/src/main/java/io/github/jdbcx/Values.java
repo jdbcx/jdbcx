@@ -101,6 +101,22 @@ final class Values {
             v = StringValue.of(null, true, 0, (String) null);
         } else if (value instanceof byte[]) {
             v = StringValue.of(null, true, 0, (byte[]) value);
+        } else if (value instanceof Byte) {
+            v = ByteValue.of(null, true, true, (byte) value);
+        } else if (value instanceof Short) {
+            v = ShortValue.of(null, true, true, (short) value);
+        } else if (value instanceof Integer) {
+            v = IntValue.of(null, true, true, (int) value);
+        } else if (value instanceof Long) {
+            v = LongValue.of(null, true, true, (long) value);
+        } else if (value instanceof Float) {
+            v = FloatValue.of(null, true, (float) value);
+        } else if (value instanceof Double) {
+            v = DoubleValue.of(null, true, (double) value);
+        } else if (value instanceof BigInteger) {
+            v = BigIntegerValue.of(null, true, (BigInteger) value);
+        } else if (value instanceof BigDecimal) {
+            v = BigDecimalValue.of(null, true, (BigDecimal) value);
         } else {
             v = StringValue.of(null, true, 0, value.toString());
         }

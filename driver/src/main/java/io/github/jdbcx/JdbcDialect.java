@@ -20,6 +20,26 @@ import java.sql.SQLException;
 
 public interface JdbcDialect {
     /**
+     * Checks if the compression algorithm is supported or not.
+     *
+     * @param compress non-null compression algorihtm
+     * @return true if it's supported; false otherwise
+     */
+    default boolean supports(Compression compress) {
+        return compress != null;
+    }
+
+    /**
+     * Checks if the data format is supported or not.
+     *
+     * @param format non-null data format
+     * @return true if it's supported; false otherwise
+     */
+    default boolean supports(Format format) {
+        return format != null;
+    }
+
+    /**
      * Whether a {@link java.sql.Statement} supports multiple
      * {@link java.sql.ResultSet} in open status.
      *
@@ -27,6 +47,24 @@ public interface JdbcDialect {
      */
     default boolean supportMultipleResultSetsPerStatement() {
         return false;
+    }
+
+    /**
+     * Gets preferred compression algorithm.
+     *
+     * @return non-null compression algorithm
+     */
+    default Compression getPreferredCompression() {
+        return Compression.NONE;
+    }
+
+    /**
+     * Gets preferred data format.
+     *
+     * @return non-null data format
+     */
+    default Format getPreferredFormat() {
+        return Format.CSV;
     }
 
     default VariableTag getVariableTag() {
