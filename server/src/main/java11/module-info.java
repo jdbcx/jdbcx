@@ -20,6 +20,7 @@ module io.github.jdbcx.server {
 
     requires static java.logging;
     requires static jdk.httpserver;
+    requires static jdk.unsupported;
     requires static com.google.gson;
     requires static org.slf4j;
 

@@ -28,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Converter;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
 
 public class DateTimeValue extends ObjectValue<LocalDateTime> {
@@ -76,32 +77,33 @@ public class DateTimeValue extends ObjectValue<LocalDateTime> {
 
     @Override
     public boolean asBoolean() {
-        return isNull() ? factory.getDefaultBoolean() : asLong() != 0L;
+        return isNull() ? factory.getDefaultBoolean() : asInt() != 0;
     }
 
     @Override
     public byte asByte() {
-        return isNull() ? factory.getDefaultByte() : (byte) asLong();
+        return isNull() ? factory.getDefaultByte() : (byte) asInt();
     }
 
     @Override
     public char asChar() {
-        return isNull() ? factory.getDefaultChar() : (char) asLong();
+        return isNull() ? factory.getDefaultChar() : (char) asInt();
     }
 
     @Override
     public short asShort() {
-        return isNull() ? factory.getDefaultShort() : (short) asLong();
+        return isNull() ? factory.getDefaultShort() : (short) asInt();
     }
 
     @Override
     public int asInt() {
-        return isNull() ? factory.getDefaultInt() : (int) asLong();
+        return isNull() ? factory.getDefaultInt() : (int) asObject().toEpochSecond(factory.getZoneOffset());
     }
 
     @Override
     public long asLong() {
-        return isNull() ? factory.getDefaultLong() : asObject().toEpochSecond(factory.getZoneOffset());
+        return isNull() ? factory.getDefaultLong()
+                : Utils.toEpochNanoSeconds(asObject(), factory.getZoneOffset()) / getTimeDivisor(scale);
     }
 
     @Override
@@ -109,16 +111,7 @@ public class DateTimeValue extends ObjectValue<LocalDateTime> {
         if (isNull()) {
             return factory.getDefaultFloat();
         }
-        final LocalDateTime value = asObject();
-        final long seconds = value.toEpochSecond(factory.getZoneOffset());
-        final int nanos = value.getNano();
-        if (nanos == 0) {
-            return seconds;
-        } else if (seconds > 0) {
-            return seconds + (float) nanos / getTimeDivisor(Constants.MIN_TIME_SCALE);
-        } else {
-            return seconds - (float) nanos / getTimeDivisor(Constants.MIN_TIME_SCALE);
-        }
+        return (float) asDouble();
     }
 
     @Override
@@ -127,16 +120,7 @@ public class DateTimeValue extends ObjectValue<LocalDateTime> {
             return factory.getDefaultDouble();
         }
 
-        final LocalDateTime value = asObject();
-        final long seconds = value.toEpochSecond(factory.getZoneOffset());
-        final int nanos = value.getNano();
-        if (nanos == 0) {
-            return seconds;
-        } else if (seconds > 0) {
-            return seconds + (double) nanos / getTimeDivisor(Constants.MIN_TIME_SCALE);
-        } else {
-            return seconds - (double) nanos / getTimeDivisor(Constants.MIN_TIME_SCALE);
-        }
+        return (double) Utils.toEpochNanoSeconds(asObject(), factory.getZoneOffset()) / getTimeDivisor(scale);
     }
 
     @Override
@@ -146,18 +130,12 @@ public class DateTimeValue extends ObjectValue<LocalDateTime> {
 
     @Override
     public BigDecimal asBigDecimal() {
-        if (isNull()) {
-            return null;
-        }
-        return BigDecimal.valueOf(asDouble()).setScale(factory.getDecimalScale(), factory.getRoundingMode());
+        return isNull() ? null : new BigDecimal(asBigInteger(), scale);
     }
 
     @Override
     public BigDecimal asBigDecimal(int scale) {
-        if (isNull()) {
-            return null;
-        }
-        return BigDecimal.valueOf(asDouble()).setScale(scale, factory.getRoundingMode());
+        return isNull() ? null : new BigDecimal(asBigInteger(), scale);
     }
 
     @Override

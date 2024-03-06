@@ -5,12 +5,17 @@ set -e
 : ${DRIVER_OPTS:=""}
 : ${SERVER_OPTS:=""}
 
+get_classpath() {
+    echo -n "$(find `pwd`/lib -type f -name '*.jar' -exec printf '{}:' \;)jdbcx.jar:."
+}
+
 run_cli() {
-    java ${DRIVER_OPTS} -cp jdbcx.jar io.github.jdbcx.Main "$@"
+    java ${DRIVER_OPTS} -cp $(get_classpath) io.github.jdbcx.Main "$@"
 }
 
 start_server() {
-    java ${SERVER_OPTS} -cp jdbcx.jar:slf4j-api.jar:slf4j-simple.jar:. io.github.jdbcx.server.BridgeServer
+    java --add-opens=java.base/java.nio=ALL-UNNAMED \
+        ${SERVER_OPTS} -cp $(get_classpath) io.github.jdbcx.server.BridgeServer
 }
 
 # start clickhouse server

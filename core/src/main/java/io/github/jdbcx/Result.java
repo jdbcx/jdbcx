@@ -40,9 +40,12 @@ import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableWrapper;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
+import io.github.jdbcx.format.ArrowSerde;
+import io.github.jdbcx.format.AvroSerde;
 import io.github.jdbcx.format.CsvSerde;
 import io.github.jdbcx.format.JsonlSerde;
 import io.github.jdbcx.format.NdJsonSerde;
+import io.github.jdbcx.format.ParquetSerde;
 import io.github.jdbcx.format.TsvSerde;
 
 public final class Result<T> implements AutoCloseable {
@@ -167,6 +170,30 @@ public final class Result<T> implements AutoCloseable {
         }
         final Serialization serde;
         switch (format) {
+            case ARROW:
+                serde = new ArrowSerde(config);
+                break;
+            case ARROW_STREAM: {
+                Properties props = new Properties(config);
+                ArrowSerde.OPTION_STREAM.setValue(props, Constants.TRUE_EXPR);
+                serde = new ArrowSerde(props);
+                break;
+            }
+            case AVRO:
+                serde = new AvroSerde(config);
+                break;
+            case AVRO_BINARY: {
+                Properties props = new Properties(config);
+                AvroSerde.OPTION_ENCODER.setValue(props, AvroSerde.ENCODER_BINARY);
+                serde = new AvroSerde(props);
+                break;
+            }
+            case AVRO_JSON: {
+                Properties props = new Properties(config);
+                AvroSerde.OPTION_ENCODER.setValue(props, AvroSerde.ENCODER_JSON);
+                serde = new AvroSerde(props);
+                break;
+            }
             case CSV:
                 serde = new CsvSerde(config);
                 break;
@@ -178,6 +205,9 @@ public final class Result<T> implements AutoCloseable {
                 break;
             case NDJSON:
                 serde = new NdJsonSerde(config);
+                break;
+            case PARQUET:
+                serde = new ParquetSerde(config);
                 break;
             default:
                 throw new IllegalArgumentException("Unsupport format: " + format);

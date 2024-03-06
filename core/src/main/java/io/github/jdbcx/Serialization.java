@@ -20,6 +20,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public interface Serialization {
+    static final Option OPTION_BUFFER = Option.of(new String[] { "buffer",
+            "Size of the buffer for reading and writing, zero or negative number means no buffer" });
+
     Result<?> deserialize(InputStream in) throws IOException; // NOSONAR
 
     void serialize(Result<?> result, OutputStream out) throws IOException;

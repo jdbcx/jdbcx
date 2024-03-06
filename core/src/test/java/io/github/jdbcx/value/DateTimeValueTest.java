@@ -69,7 +69,7 @@ public class DateTimeValueTest extends BaseValueTest {
         value = DateTimeValue.of(factory, false,
                 LocalDateTime.ofEpochSecond(s, n, factory.getZoneOffset()));
         Assert.assertEquals(value.asInt(), s);
-        Assert.assertEquals(value.asLong(), s);
+        Assert.assertEquals(value.asLong(), 12312L);
         Assert.assertEquals(value.asTime(), LocalTime.ofNanoOfDay(s * 1000000000L + n / 10000000 * 10000000));
         Assert.assertEquals(value.asDateTime(),
                 LocalDateTime.ofEpochSecond(s, n / 10000000 * 10000000, factory.getZoneOffset()));
@@ -132,7 +132,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 1D, // double
                 BigInteger.ONE, // BigInteger
                 BigDecimal.ONE, // BigDecimal
-                new BigDecimal(BigInteger.valueOf(1000L), 3), // BigDecimal(3)
+                new BigDecimal(BigInteger.valueOf(1L), 3), // BigDecimal(3)
                 Format.TSV, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 LocalTime.ofSecondOfDay(1L), // Time
@@ -159,7 +159,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 -2D, // double
                 BigInteger.valueOf(-2L), // BigInteger
                 new BigDecimal("-2"), // BigDecimal
-                new BigDecimal(BigInteger.valueOf(-2000L), 3), // BigDecimal(3)
+                new BigDecimal(BigInteger.valueOf(-2L), 3), // BigDecimal(3)
                 IllegalArgumentException.class, // Enum(Format)
                 LocalDate.ofEpochDay(-1L), // Date
                 LocalTime.ofSecondOfDay(86398), // Time
@@ -182,12 +182,12 @@ public class DateTimeValueTest extends BaseValueTest {
                 (byte) -2, // byte
                 (short) -2, // short
                 -2, // int
-                -2L, // long
-                -2.12F, // float
-                -2.12D, // double
-                BigInteger.valueOf(-2L), // BigInteger
-                new BigDecimal("-2"), // BigDecimal
-                new BigDecimal(BigInteger.valueOf(-2120L), 3), // BigDecimal(3)
+                -212L, // long
+                -212F, // float
+                -212D, // double
+                BigInteger.valueOf(-212L), // BigInteger
+                new BigDecimal("-2.12"), // BigDecimal
+                new BigDecimal(BigInteger.valueOf(-212L), 3), // BigDecimal(3)
                 IllegalArgumentException.class, // Enum(Format)
                 LocalDate.ofEpochDay(-1L), // Date
                 LocalTime.ofNanoOfDay(86398120000000L), // Time

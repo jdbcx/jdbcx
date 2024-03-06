@@ -513,8 +513,18 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     public void testFederatedQuery() throws IOException, SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();
-        String url = "jdbcx:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres";
-        String query = "select {{ db(url=jdbc:duckdb:): select 1 }}";
+        String url = "jdbcx:databend://localhost:8000/default?user=default&password=d";
+        String query = "select * from {{bridge.db: select 1}}";
+        try (Connection conn = d.connect(url, props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(query)) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next());
+        }
+
+        url = "jdbcx:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres";
+        query = "select {{ db(url=jdbc:duckdb:): select 1 }}";
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {

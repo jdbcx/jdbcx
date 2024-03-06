@@ -38,9 +38,6 @@ import io.github.jdbcx.Serialization;
 public abstract class TextSerde implements Serialization {
     private static final Logger log = LoggerFactory.getLogger(TextSerde.class);
 
-    public static final Option OPTION_BUFFER = Option
-            .of(new String[] { "buffer",
-                    "Size of the buffer for reading and writing, zero or negative number means no buffer" });
     public static final Option OPTION_CHARSET = Option.of(new String[] { "charset", "Character set" });
     public static final Option OPTION_HEADER = Option.of(new String[] { "header", "Whether contains header or not" });
     public static final Option OPTION_NULL_VALUE = Option

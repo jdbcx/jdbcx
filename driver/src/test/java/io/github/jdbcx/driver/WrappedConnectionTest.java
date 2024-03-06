@@ -41,11 +41,13 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
                 { "jdbcx:ch://" + getClickHouseServer(), true },
                 { "jdbcx:databend://" + getDatabendServer() + "/default?user=default&password=d", false },
                 { "jdbcx:duckdb:", false },
+                { "jdbcx:arrow-flight-sql://" + getFlightSqlServer()
+                        + "?useEncryption=false&user=flight_username&password=f&disableCertificateVerification=true",
+                        false },
                 { "jdbcx:mariadb://" + getMariaDbServer() + "/sys?user=root", false },
                 { "jdbcx:mysql://root@" + getMySqlServer() + "/mysql", false },
                 { "jdbcx:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres", false },
                 { "jdbcx:sqlite::memory:", false },
-                // { "jdbcx:trino://" + getTrinoServer() + "/memory?user=root", false },
         };
     }
 
@@ -59,6 +61,9 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
                         "select 3 + number from numbers(2) order by number" },
                 { "jdbcx:duckdb:", "select 0 union select 1 order by 1",
                         "select 2 union select 3 union select 4 order by 1" },
+                { "jdbcx:arrow-flight-sql://" + getFlightSqlServer()
+                        + "?useEncryption=false&user=flight_username&password=f&disableCertificateVerification=true",
+                        "select 0 union select 1 union select 2 order by 1", "select 3 union select 4 order by 1" },
                 { "jdbcx:mariadb://" + getMariaDbServer() + "/sys?user=root",
                         "select 0", "select 1 union select 2 union select 3 union select 4" },
                 { "jdbcx:mysql://root@" + getMySqlServer() + "/mysql",
@@ -67,8 +72,6 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
                         "select 0 union select 1 union select 2 union select 3 order by 1", "select 4" },
                 { "jdbcx:sqlite::memory:", "select 0 union select 1 union select 2 order by 1",
                         "select 3 union select 4 order by 1" },
-                // { "jdbcx:trino://" + getTrinoServer() + "/memory?user=root",
-                //         "select 0 union select 1 union select 2 order by 1", "select 3 union select 4 order by 1" },
         };
     }
 

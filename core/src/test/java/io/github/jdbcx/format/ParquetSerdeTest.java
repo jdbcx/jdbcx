@@ -13,27 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.dialect;
+package io.github.jdbcx.format;
 
-import io.github.jdbcx.Format;
-import io.github.jdbcx.JdbcDialect;
-import io.github.jdbcx.ResultMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
-public class DuckDBDialect implements JdbcDialect {
-    static final DuckDBMapper mapper = new DuckDBMapper();
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-    @Override
-    public Format getPreferredFormat() {
-        return Format.CSV;
-    }
+import io.github.jdbcx.Result;
 
-    @Override
-    public ResultMapper getMapper() {
-        return mapper;
-    }
+public class ParquetSerdeTest {
+    @Test(groups = { "unit" })
+    public void testSerialize() throws IOException {
+        ParquetSerde serde = new ParquetSerde(null);
 
-    @Override
-    public boolean supports(Format format) {
-        return format == Format.CSV || format == Format.PARQUET;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            serde.serialize(Result.of("123"), out);
+            Assert.assertEquals(out.toByteArray().length, 472);
+        }
     }
 }

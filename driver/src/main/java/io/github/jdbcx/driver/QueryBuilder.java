@@ -26,12 +26,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
+import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcActivityListener;
+import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
@@ -44,6 +48,30 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
 public final class QueryBuilder {
+    static final String getEncodings(JdbcDialect dialect, Properties config) {
+        Compression serverCompress = Compression.valueOf(Option.SERVER_COMPRESSION.getValue(config));
+        if (serverCompress == dialect.getPreferredCompression()) {
+            return serverCompress.encoding();
+        }
+        StringBuilder builder = new StringBuilder(dialect.getPreferredCompression().encoding());
+        if (dialect.supports(serverCompress)) {
+            builder.append(';').append(serverCompress.encoding());
+        }
+        return builder.toString();
+    }
+
+    static final String getMimeTypes(JdbcDialect dialect, Properties config) {
+        Format serverFormat = Format.valueOf(Option.SERVER_FORMAT.getValue(config));
+        if (serverFormat == dialect.getPreferredFormat()) {
+            return serverFormat.mimeType();
+        }
+        StringBuilder builder = new StringBuilder(dialect.getPreferredFormat().mimeType());
+        if (dialect.supports(serverFormat)) {
+            builder.append(';').append(serverFormat.mimeType());
+        }
+        return builder.toString();
+    }
+
     private final QueryContext context;
 
     private final boolean directQuery;
@@ -65,12 +93,16 @@ public final class QueryBuilder {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
                 ConnectionMetaData md = manager.getMetaData();
+                JdbcDialect dialect = manager.getDialect();
                 Properties props = manager.getBridgeConfig();
                 VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
                 WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
                 StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT).append('=')
                         .append(Utils.escape(md.getProduct(), ',')).append(',').append(WebExecutor.HEADER_QUERY_MODE)
-                        .append('=').append(QueryMode.ASYNC.code());
+                        .append('=').append(QueryMode.ASYNC.code()).append(',').append(WebExecutor.HEADER_ACCEPT)
+                        .append('=').append(getMimeTypes(dialect, props)).append(',')
+                        .append(WebExecutor.HEADER_ACCEPT_ENCODING)
+                        .append('=').append(getEncodings(dialect, props));
                 if (md.hasUserName()) {
                     builder.append(',').append(WebExecutor.HEADER_QUERY_USER).append('=')
                             .append(Utils.escape(md.getUserName(), ','));

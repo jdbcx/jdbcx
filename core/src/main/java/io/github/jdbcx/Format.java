@@ -29,36 +29,18 @@ public enum Format {
     XML("application/xml", "xml"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.file
     ARROW("application/vnd.apache.arrow.file", "arrow"),
+    // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream
+    ARROW_STREAM("application/vnd.apache.arrow.stream", "arrows"),
     // non-standard
-    AVROB("application/vnd.apache.avro+binary", "avro"),
-    AVRO("application/vnd.apache.avro+json", "avroj"),
+    // https://avro.apache.org/docs/1.11.1/specification/#encodings
+    AVRO("avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
+    AVRO_BINARY("application/vnd.apache.avro+binary", "avrob"),
+    AVRO_JSON("application/vnd.apache.avro+json", "avroj"),
     BSON("application/bson", "bson"),
     JSONL("application/jsonl", "jsonl"), // or application/json-lines?
     NDJSON("application/x-ndjson", "ndjson"), // or application/json-seq?
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET("application/vnd.apache.parquet", "parquet");
-
-    private String mimeType;
-    private String fileExt;
-    private String fileExtWithDot;
-
-    Format(String mimeType, String fileExt) {
-        this.mimeType = mimeType;
-        this.fileExt = fileExt;
-        this.fileExtWithDot = ".".concat(fileExt);
-    }
-
-    public String mimeType() {
-        return mimeType;
-    }
-
-    public String fileExtension() {
-        return fileExtension(true);
-    }
-
-    public String fileExtension(boolean withDot) {
-        return withDot ? fileExtWithDot : fileExt;
-    }
 
     /**
      * Get preferred data format based on given MIME types.
@@ -135,5 +117,70 @@ public enum Format {
         }
 
         return format;
+    }
+
+    /**
+     * Normalizes the given field name used in Avro/Parquet data format.
+     *
+     * @param index 1-based index
+     * @param name  original field name which may or may not be valid according to
+     *              Avro spec
+     * @return normalized field name with invalid characters removed and
+     *         {@code f<index>_} prefix
+     */
+    public static String normalizeAvroField(int index, String name) {
+        if (index < 1) {
+            index = 1;
+        }
+        final int len;
+        if (name == null || (len = name.length()) < 1) {
+            return new StringBuilder().append('f').append(index).toString();
+        }
+
+        StringBuilder builder = new StringBuilder(len + 3);
+        // start with [A-Za-z_]
+        char ch = name.charAt(0);
+        if (ch == '_' || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+            builder.append(ch);
+        } else {
+            builder.append('f').append(index).append('_');
+            if (ch >= '0' && ch <= '9') {
+                builder.append(ch);
+            }
+        }
+        // subsequently contain only [A-Za-z0-9_]
+        for (int i = 1; i < len; i++) {
+            ch = name.charAt(i);
+            if (ch == '_' || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+                builder.append(ch);
+            }
+        }
+        int lastIndex = builder.length() - 1;
+        if (builder.charAt(lastIndex) == '_') {
+            builder.setLength(lastIndex);
+        }
+        return builder.toString();
+    }
+
+    private String mimeType;
+    private String fileExt;
+    private String fileExtWithDot;
+
+    Format(String mimeType, String fileExt) {
+        this.mimeType = mimeType;
+        this.fileExt = fileExt;
+        this.fileExtWithDot = ".".concat(fileExt);
+    }
+
+    public String mimeType() {
+        return mimeType;
+    }
+
+    public String fileExtension() {
+        return fileExtension(true);
+    }
+
+    public String fileExtension(boolean withDot) {
+        return withDot ? fileExtWithDot : fileExt;
     }
 }

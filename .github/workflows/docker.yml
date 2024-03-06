@@ -10,7 +10,7 @@ on:
       minor:
         description: "Minor version"
         required: false
-        default: "4"
+        default: "5"
       patch:
         description: "Patch"
         required: false

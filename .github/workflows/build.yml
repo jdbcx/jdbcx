@@ -78,7 +78,8 @@ jobs:
       - name: Build and install libraries
         run: |
           mvn --batch-mode --show-version --strict-checksums -Dj8 -DskipTests package \
-          && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar docker/app/.
+          && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
+            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/.
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
