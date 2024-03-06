@@ -78,11 +78,11 @@ public class BaseIntegrationTest {
 
     private static final ServiceConfig CLICKHOUSE;
     private static final ServiceConfig DATABEND;
+    private static final ServiceConfig FLIGHTSQL;
     private static final ServiceConfig MARIADB;
     private static final ServiceConfig MYSQL;
     private static final ServiceConfig POSTGRESQL;
     private static final ServiceConfig PROXY; // control port
-    // private static final ServiceConfig TRINO;
 
     private static final List<ServiceConfig> services;
     private static final DockerComposeContainer<?> containers;
@@ -100,11 +100,11 @@ public class BaseIntegrationTest {
         List<ServiceConfig> list = new ArrayList<>();
         list.add(CLICKHOUSE = new ServiceConfig("clickhouse", 8123, "/ping", props));
         list.add(DATABEND = new ServiceConfig("databend", 8000, props));
+        list.add(FLIGHTSQL = new ServiceConfig("flightsql", 31337, props));
         list.add(MARIADB = new ServiceConfig("mariadb", 3306, props));
         list.add(MYSQL = new ServiceConfig("mysql", 3306, props));
         list.add(POSTGRESQL = new ServiceConfig("postgresql", 5432, props));
         list.add(PROXY = new ServiceConfig("toxiproxy", 8474, props)); // control port
-        // list.add(TRINO = new ServiceConfig("trino", 8080, "/v1/info", props));
         services = Collections.unmodifiableList(new ArrayList<>(list));
 
         String url = Option.SERVER_URL.getValue(props,
@@ -157,6 +157,10 @@ public class BaseIntegrationTest {
         return DATABEND.getAddress(containers);
     }
 
+    public static String getFlightSqlServer() {
+        return FLIGHTSQL.getAddress(containers);
+    }
+
     public static String getMariaDbServer() {
         return MARIADB.getAddress(containers);
     }
@@ -172,10 +176,6 @@ public class BaseIntegrationTest {
     public static String getProxyControlServer() {
         return PROXY.getAddress(containers);
     }
-
-    // public static String getTrinoServer() {
-    //     return TRINO.getAddress(containers);
-    // }
 
     public static String getProxyServer() {
         return PROXY.container && CLICKHOUSE.container

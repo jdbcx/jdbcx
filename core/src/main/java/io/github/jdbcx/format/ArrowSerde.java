@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
-import java.util.function.BiConsumer;
+import java.util.function.ObjIntConsumer;
 
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
@@ -48,6 +48,8 @@ import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowFileWriter;
+import org.apache.arrow.vector.ipc.ArrowStreamWriter;
+import org.apache.arrow.vector.ipc.ArrowWriter;
 import org.apache.arrow.vector.types.DateUnit;
 import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.TimeUnit;
@@ -55,54 +57,52 @@ import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Serialization;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.Value;
 
 public class ArrowSerde implements Serialization {
     public static final Option OPTION_BATCH = Option
             .of(new String[] { "batch", "Batch size for serialization", "100" });
+    public static final Option OPTION_CLEAR = Option
+            .of(new String[] { "clear", "Whether to clear and reallocate buffer after each batch write",
+                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
+    public static final Option OPTION_STREAM = Option
+            .of(new String[] { "stream", "Whether to use stream format or not", Constants.FALSE_EXPR,
+                    Constants.TRUE_EXPR });
 
     static final class VectorConsumer {
         final FieldVector vector;
-        final BiConsumer<Integer, Value> consumer;
+        final ObjIntConsumer<Value> consumer;
 
-        VectorConsumer(FieldVector vector, BiConsumer<Integer, Value> consumer) {
+        VectorConsumer(FieldVector vector, ObjIntConsumer<Value> consumer) {
             this.vector = vector;
             this.consumer = consumer;
         }
     }
 
-    static List<VectorConsumer> buildArrowSchemaRoot(BufferAllocator allocator, List<io.github.jdbcx.Field> fields) {
-        final int len = fields.size();
-        List<VectorConsumer> list = new ArrayList<>();
-        for (int i = 0; i < len; i++) {
-            VectorConsumer vc = getArrowVectorConsumer(allocator, fields.get(i), null);
-            list.add(vc);
-        }
-        return list;
-    }
-
-    static VectorConsumer getArrowVectorConsumer(BufferAllocator allocator, io.github.jdbcx.Field f,
+    static VectorConsumer newArrowVectorConsumer(BufferAllocator allocator, io.github.jdbcx.Field f,
             TimeZone timeZone) {
         final VectorConsumer vc;
         switch (f.type()) {
             case BOOLEAN: {
                 final BitVector vector = new BitVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Bool(), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 break;
             }
             case BIT:
                 if (f.precision() > 1) {
                     final VarBinaryVector vector = new VarBinaryVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Binary(), null), allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asBinary()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asBinary()));
                 } else {
                     final BitVector vector = new BitVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Bool(), null), allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 }
                 break;
             case BINARY:
@@ -111,31 +111,31 @@ public class ArrowSerde implements Serialization {
             case BLOB: {
                 final VarBinaryVector vector = new VarBinaryVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Binary(), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asBinary()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asBinary()));
                 break;
             }
             case TINYINT: {
                 final IntVector vector = new IntVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Int(8, f.isSigned()), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 break;
             }
             case SMALLINT: {
                 final IntVector vector = new IntVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Int(16, f.isSigned()), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 break;
             }
             case INTEGER: {
                 final IntVector vector = new IntVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Int(32, f.isSigned()), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 break;
             }
             case BIGINT: {
                 final BigIntVector vector = new BigIntVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Int(64, f.isSigned()), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asLong()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asLong()));
                 break;
             }
             case REAL:
@@ -143,14 +143,14 @@ public class ArrowSerde implements Serialization {
                 final Float4Vector vector = new Float4Vector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.FloatingPoint(FloatingPointPrecision.SINGLE), null),
                         allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asFloat()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asFloat()));
                 break;
             }
             case DOUBLE: {
                 final Float8Vector vector = new Float8Vector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.FloatingPoint(FloatingPointPrecision.DOUBLE), null),
                         allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asDouble()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asDouble()));
                 break;
             }
             case NUMERIC:
@@ -159,19 +159,19 @@ public class ArrowSerde implements Serialization {
                     final Decimal256Vector vector = new Decimal256Vector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Decimal(f.precision(), f.scale(), 256), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asBigDecimal()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asBigDecimal(f.scale())));
                     break;
                 } else {
                     final DecimalVector vector = new DecimalVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Decimal(f.precision(), f.scale(), 128), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asBigDecimal()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asBigDecimal(f.scale())));
                     break;
                 }
             case DATE: {
                 final DateDayVector vector = new DateDayVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Date(DateUnit.DAY), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 break;
             }
             case TIME:
@@ -180,22 +180,23 @@ public class ArrowSerde implements Serialization {
                     final TimeNanoVector vector = new TimeNanoVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Time(TimeUnit.NANOSECOND, 64), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asLong()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asTime().toNanoOfDay()));
                 } else if (f.scale() > 3) {
                     final TimeMicroVector vector = new TimeMicroVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Time(TimeUnit.MICROSECOND, 64), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asLong()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asTime().toNanoOfDay() / 1_000L));
                 } else if (f.scale() > 0) {
                     final TimeMilliVector vector = new TimeMilliVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Time(TimeUnit.MILLISECOND, 32), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                    vc = new VectorConsumer(vector,
+                            (v, i) -> vector.setSafe(i, (int) (v.asTime().toNanoOfDay() / 1_000_000L)));
                 } else {
                     final TimeSecVector vector = new TimeSecVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Time(TimeUnit.SECOND, 32), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asTime().toSecondOfDay()));
                 }
                 break;
             case TIMESTAMP:
@@ -205,22 +206,25 @@ public class ArrowSerde implements Serialization {
                     final TimeStampNanoVector vector = new TimeStampNanoVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Timestamp(TimeUnit.NANOSECOND, tzId), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asLong()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i,
+                            Utils.toEpochNanoSeconds(v.asDateTime(), v.getFactory().getZoneOffset())));
                 } else if (f.scale() > 3) {
                     final TimeStampMicroVector vector = new TimeStampMicroVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Timestamp(TimeUnit.MICROSECOND, tzId), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asLong()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i,
+                            Utils.toEpochNanoSeconds(v.asDateTime(), v.getFactory().getZoneOffset()) / 1_000L));
                 } else if (f.scale() > 0) {
                     final TimeStampMilliVector vector = new TimeStampMilliVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Timestamp(TimeUnit.MILLISECOND, tzId), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i,
+                            Utils.toEpochNanoSeconds(v.asDateTime(), v.getFactory().getZoneOffset()) / 1_000_000L));
                 } else {
                     final TimeStampSecVector vector = new TimeStampSecVector(f.name(),
                             new FieldType(f.isNullable(), new ArrowType.Timestamp(TimeUnit.SECOND, tzId), null),
                             allocator);
-                    vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asInt()));
+                    vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asInt()));
                 }
                 break;
             case CHAR:
@@ -232,7 +236,7 @@ public class ArrowSerde implements Serialization {
             case CLOB: {
                 final VarCharVector vector = new VarCharVector(f.name(),
                         new FieldType(f.isNullable(), new ArrowType.Utf8(), null), allocator);
-                vc = new VectorConsumer(vector, (i, v) -> vector.set(i, v.asBinary()));
+                vc = new VectorConsumer(vector, (v, i) -> vector.setSafe(i, v.asBinary()));
                 break;
             }
             // complex types
@@ -253,9 +257,13 @@ public class ArrowSerde implements Serialization {
     }
 
     protected final int batchSize;
+    protected final boolean clear;
+    protected final boolean stream;
 
     public ArrowSerde(Properties config) {
         this.batchSize = Integer.parseInt(OPTION_BATCH.getValue(config));
+        this.clear = Boolean.parseBoolean(OPTION_CLEAR.getValue(config));
+        this.stream = Boolean.parseBoolean(OPTION_STREAM.getValue(config));
     }
 
     @Override
@@ -265,55 +273,62 @@ public class ArrowSerde implements Serialization {
 
     @Override
     public void serialize(Result<?> result, OutputStream out) throws IOException {
-        // https://arrow.apache.org/cookbook/java/io.html#write-out-to-buffer
-        // https://github.com/apache/arrow/blob/main/java/adapter/jdbc/src/main/java/org/apache/arrow/adapter/jdbc/JdbcToArrow.java
         final List<io.github.jdbcx.Field> resultFields = result.fields();
         final int len = resultFields.size();
         try (BufferAllocator allocator = new RootAllocator()) {
-            final List<VectorConsumer> list = buildArrowSchemaRoot(allocator, resultFields);
             final List<Field> fields = new ArrayList<>(len);
             final List<FieldVector> vectors = new ArrayList<>(len);
-            final List<BiConsumer<Integer, Value>> consumers = new ArrayList<>(len);
+            final List<ObjIntConsumer<Value>> consumers = new ArrayList<>(len);
+            final List<VectorConsumer> list = new ArrayList<>(len);
             for (int i = 0; i < len; i++) {
-                VectorConsumer vc = list.get(i);
+                VectorConsumer vc = newArrowVectorConsumer(allocator, resultFields.get(i), null);
                 FieldVector vector = vc.vector;
                 fields.add(vector.getField());
                 vectors.add(vector);
                 consumers.add(vc.consumer);
+                list.add(vc);
             }
 
             final int size = this.batchSize;
+            final boolean reset = this.clear;
             try (VectorSchemaRoot root = new VectorSchemaRoot(fields, vectors, 0);
-                    ArrowFileWriter writer = new ArrowFileWriter(root, null, Channels.newChannel(out))) {
+                    ArrowWriter writer = stream ? new ArrowStreamWriter(root, null, Channels.newChannel(out))
+                            : new ArrowFileWriter(root, null, Channels.newChannel(out))) {
+                if (!reset) {
+                    root.allocateNew();
+                }
                 writer.start();
 
                 int index = 0;
                 for (io.github.jdbcx.Row r : result.rows()) {
-                    if (index == 0) {
+                    if (reset && index == 0) {
                         root.allocateNew();
                     }
 
                     for (int i = 0; i < len; i++) {
-                        BiConsumer<Integer, Value> consumer = consumers.get(i);
                         Value value = r.value(i);
                         if (value.isNull()) {
                             vectors.get(i).setNull(index);
                         } else {
-                            consumer.accept(index, value);
+                            consumers.get(i).accept(value, index);
                         }
                     }
 
                     if (++index >= size) {
                         root.setRowCount(index);
                         writer.writeBatch();
-                        root.clear();
+                        if (reset) {
+                            root.clear();
+                        }
                         index = 0;
                     }
                 }
                 if (index > 0) {
                     root.setRowCount(index);
                     writer.writeBatch();
-                    root.clear();
+                    if (reset) {
+                        root.clear();
+                    }
                 }
                 writer.end();
             }

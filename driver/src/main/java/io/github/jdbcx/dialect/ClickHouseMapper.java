@@ -32,6 +32,7 @@ public class ClickHouseMapper implements ResultMapper {
     private static final Logger log = LoggerFactory.getLogger(ClickHouseMapper.class);
 
     static final String FORMAT_ARROW = "Arrow";
+    static final String FORMAT_ARROW_STREAM = "ArrowStream";
     static final String FORMAT_AVRO = "Avro";
     static final String FORMAT_CSV = "CSVWithNames";
     static final String FORMAT_TSV = "TSVWithNames";
@@ -68,6 +69,9 @@ public class ClickHouseMapper implements ResultMapper {
         switch (f) {
             case ARROW:
                 format = FORMAT_ARROW;
+                break;
+            case ARROW_STREAM:
+                format = FORMAT_ARROW_STREAM;
                 break;
             case AVRO:
                 format = FORMAT_AVRO;

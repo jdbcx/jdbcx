@@ -61,7 +61,7 @@ public class TimeValueTest extends BaseValueTest {
         factory = ValueFactory.newInstance(config);
         value = TimeValue.of(factory, false, LocalTime.ofNanoOfDay(l));
         Assert.assertEquals(value.asInt(), (int) (l / 1000000000L));
-        Assert.assertEquals(value.asLong(), l / 1000000000L);
+        Assert.assertEquals(value.asLong(), l / 10000000L);
         Assert.assertEquals(value.asTime(), LocalTime.ofNanoOfDay((long) (123.12 * 1000000000L)));
     }
 
@@ -113,7 +113,7 @@ public class TimeValueTest extends BaseValueTest {
                 1D, // double
                 BigInteger.ONE, // BigInteger
                 BigDecimal.ONE, // BigDecimal
-                new BigDecimal(BigInteger.valueOf(1000L), 3), // BigDecimal(3)
+                new BigDecimal(BigInteger.valueOf(1L), 3), // BigDecimal(3)
                 Format.TSV, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 LocalTime.ofSecondOfDay(1L), // Time
@@ -140,7 +140,7 @@ public class TimeValueTest extends BaseValueTest {
                 86398D, // double
                 BigInteger.valueOf(86398), // BigInteger
                 new BigDecimal("86398"), // BigDecimal
-                new BigDecimal(BigInteger.valueOf(86398000L), 3), // BigDecimal(3)
+                new BigDecimal(BigInteger.valueOf(86398L), 3), // BigDecimal(3)
                 IllegalArgumentException.class, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 LocalTime.ofSecondOfDay(86398), // Time
@@ -161,12 +161,12 @@ public class TimeValueTest extends BaseValueTest {
                 (byte) 86398, // byte
                 (short) 86398, // short
                 86398, // int
-                86398L, // long
-                86398.12F, // float
-                86398.12D, // double
-                BigInteger.valueOf(86398), // BigInteger
+                8639812L, // long
+                8639812F, // float
+                8639812D, // double
+                BigInteger.valueOf(8639812), // BigInteger
                 new BigDecimal("86398.12"), // BigDecimal
-                new BigDecimal(BigInteger.valueOf(86398120L), 3), // BigDecimal(3)
+                new BigDecimal(BigInteger.valueOf(8639812L), 3), // BigDecimal(3)
                 IllegalArgumentException.class, // Enum(Format)
                 factory.getDefaultDate(), // Date
                 LocalTime.ofNanoOfDay(86398120000000L), // Time

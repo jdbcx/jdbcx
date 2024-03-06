@@ -38,6 +38,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1098,6 +1100,18 @@ public final class Utils {
             list.add(v);
         }
         return Collections.unmodifiableList(resize ? new ArrayList<>(list) : list);
+    }
+
+    public static long toEpochNanoSeconds(LocalDateTime value, ZoneOffset zoneOffset) {
+        final long base = value.toEpochSecond(zoneOffset) * 1_000_000_000L;
+        final int nanos = value.getNano();
+        if (nanos == 0) {
+            return base;
+        } else if (base > 0) {
+            return base + nanos;
+        } else {
+            return base - nanos;
+        }
     }
 
     /**

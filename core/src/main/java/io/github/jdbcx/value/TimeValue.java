@@ -101,19 +101,18 @@ public class TimeValue extends ObjectValue<LocalTime> {
 
     @Override
     public long asLong() {
-        return isNull() ? factory.getDefaultLong() : asObject().toSecondOfDay();
+        return isNull() ? factory.getDefaultLong() : asObject().toNanoOfDay() / getTimeDivisor(scale);
     }
 
     @Override
     public float asFloat() {
         return isNull() ? factory.getDefaultFloat()
-                : (float) ((double) asObject().toNanoOfDay() / getTimeDivisor(Constants.MIN_TIME_SCALE));
+                : (float) ((double) asObject().toNanoOfDay() / getTimeDivisor(scale));
     }
 
     @Override
     public double asDouble() {
-        return isNull() ? factory.getDefaultDouble()
-                : (double) asObject().toNanoOfDay() / getTimeDivisor(Constants.MIN_TIME_SCALE);
+        return isNull() ? factory.getDefaultDouble() : (double) asObject().toNanoOfDay() / getTimeDivisor(scale);
     }
 
     @Override
@@ -123,16 +122,12 @@ public class TimeValue extends ObjectValue<LocalTime> {
 
     @Override
     public BigDecimal asBigDecimal() {
-        return isNull() ? null
-                : BigDecimal.valueOf((double) asObject().toNanoOfDay() / getTimeDivisor(Constants.MIN_TIME_SCALE))
-                        .setScale(scale, factory.getRoundingMode());
+        return isNull() ? null : new BigDecimal(asBigInteger(), scale);
     }
 
     @Override
     public BigDecimal asBigDecimal(int scale) {
-        return isNull() ? null
-                : BigDecimal.valueOf((double) asObject().toNanoOfDay() / getTimeDivisor(Constants.MIN_TIME_SCALE))
-                        .setScale(scale, factory.getRoundingMode());
+        return isNull() ? null : new BigDecimal(asBigInteger(), scale);
     }
 
     @Override

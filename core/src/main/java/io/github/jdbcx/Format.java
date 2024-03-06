@@ -29,6 +29,8 @@ public enum Format {
     XML("application/xml", "xml"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.file
     ARROW("application/vnd.apache.arrow.file", "arrow"),
+    // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream
+    ARROW_STREAM("application/vnd.apache.arrow.stream", "arrows"),
     // non-standard
     // https://avro.apache.org/docs/1.11.1/specification/#encodings
     AVRO("avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport

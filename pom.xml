@@ -116,7 +116,6 @@
         <roaring-bitmap.version>1.0.1</roaring-bitmap.version>
         <slf4j.version>2.0.12</slf4j.version>
         <snappy.version>1.1.10.5</snappy.version>
-        <trino.version>439</trino.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.5-11</zstd-jni.version>
         <testcontainers.version>1.19.5</testcontainers.version>
@@ -269,14 +268,20 @@
                 <version>${micrometer.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.trino</groupId>
-                <artifactId>trino-jdbc</artifactId>
-                <version>${trino.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
                 <version>${codec.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>flight-sql-jdbc-driver</artifactId>
+                <version>${arrow.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.arrow</groupId>

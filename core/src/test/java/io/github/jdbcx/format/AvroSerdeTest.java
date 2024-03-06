@@ -120,7 +120,8 @@ public class AvroSerdeTest {
             serde.serialize(Result.of(Arrays.asList(Field.of(""), Field.of("1", JDBCType.INTEGER)),
                     new Object[][] { { null, 1 }, { "123", null } }), out);
             Assert.assertEquals(new String(out.toByteArray()),
-                    "{\"f1\":null,\"f2_1\":{\"int\":1}}\n{\"f1\":{\"string\":\"123\"},\"f2_1\":null}");
+                    "{\"f1\":null,\"f2_1\":{\"int\":1}}" + System.lineSeparator()
+                            + "{\"f1\":{\"string\":\"123\"},\"f2_1\":null}");
         }
     }
 }

@@ -38,9 +38,13 @@ clickhouse:
     - mysql
     - postgresql
 
-# https://hub.docker.com/r/trinodb/trino
-#trino:
-#  image: trinodb/trino:439
+# https://hub.docker.com/r/voltrondata/flight-sql
+flightsql:
+  image: voltrondata/flight-sql:v1.2.5
+  environment:
+    TLS_ENABLED: "0"
+    FLIGHT_PASSWORD: "f"
+    PRINT_QUERIES: "0"
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:

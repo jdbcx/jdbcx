@@ -173,6 +173,12 @@ public final class Result<T> implements AutoCloseable {
             case ARROW:
                 serde = new ArrowSerde(config);
                 break;
+            case ARROW_STREAM: {
+                Properties props = new Properties(config);
+                ArrowSerde.OPTION_STREAM.setValue(props, Constants.TRUE_EXPR);
+                serde = new ArrowSerde(props);
+                break;
+            }
             case AVRO:
                 serde = new AvroSerde(config);
                 break;

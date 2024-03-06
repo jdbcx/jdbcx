@@ -44,6 +44,7 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Serialization;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.Value;
 
 public class AvroSerde implements Serialization {
@@ -169,11 +170,13 @@ public class AvroSerde implements Serialization {
                 break;
             case TIME:
             case TIME_WITH_TIMEZONE:
-                value = f.scale() > 3 ? v.asLong() : v.asInt();
+                value = f.scale() > 3 ? v.asTime().toNanoOfDay() / 1_000L
+                        : (int) (v.asTime().toNanoOfDay() / 1_000_000L);
                 break;
             case TIMESTAMP:
             case TIMESTAMP_WITH_TIMEZONE:
-                value = v.asLong();
+                value = Utils.toEpochNanoSeconds(v.asDateTime(), v.getFactory().getZoneOffset())
+                        / (f.scale() > 3 ? 1_000L : 1_000_000L);
                 break;
             case BIGINT:
                 if (f.isSigned()) {

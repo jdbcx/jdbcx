@@ -569,7 +569,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                     } else {
                         setResponseHeaders(request);
                         if (request.hasResult()) {
-                            log.debug("Reusing cached result for query [%s]...", request.getQueryId());
+                            log.debug("Reusing cached query [%s]...", request.getQueryId());
                             try (QueryInfo info = request.getQueryInfo();
                                     Result<?> result = info.getResult();
                                     OutputStream out = request.getCompression().provider()
@@ -622,10 +622,12 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             log.debug("Releasing cached query [%s] due to %s", key, cause);
             final Result<?> result = value.getResult();
             if (result != null && result.isActive()) {
-                log.debug("Skip active result and relevant resources as they are being used somewhere else");
+                log.debug(
+                        "Released cached query [%s] without closing associated resources as they are currently in use by other processes",
+                        key);
             } else {
                 value.close();
-                log.debug("Released cached query [%s] due to %s", key, cause);
+                log.debug("Released cached query [%s] and all associated resources", key);
             }
         }
     }
