@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSetMetaData;
@@ -40,6 +41,7 @@ import java.util.regex.Pattern;
 
 import io.github.jdbcx.Cache;
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Field;
@@ -67,6 +69,7 @@ public final class ConnectionManager implements AutoCloseable {
             Arrays.asList(Field.of("name"), Field.of("value"), Field.of("default_value"), Field.of("description"),
                     Field.of("choices"), Field.of("system_property"), Field.of("environment_variable")));
 
+    public static final String DB_EXTENSION = "db";
     public static final String JDBC_PREFIX = "jdbc:";
     public static final String JDBCX_PREFIX = Option.PROPERTY_JDBCX + ":";
 
@@ -154,6 +157,8 @@ public final class ConnectionManager implements AutoCloseable {
     private final Properties normalizedProps;
     private final Properties originalProps;
 
+    private final ConfigManager configManager;
+
     private final VariableTag tag;
 
     private final ClassLoader classLoader;
@@ -162,12 +167,14 @@ public final class ConnectionManager implements AutoCloseable {
     private final AtomicReference<JdbcDialect> dialectRef;
 
     ConnectionManager(DriverInfo info) throws SQLException {
-        this(info.getExtensions(), info.extension, info.driver.connect(info.actualUrl, info.normalizedInfo),
+        this(info.configManager, info.getExtensions(), info.extension,
+                info.driver.connect(info.actualUrl, info.normalizedInfo),
                 info.actualUrl, info.extensionProps, info.normalizedInfo, info.mergedInfo);
     }
 
-    public ConnectionManager(Map<String, DriverExtension> extensions, DriverExtension defaultExtension, Connection conn,
-            String url, Properties extensionProps, Properties normalizedProps, Properties originalProps) {
+    public ConnectionManager(ConfigManager configManager, Map<String, DriverExtension> extensions,
+            DriverExtension defaultExtension, Connection conn, String url, Properties extensionProps,
+            Properties normalizedProps, Properties originalProps) {
         List<DriverExtension> list = new LinkedList<>();
         for (DriverExtension e : extensions.values()) {
             if (!list.contains(e)) {
@@ -196,6 +203,8 @@ public final class ConnectionManager implements AutoCloseable {
         this.normalizedProps = normalizedProps;
         this.originalProps = originalProps;
 
+        this.configManager = configManager;
+
         String varTag = originalProps.getProperty(Option.TAG.getJdbcxName());
         this.tag = Checker.isNullOrEmpty(varTag) ? null
                 : VariableTag.valueOf(Option.TAG.getJdbcxValue(originalProps));
@@ -214,10 +223,15 @@ public final class ConnectionManager implements AutoCloseable {
 
     public Connection createConnection() {
         try {
-            return Utils.startsWith(jdbcUrl, JDBC_PREFIX, true)
-                    ? DriverInfo.findSuitableDriver(jdbcUrl, normalizedProps, classLoader).connect(jdbcUrl,
-                            normalizedProps)
-                    : DriverManager.getConnection(jdbcUrl, normalizedProps);
+            if (Utils.startsWith(jdbcUrl, JDBC_PREFIX, true)) {
+                final Driver driver = DriverInfo.findSuitableDriver(jdbcUrl, normalizedProps, classLoader);
+                log.debug("Connecting through driver [%s]...", driver);
+                return driver.connect(jdbcUrl, normalizedProps);
+            } else {
+                final boolean wrapped = Utils.startsWith(jdbcUrl, JDBCX_PREFIX, true);
+                log.debug("Connecting using DriverManager(wrapped=%s)...", wrapped);
+                return DriverManager.getConnection(jdbcUrl, wrapped ? originalProps : normalizedProps);
+            }
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -227,6 +241,7 @@ public final class ConnectionManager implements AutoCloseable {
         final QueryContext context = QueryContext.newContext();
         final Supplier<Connection> connSupplier = this::createConnection;
         final Supplier<VariableTag> tagSupplier = this::getVariableTag;
+        context.put(QueryContext.KEY_CONFIG, configManager);
         context.put(QueryContext.KEY_CONNECTION, connSupplier);
         context.put(QueryContext.KEY_TAG, tagSupplier);
         return context;
@@ -243,6 +258,10 @@ public final class ConnectionManager implements AutoCloseable {
     public Properties extractProperties(DriverExtension ext) {
         return new Properties(
                 ext == defaultExtension ? props : DriverExtension.extractProperties(ext, originalProps));
+    }
+
+    public ConfigManager getConfigManager() {
+        return configManager;
     }
 
     public Connection getConnection() {
@@ -279,6 +298,22 @@ public final class ConnectionManager implements AutoCloseable {
             }
         }
         return dialect;
+    }
+
+    public boolean isUsingDatabaseExtension() {
+        return defaultExtension.getName().equals(DB_EXTENSION) || defaultExtension.getAliases().contains(DB_EXTENSION);
+    }
+
+    public boolean isUsingDatabaseOrDefaultExtension() {
+        final DriverExtension dbExt = extMappings.get(DB_EXTENSION);
+        DriverExtension currentExt = defaultExtension;
+        try {
+            currentExt = extMappings.get(getConnection().getCatalog());
+        } catch (SQLException e) {
+            // ignore
+        }
+        return (defaultExtension == DefaultDriverExtension.getInstance() || defaultExtension == dbExt)
+                && (currentExt == DefaultDriverExtension.getInstance() || currentExt == dbExt);
     }
 
     public DriverExtension getDefaultExtension() {

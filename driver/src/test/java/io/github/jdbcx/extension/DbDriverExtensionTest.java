@@ -35,11 +35,17 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
         final String address = getClickHouseServer();
         try (Connection conn = DriverManager.getConnection("jdbcx:db:ch://" + address);
                 Statement stmt = conn.createStatement()) {
-            Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("select 1"));
+            try (ResultSet rs = stmt.executeQuery("select 1")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have only one row");
+            }
+
             try (ResultSet rs = stmt
                     .executeQuery("select '{{ sql(url='jdbc:ch://${ch.server.address}'): select 2}}'")) {
+                Assert.assertNotNull(stmt.getWarnings());
                 Assert.assertTrue(rs.next(), "Should have at least one row");
-                Assert.assertEquals(rs.getInt(1), 2);
+                Assert.assertEquals(rs.getString(1), "select 2");
                 Assert.assertFalse(rs.next(), "Should have only one row");
             }
         }
@@ -74,13 +80,45 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
         }
     }
 
-    @Test(groups = { "private" })
-    public void testConnectById() throws SQLException {
+    @Test(groups = { "integration" })
+    public void testConnectToExtension() throws SQLException {
         Properties props = new Properties();
         WrappedDriver driver = new WrappedDriver();
-        String[] queries = new String[] { "{{ db: select 1}}", "select {{ db: select 1}}", "{{ script: 1 }}",
-                "select 1", "select {{ script: 1}}" };
+        try (Connection conn = DriverManager.getConnection("jdbcx:db", props);
+                Statement stmt = conn.createStatement()) {
+            // single value
+            for (String query : new String[] { "select {{ db: select 1}}", "select select 1",
+                    "{{ db: select select 1}}", "select {%var:a=1%}select ${a}",
+                    "select {%var:a=1%}{{db: select ${a}}}" }) {
+                try (ResultSet rs = stmt.executeQuery(query)) {
+                    Assert.assertTrue(rs.next(), "Should have at least one row");
+                    Assert.assertEquals(rs.getString(1), "select select 1");
+                    Assert.assertFalse(rs.next(), "Should have only one row");
+                }
+            }
+
+            // multiple values
+            for (String query : new String[] { "{%var:a=1%}select {{ db: ${a} }}{{ script: [${a}, 2]}}",
+                    "select {{script:[11,12]}}" }) {
+                try (ResultSet rs = stmt.executeQuery(query)) {
+                    Assert.assertTrue(rs.next(), "Should have at least one row");
+                    Assert.assertEquals(rs.getString(1), "select 11");
+                    Assert.assertTrue(rs.next(), "Should have at least two rows");
+                    Assert.assertEquals(rs.getString(1), "select 12");
+                    Assert.assertFalse(rs.next(), "Should have only two rows");
+                }
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testConnectById() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        WrappedDriver driver = new WrappedDriver();
         String url = "jdbcx:ch://" + getClickHouseServer();
+        String[] queries = new String[] { "{%var:a=1%}select 0+${a}", "select 1", "{{ db: select 1}}",
+                "select {{ db: select 1}}", "{{ script: 1 }}", "select {{ script: 1}}" };
         try (Connection conn = driver.connect(url, props);
                 Statement stmt = conn.createStatement()) {
             for (String query : queries) {
@@ -92,7 +130,7 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
             }
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch-play", props);
+        try (Connection conn = driver.connect("jdbcx:db:my-duckdb", props);
                 Statement stmt = conn.createStatement()) {
             for (String query : queries) {
                 try (ResultSet rs = stmt.executeQuery(query)) {
@@ -106,7 +144,8 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
-                        .executeQuery("{{ db(url='jdbc:ch:https://explorer@play.clickhouse.com:443'): select 1 }}")) {
+                        .executeQuery("{{ db(url='jdbc:databend://" + getDatabendServer()
+                                + "/default?user=default&password=d'): select 1 }}")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next(), "Should have only one row");
@@ -114,7 +153,7 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("{{ db(id=ch-play): select 1 }}")) {
+                ResultSet rs = stmt.executeQuery("{{ db(id=my-sqlite): select 1 }}")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next(), "Should have only one row");
@@ -122,13 +161,13 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("{{ db.ch-play: select 1 }}")) {
+                ResultSet rs = stmt.executeQuery("{{ db.my-sqlite: select 1 }}")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next(), "Should have only one row");
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch-play", props);
+        try (Connection conn = DriverManager.getConnection("jdbcx:db:my-sqlite", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 1")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");

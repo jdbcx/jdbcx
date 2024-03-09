@@ -182,7 +182,6 @@ public final class QueryBuilder {
                 p.setProperty(key, val);
             }
 
-            JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
             if (block.hasOutput()) {
                 try {
                     if (directQuery && !ext.supportsNoArguments() && block.hasNoArguments()) {
@@ -190,6 +189,8 @@ public final class QueryBuilder {
                                 ConnectionManager.convertTo(ConnectionManager.describe(ext, p), ResultSet.class));
                         return Collections.emptyList();
                     }
+
+                    JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
                     Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()));
                     if (directQuery
                             && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
@@ -203,6 +204,7 @@ public final class QueryBuilder {
                     results[i] = Result.of(block.getContent());
                 }
             } else {
+                JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
                 try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()))) {
                     results[i] = Result.of(Constants.EMPTY_STRING);
                 }
@@ -243,7 +245,6 @@ public final class QueryBuilder {
             queries.add(
                     Utils.applyVariables(String.join(Constants.EMPTY_STRING, parts), tag, context.getVariables()));
         }
-
         return Collections.unmodifiableList(new ArrayList<>(queries));
     }
 }

@@ -22,6 +22,7 @@ import java.io.StringReader;
 import java.sql.ResultSet;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -234,5 +235,66 @@ public class ResultTest {
             Assert.assertTrue(r.isActive());
             Assert.assertTrue(result.isActive());
         }
+    }
+
+    @Test(groups = "unit")
+    public void testStringValue() {
+        Result<String> result = Result.of((String) null);
+        Assert.assertEquals(result.get(), null);
+        Assert.assertEquals(result.fields().size(), 1);
+        int i = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asObject(), null);
+            Assert.assertEquals(r.value(0).asString(), "");
+            i++;
+        }
+        Assert.assertEquals(i, 1);
+
+        result = Result.of("233");
+        Assert.assertEquals(result.get(), "233");
+        Assert.assertEquals(result.fields().size(), 1);
+        i = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asObject(), "233");
+            Assert.assertEquals(r.value(0).asString(), "233");
+            i++;
+        }
+        Assert.assertEquals(i, 1);
+    }
+
+    @Test(groups = "unit")
+    public void testListOfString() {
+        Result<?> result = Result.of((List<String>) null);
+        Assert.assertEquals(result.get(), null);
+        Assert.assertEquals(result.fields().size(), 1);
+        int i = 0;
+        for (Row r : result.rows()) {
+            Assert.fail("Shoud have no row");
+        }
+        Assert.assertEquals(i, 0);
+
+        result = Result.of(Collections.singletonList("233"));
+        Assert.assertEquals(result.fields().size(), 1);
+        i = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asObject(), "233");
+            Assert.assertEquals(r.value(0).asString(), "233");
+            i++;
+        }
+        Assert.assertEquals(i, 1);
+
+        result = Result.of(Arrays.asList("321", "123"));
+        Assert.assertEquals(result.fields().size(), 1);
+        i = 0;
+        for (Row r : result.rows()) {
+            Assert.assertEquals(r.size(), 1);
+            Assert.assertEquals(r.value(0).asObject(), i == 0 ? "321" : "123");
+            Assert.assertEquals(r.value(0).asString(), i == 0 ? "321" : "123");
+            i++;
+        }
+        Assert.assertEquals(i, 2);
     }
 }

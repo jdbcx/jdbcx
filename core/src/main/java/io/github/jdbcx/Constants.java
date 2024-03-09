@@ -34,6 +34,8 @@ import java.util.TimeZone;
  * This class contains shared constants that are accessible by all classes.
  */
 public final class Constants {
+    public static final String PRODUCT_NAME = "JDBCX";
+    
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
     public static final Object[][] EMPTY_OBJECT_ARRAY2 = new Object[0][];
     public static final boolean[] EMPTY_BOOL_ARRAY = new boolean[0];

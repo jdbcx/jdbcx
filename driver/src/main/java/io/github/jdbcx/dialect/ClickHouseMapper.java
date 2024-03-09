@@ -31,12 +31,20 @@ import io.github.jdbcx.Utils;
 public class ClickHouseMapper implements ResultMapper {
     private static final Logger log = LoggerFactory.getLogger(ClickHouseMapper.class);
 
+    static final String EXPR_URL = "url('";
+    static final String EXPR_ACCEPT = "'accept'='";
+    static final String EXPR_ENCODING = "'accept-encoding'='";
+    static final String EXPR_HEADERS = ",headers(";
+    static final String EXPR_COMMA = ",";
+    static final String EXPR_PART = ",'";
+    static final String EXPR_END_PART = "))";
+
     static final String FORMAT_ARROW = "Arrow";
     static final String FORMAT_ARROW_STREAM = "ArrowStream";
     static final String FORMAT_AVRO = "Avro";
     static final String FORMAT_CSV = "CSVWithNames";
     static final String FORMAT_TSV = "TSVWithNames";
-    static final String FORMAT_JSONEACHLINE = "JSONEachLine";
+    static final String FORMAT_JSONEACHROW = "JSONEachRow";
     static final String FORMAT_LINEASSTRING = "LineAsString";
     static final String FORMAT_PARQUET = "Parquet";
 
@@ -77,8 +85,7 @@ public class ClickHouseMapper implements ResultMapper {
                 format = FORMAT_AVRO;
                 break;
             case JSONL:
-            case NDJSON:
-                format = FORMAT_JSONEACHLINE;
+                format = FORMAT_JSONEACHROW;
                 break;
             case PARQUET:
                 format = FORMAT_PARQUET;
@@ -227,36 +234,29 @@ public class ClickHouseMapper implements ResultMapper {
 
     @Override
     public String toRemoteTable(String url, Format format, Compression compress, Result<?> result) {
-        StringBuilder builder = new StringBuilder().append("url('").append(url).append('\'');
+        StringBuilder builder = new StringBuilder().append(EXPR_URL).append(url).append('\'');
         if (format == null && result == null && (compress == null || compress == Compression.NONE)) {
             return builder.append(',').append(FORMAT_LINEASSTRING).append(')').toString();
         }
 
         builder.append(',').append(toClickHouseDataFormat(format));
-        if (result != null) {
-            Field[] fields = result.fields().toArray(new Field[0]);
-            if (format == Format.AVRO || format == Format.AVRO_BINARY || format == Format.AVRO_JSON
-                    || format == Format.PARQUET) {
-                // normalize field names
-                for (int i = 0, len = fields.length; i < len; i++) {
-                    Field f = fields[i];
-                    fields[i] = Field.of(Format.normalizeAvroField(i + 1, f.name()), f.columnType(), f.type(),
-                            f.isNullable(), f.precision(), f.scale(), f.isSigned());
-                }
-            }
-            builder.append(",'").append(Utils.escape(toColumnDefinition(fields), '\'', '\\')).append('\'');
+        final boolean hasFormat = format != null;
+        final Field[] fields;
+        if ((!hasFormat || format.isSchemaless()) && result != null
+                && (fields = result.fields().toArray(new Field[0])).length > 0) {
+            builder.append(EXPR_PART).append(Utils.escape(toColumnDefinition(fields), '\'', '\\')).append('\'');
         }
         List<String> parts = new ArrayList<>(2);
-        if (format != null) {
-            parts.add(new StringBuilder("'accept'='").append(format.mimeType()).append('\'').toString());
+        if (hasFormat) {
+            parts.add(new StringBuilder(EXPR_ACCEPT).append(format.mimeType()).append('\'').toString());
         }
         if (compress != null && compress != Compression.NONE) {
-            parts.add(new StringBuilder("'accept-encoding'='").append(compress.encoding()).append('\'').toString());
+            parts.add(new StringBuilder(EXPR_ENCODING).append(compress.encoding()).append('\'').toString());
         }
         if (parts.isEmpty()) {
             builder.append(')');
         } else {
-            builder.append(",headers(").append(String.join(",", parts)).append("))");
+            builder.append(EXPR_HEADERS).append(String.join(EXPR_COMMA, parts)).append(EXPR_END_PART);
         }
         return builder.toString();
     }

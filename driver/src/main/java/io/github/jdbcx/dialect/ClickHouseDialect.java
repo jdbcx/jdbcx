@@ -24,7 +24,7 @@ public class ClickHouseDialect implements JdbcDialect {
 
     @Override
     public Format getPreferredFormat() {
-        return Format.ARROW;
+        return Format.ARROW_STREAM;
     }
 
     @Override
@@ -39,6 +39,6 @@ public class ClickHouseDialect implements JdbcDialect {
 
     @Override
     public boolean supports(Format format) {
-        return format != null && format != Format.AVRO_BINARY && format != Format.AVRO_JSON;
+        return format != null && format != Format.AVRO_BINARY && format != Format.AVRO_JSON && format != Format.NDJSON;
     }
 }

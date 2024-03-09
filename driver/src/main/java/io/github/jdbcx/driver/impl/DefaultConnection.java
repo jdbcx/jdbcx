@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.github.jdbcx.ConfigManager;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
@@ -76,8 +78,9 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
         super.reset();
     }
 
-    public DefaultConnection(Map<String, DriverExtension> extensions, DriverExtension defaultExtension, String url,
-            Properties extensionProps, Properties normalizedProps, Properties originalProps) {
+    public DefaultConnection(ConfigManager configManager, Map<String, DriverExtension> extensions,
+            DriverExtension defaultExtension, String url, Properties extensionProps, Properties normalizedProps,
+            Properties originalProps) {
         super(null);
 
         this.autoCommit = new AtomicBoolean(true);
@@ -91,8 +94,8 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
         this.catalog = new AtomicReference<>(defaultExtension.getName());
         this.schema = new AtomicReference<>();
 
-        this.manager = new ConnectionManager(extensions, defaultExtension, this, url, extensionProps, normalizedProps,
-                originalProps);
+        this.manager = new ConnectionManager(configManager, extensions, defaultExtension, this, url, extensionProps,
+                normalizedProps, originalProps);
 
         this.url = url;
     }
@@ -334,7 +337,13 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
 
     @Override
     public boolean isValid(int timeout) throws SQLException {
-        return !closed.get();
+        if (closed.get()) {
+            return false;
+        }
+        try (Statement stmt = createStatement();
+                ResultSet rs = stmt.executeQuery(manager.getVariableTag().function(Constants.EMPTY_STRING))) {
+            return rs.next();
+        }
     }
 
     @Override

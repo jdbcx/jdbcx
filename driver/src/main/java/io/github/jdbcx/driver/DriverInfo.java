@@ -15,14 +15,8 @@
  */
 package io.github.jdbcx.driver;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.URLClassLoader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
@@ -41,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.ExpandedUrlClassLoader;
@@ -62,6 +57,7 @@ final class DriverInfo {
     final String actualUrl;
     final DriverExtension extension;
     final Properties extensionProps;
+    final ConfigManager configManager;
 
     private final String originalUrl;
     private final Properties originalProperties;
@@ -141,39 +137,6 @@ final class DriverInfo {
             }
         }
         return ext != null ? ext : DefaultDriverExtension.getInstance();
-    }
-
-    /**
-     * Loads default configuration from the given file. It's a no-op when
-     * {@code fileName} is null or empty string.
-     *
-     * @param fileName file name
-     * @return non-null default configuration
-     */
-    static Properties loadDefaultConfig(String fileName) {
-        fileName = Utils.normalizePath(fileName);
-
-        Properties defaultConfig = new Properties();
-        if (Checker.isNullOrEmpty(fileName)) {
-            log.debug("No default config file specified");
-        } else {
-            Path path = Paths.get(fileName);
-            if (!path.isAbsolute()) {
-                path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
-            }
-            File file = path.toFile();
-            if (file.exists() && file.canRead()) {
-                try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
-                    defaultConfig.load(reader);
-                    log.debug("Loaded default config from file \"%s\".", fileName);
-                } catch (IOException e) {
-                    log.warn("Failed to load default config from file \"%s\"", fileName, e);
-                }
-            } else {
-                log.debug("Skip loading default config as file \"%s\" is not accessible.", fileName);
-            }
-        }
-        return defaultConfig;
     }
 
     /**
@@ -295,7 +258,7 @@ final class DriverInfo {
         }
         final String configPath = info.getProperty(Option.PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
                 Option.CONFIG_PATH.getDefaultValue());
-        final Properties defaultConfig = loadDefaultConfig(configPath);
+        final Properties defaultConfig = ConfigManager.loadConfig(configPath, null, null);
         if (!defaultConfig.isEmpty()) {
             for (Entry<Object, Object> entry : info.entrySet()) {
                 String name = (String) entry.getKey();
@@ -324,7 +287,7 @@ final class DriverInfo {
         this.extension = getDriverExtension(this.normalizedUrl, getExtensions());
         this.actualUrl = normalizeUrl(this.extension, this.normalizedUrl);
         this.extensionProps = DriverExtension.extractProperties(this.extension, info);
-
+        this.configManager = ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, info);
         this.driver = findSuitableDriver(this.actualUrl, this.extensionProps, this.customClassLoader);
     }
 

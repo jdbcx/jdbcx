@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Utils;
@@ -86,10 +87,13 @@ public abstract class AbstractDriver implements Driver, DriverAction {
             if (ext != null) {
                 Properties extProps = ext == driverInfo.extension ? driverInfo.extensionProps
                         : DriverExtension.extractProperties(ext, info);
-                Connection conn = ext.getConnection(tailored, extProps);
-                return conn != null ? new WrappedConnection(conn, url)
-                        : new DefaultConnection(extensions, ext, url, extProps, driverInfo.normalizedInfo,
-                                driverInfo.mergedInfo);
+                Connection conn = null;
+                if (!Checker.isNullOrEmpty(tailored)) {
+                    conn = ext.getConnection(driverInfo.configManager, tailored, extProps);
+                }
+                return conn != null ? new WrappedConnection(driverInfo, conn, url)
+                        : new DefaultConnection(driverInfo.configManager, extensions, ext, url, extProps,
+                                driverInfo.normalizedInfo, driverInfo.mergedInfo);
             }
         }
         return acceptsURL(url) ? new WrappedConnection(driverInfo)

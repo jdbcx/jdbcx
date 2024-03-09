@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.format;
+package io.github.jdbcx;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.util.Properties;
 
-import org.testng.Assert;
+import org.junit.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.Result;
-
-public class ParquetSerdeTest {
-    @Test(groups = { "unit" })
-    public void testSerialize() throws IOException {
-        ParquetSerde serde = new ParquetSerde(null);
-
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            serde.serialize(Result.of("123"), out);
-            Assert.assertEquals(out.toByteArray().length, 452);
+public class ConfigManagerTest {
+    public static final class TestConfigManager extends ConfigManager {
+        public TestConfigManager(Properties props) {
+            super(props);
         }
+    }
+
+    @Test(groups = { "unit" })
+    public void testNewInstance() {
+        Assert.assertNotNull(ConfigManager.newInstance(TestConfigManager.class.getName(), null));
+        Assert.assertNotNull(ConfigManager.newInstance(TestConfigManager.class.getName(), new Properties()));
+
+        Assert.assertEquals(ConfigManager.newInstance(TestConfigManager.class.getName(), null).getClass(),
+                TestConfigManager.class);
     }
 }

@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
@@ -46,7 +47,7 @@ public class ShellDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig(props));
+        return new ActivityListener(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props));
     }
 
     @Override

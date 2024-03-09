@@ -34,10 +34,12 @@ import com.sun.net.httpserver.HttpServer;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
@@ -52,7 +54,8 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     private final HttpServer server;
 
     public JdkHttpServer() {
-        this(BridgeServer.loadConfig());
+        this(ConfigManager.loadConfig(Option.CONFIG_PATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX), null,
+                System.getProperties()));
     }
 
     public JdkHttpServer(Properties props) {
@@ -90,6 +93,8 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         HttpExchange exchange = request.getImplementation(HttpExchange.class);
 
         Headers headers = exchange.getResponseHeaders();
+        headers.set(HEADER_ACCEPT_RANGES, RANGE_NONE);
+        headers.set(HEADER_CONNECTION, CONNECTION_CLOSE);
         headers.set(HEADER_CONTENT_TYPE, request.getFormat().mimeType());
         if (request.hasCompression()) {
             headers.set(HEADER_CONTENT_ENCODING, request.getCompression().encoding());

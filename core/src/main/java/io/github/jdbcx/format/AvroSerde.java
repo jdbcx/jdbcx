@@ -70,7 +70,7 @@ public class AvroSerde implements Serialization {
     // TODO 1) cache the schema; and 2) persist result and only refresh when needed
     static Schema buildSchema(Result<?> result) {
         final Class<?> clazz = result.getClass();
-        SchemaBuilder.FieldAssembler<Schema> fieldAssembler = SchemaBuilder.builder(clazz.getPackage().getName())
+        SchemaBuilder.FieldAssembler<Schema> fieldAssembler = SchemaBuilder.builder(Constants.PRODUCT_NAME)
                 .record(clazz.getSimpleName()).fields();
         List<Field> fields = result.fields();
         for (int i = 0, size = fields.size(); i < size; i++) {

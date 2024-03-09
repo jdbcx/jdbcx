@@ -140,6 +140,44 @@ public class UtilsTest {
     }
 
     @Test(groups = "unit")
+    public void testToPrimitiveType() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Utils.toPrimitiveType(null));
+
+        for (Class<?>[] classes : new Class[][] {
+                { Object.class, Object.class },
+                { String.class, String.class },
+                { Boolean.class, boolean.class },
+                { Character.class, char.class },
+                { Byte.class, byte.class },
+                { Short.class, short.class },
+                { Integer.class, int.class },
+                { Long.class, long.class },
+                { Float.class, float.class },
+                { Double.class, double.class },
+        }) {
+            Assert.assertEquals(Utils.toPrimitiveType(classes[0]), classes[1]);
+            Assert.assertEquals(Utils.toPrimitiveType(classes[1]), classes[1]);
+        }
+    }
+
+    @Test(groups = "unit")
+    public void testNewInstance() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Utils.newInstance(null, null, null));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Utils.newInstance(List.class, null, null));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> Utils.newInstance(null, ArrayList.class.getName(), null));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> Utils.newInstance(List.class, ArrayList.class.getName(), null));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> Utils.newInstance(List.class, ArrayList.class.getName(), new Object[] { null }));
+
+        Assert.assertEquals(Utils.newInstance(List.class, ArrayList.class.getName()), new ArrayList<>());
+        Assert.assertEquals(Utils.newInstance(List.class, ArrayList.class.getName(), 2), new ArrayList<>());
+        Assert.assertEquals(Utils.newInstance(Properties.class, Properties.class.getName(), new Properties()),
+                new Properties());
+    }
+
+    @Test(groups = "unit")
     public void testGetHost() {
         Assert.assertNotNull(Utils.getHost(null));
         Assert.assertNotNull(Utils.getHost(""));

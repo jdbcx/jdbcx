@@ -38,8 +38,8 @@ final class DefaultDriver implements Driver, DriverAction {
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        return new DefaultConnection(driverInfo.getExtensions(), driverInfo.extension, driverInfo.actualUrl,
-                driverInfo.extensionProps, driverInfo.normalizedInfo, driverInfo.mergedInfo);
+        return new DefaultConnection(driverInfo.configManager, driverInfo.getExtensions(), driverInfo.extension,
+                driverInfo.actualUrl, driverInfo.extensionProps, driverInfo.normalizedInfo, driverInfo.mergedInfo);
     }
 
     @Override

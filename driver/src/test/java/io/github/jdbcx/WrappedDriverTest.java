@@ -472,7 +472,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getString(1).trim(), "1");
+            Assert.assertEquals(rs.getString(1).trim(), "1", "url=" + url + ", query=" + query);
             Assert.assertFalse(rs.next());
         }
     }
@@ -509,36 +509,39 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         }
     }
 
-    @Test(groups = { "private" })
+    @Test(groups = { "integration" })
     public void testFederatedQuery() throws IOException, SQLException {
         Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
         WrappedDriver d = new WrappedDriver();
-        String url = "jdbcx:databend://localhost:8000/default?user=default&password=d";
-        String query = "select * from {{bridge.db: select 1}}";
+        String url = "jdbcx:databend://" + getDatabendServer() + "/default?user=default&password=d";
+        String query = "select {{db.my-sqlite: select 123}}";
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertEquals(rs.getInt(1), 123);
             Assert.assertFalse(rs.next());
         }
 
         url = "jdbcx:postgresql://" + getPostgreSqlServer() + "/postgres?user=postgres";
-        query = "select {{ db(url=jdbc:duckdb:): select 1 }}";
+        query = "select {{ db(url=jdbc:duckdb:): select 456 }}";
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertEquals(rs.getInt(1), 456);
             Assert.assertFalse(rs.next());
         }
 
-        query = "select {{ db.duckdb-local: select 1 }}";
+        query = "select {{ db.my-duckdb: select 789 }} - {{ db.my-duckdb: select 1 }} + {{ db.my-sqlite: select 1 }} + {{db(url=jdbc:ch://"
+                + getClickHouseServer() + "): select 210}}" + " * {{ db(url=jdbcx:mysql://root@" + getMySqlServer()
+                + "): select 1}}";
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(query)) {
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertEquals(rs.getInt(1), 999);
             Assert.assertFalse(rs.next());
         }
     }

@@ -94,6 +94,11 @@ public class DefaultStatement extends DefaultResource implements Statement {
             List<String> queries = builder.build();
             if (queries.isEmpty()) {
                 return Collections.emptyList();
+            } else if (pq.isStaticQuery() && manager.isUsingDatabaseOrDefaultExtension()) {
+                // This is more like a dry-run. It's very different from what're doing in
+                // wrapped statement, which will actually execute the query in database
+                queryResult.setResultSet(ConnectionManager.convertTo(Result.of(queries), ResultSet.class));
+                return Collections.emptyList();
             }
 
             w = builder.getLastWarning();

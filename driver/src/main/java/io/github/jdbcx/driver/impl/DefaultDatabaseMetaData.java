@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Field;
@@ -94,7 +95,7 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public String getDatabaseProductName() throws SQLException {
-        return "JDBCX";
+        return Constants.PRODUCT_NAME;
     }
 
     @Override
@@ -679,9 +680,11 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         int len = exts.size();
         ResultSet[] arr = new ResultSet[len + 1];
         arr[0] = new ReadOnlyResultSet(null, Result.of(fields));
+        final ConfigManager configManager = conn.manager.getConfigManager();
         for (int i = 0; i < len; i++) {
             DriverExtension ext = exts.get(i);
-            arr[i + 1] = ext.getTables(schemaPattern, tableNamePattern, types, conn.manager.extractProperties(ext));
+            arr[i + 1] = ext.getTables(configManager, schemaPattern, tableNamePattern, types,
+                    conn.manager.extractProperties(ext));
         }
         return new CombinedResultSet(arr);
     }
@@ -1028,7 +1031,8 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         ResultSet[] arr = new ResultSet[len];
         for (int i = 0; i < len; i++) {
             DriverExtension ext = exts.get(i);
-            List<String> schemas = ext.getSchemas(schemaPattern, conn.manager.extractProperties(ext));
+            List<String> schemas = ext.getSchemas(conn.manager.getConfigManager(), schemaPattern,
+                    conn.manager.extractProperties(ext));
             if (schemas == null || schemas.isEmpty()) {
                 arr[i] = null;
             } else {

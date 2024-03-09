@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.interpreter;
+package io.github.jdbcx;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-
-import io.github.jdbcx.Constants;
-import io.github.jdbcx.Option;
-import io.github.jdbcx.Utils;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -40,7 +43,12 @@ import io.github.jdbcx.Utils;
  * This class provides methods to load and retrieve configurations using the
  * category/ID values. The underlying storage mechanism is abstracted.
  */
-public class ConfigManager {
+public abstract class ConfigManager {
+    private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
+
+    public static final String PROPERTY_FILE_PROVIDER = ConfigManager.class.getPackage().getName()
+            + ".config.PropertyFile" + ConfigManager.class.getSimpleName();
+
     public static final Option OPTION_CACHE = Option
             .of(new String[] { "cache",
                     "Whether to load configuration into cache and use background thread to monitor changes" });
@@ -49,10 +57,49 @@ public class ConfigManager {
             .of(new String[] { "manage", "Whether all the configuration are managed", Constants.FALSE_EXPR,
                     Constants.TRUE_EXPR });
 
-    private static final ConfigManager instance = Utils.getService(ConfigManager.class, new ConfigManager());
+    /**
+     * Loads configuration from the given file. It's a no-op when {@code fileName}
+     * is null or empty string.
+     *
+     * @param fileName file name
+     * @param baseDir  optional base directory to search the file, null or empty
+     *                 string is same as {@link Constants#CURRENT_DIR}
+     * @param base     optional base configuration, which is parent of the returned
+     *                 properties
+     * @return non-null configuration
+     */
+    public static final Properties loadConfig(String fileName, String baseDir, Properties base) {
+        fileName = Utils.normalizePath(fileName);
 
-    public static final ConfigManager getInstance() {
-        return instance;
+        Properties config = new Properties(base);
+        if (Checker.isNullOrEmpty(fileName)) {
+            log.debug("No config file specified");
+        } else {
+            Path path = Paths.get(fileName);
+            if (!path.isAbsolute()) {
+                path = Paths.get(Checker.isNullOrEmpty(baseDir) ? Constants.CURRENT_DIR : baseDir, fileName)
+                        .normalize();
+            }
+            File file = path.toFile();
+            if (file.exists() && file.canRead()) {
+                try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
+                    config.load(reader);
+                    log.debug("Loaded config from file \"%s\".", fileName);
+                } catch (IOException e) {
+                    log.warn("Failed to load config from file \"%s\"", fileName, e);
+                }
+            } else {
+                log.debug("Skip loading config as file \"%s\" is not accessible.", fileName);
+            }
+        }
+        return config;
+    }
+
+    public static final ConfigManager newInstance(String provider, Properties props) {
+        if (props == null) {
+            props = new Properties();
+        }
+        return Utils.newInstance(ConfigManager.class, provider, props);
     }
 
     protected final String getUniqueId(String category, String id) {
@@ -66,7 +113,7 @@ public class ConfigManager {
                 .toString();
     }
 
-    protected ConfigManager() {
+    protected ConfigManager(Properties props) {
     }
 
     public List<String> getAllIDs(String category) { // NOSONAR

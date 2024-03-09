@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Properties;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
@@ -33,7 +34,7 @@ public class CodeQLDriverExtension implements DriverExtension {
     }
 
     @Override
-    public List<String> getSchemas(String pattern, Properties props) {
+    public List<String> getSchemas(ConfigManager manager, String pattern, Properties props) {
         return DriverExtension.getMatched(CodeQLInterpreter.getAllQlPacks(props), pattern);
     }
 
@@ -44,7 +45,7 @@ public class CodeQLDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig(props));
+        return new ActivityListener(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props));
     }
 
     @Override
