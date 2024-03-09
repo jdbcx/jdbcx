@@ -86,7 +86,6 @@
         <brotli4j.version>1.16.0</brotli4j.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <databend.version>0.1.9</databend.version>
         <codec.version>1.16.1</codec.version>
         <compress.version>1.26.0</compress.version>
         <!--
@@ -207,11 +206,6 @@
                 <artifactId>clickhouse-jdbc</artifactId>
                 <classifier>http</classifier>
                 <version>${clickhouse.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.databend</groupId>
-                <artifactId>databend-jdbc</artifactId>
-                <version>${databend.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>

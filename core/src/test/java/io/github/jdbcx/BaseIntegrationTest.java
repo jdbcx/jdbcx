@@ -77,7 +77,6 @@ public class BaseIntegrationTest {
     }
 
     private static final ServiceConfig CLICKHOUSE;
-    private static final ServiceConfig DATABEND;
     private static final ServiceConfig FLIGHTSQL;
     private static final ServiceConfig MARIADB;
     private static final ServiceConfig MYSQL;
@@ -99,7 +98,6 @@ public class BaseIntegrationTest {
 
         List<ServiceConfig> list = new ArrayList<>();
         list.add(CLICKHOUSE = new ServiceConfig("clickhouse", 8123, "/ping", props));
-        list.add(DATABEND = new ServiceConfig("databend", 8000, props));
         list.add(FLIGHTSQL = new ServiceConfig("flightsql", 31337, props));
         list.add(MARIADB = new ServiceConfig("mariadb", 3306, props));
         list.add(MYSQL = new ServiceConfig("mysql", 3306, props));
@@ -151,10 +149,6 @@ public class BaseIntegrationTest {
 
     public static String getClickHouseServer() {
         return CLICKHOUSE.getAddress(containers);
-    }
-
-    public static String getDatabendServer() {
-        return DATABEND.getAddress(containers);
     }
 
     public static String getFlightSqlServer() {

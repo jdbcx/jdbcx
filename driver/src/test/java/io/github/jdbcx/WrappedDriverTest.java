@@ -514,7 +514,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
         Properties props = new Properties();
         props.setProperty("jdbcx.base.dir", "target/test-classes/config");
         WrappedDriver d = new WrappedDriver();
-        String url = "jdbcx:databend://" + getDatabendServer() + "/default?user=default&password=d";
+        String url = "jdbcx:ch://" + getClickHouseServer() + "/default";
         String query = "select {{db.my-sqlite: select 123}}";
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();

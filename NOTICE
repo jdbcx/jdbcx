@@ -45,7 +45,6 @@ This project includes:
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
   Commons Logging under The Apache Software License, Version 2.0
-  databend-jdbc under Apache License 2.0
   docker-java-api under The Apache Software License, Version 2.0
   docker-java-transport under The Apache Software License, Version 2.0
   docker-java-transport-zerodep under The Apache Software License, Version 2.0
@@ -106,4 +105,3 @@ This project includes:
   Woodstox under The Apache License, Version 2.0
   XZ for Java under Public Domain
   zstd-jni under BSD 2-Clause License
-

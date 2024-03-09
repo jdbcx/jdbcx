@@ -146,11 +146,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.databend</groupId>
-            <artifactId>databend-jdbc</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>flight-sql-jdbc-driver</artifactId>
             <scope>test</scope>

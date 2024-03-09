@@ -144,8 +144,7 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt
-                        .executeQuery("{{ db(url='jdbc:databend://" + getDatabendServer()
-                                + "/default?user=default&password=d'): select 1 }}")) {
+                        .executeQuery("{{ db(url='jdbc:ch://" + getClickHouseServer() + "/default'): select 1 }}")) {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next(), "Should have only one row");
