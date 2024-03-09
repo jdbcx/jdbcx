@@ -16,23 +16,18 @@
 package io.github.jdbcx.server;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Reader;
 import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -56,6 +51,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
@@ -79,7 +75,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String HEADER_ACCEPT = WebExecutor.HEADER_ACCEPT.toLowerCase(Locale.ROOT);
     // compression
     public static final String HEADER_ACCEPT_ENCODING = WebExecutor.HEADER_ACCEPT_ENCODING.toLowerCase(Locale.ROOT);
+    public static final String HEADER_ACCEPT_RANGES = "accept-ranges";
     public static final String HEADER_AUTHORIZATION = WebExecutor.HEADER_AUTHORIZATION.toLowerCase(Locale.ROOT);
+    public static final String HEADER_CONNECTION = "connection";
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
     public static final String HEADER_LOCATION = "location";
@@ -99,6 +97,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final String PATH_CONFIG = "config";
     public static final String PATH_METRICS = "metrics";
+
+    public static final String CONNECTION_CLOSE = "close";
+    public static final String RANGE_NONE = "none";
 
     public static final long DEFAULT_REQUEST_LIMIT = 10000L;
 
@@ -121,86 +122,36 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             .of(new String[] { "server.secret",
                     "Server secret for ACL encryption, only used when authentication & authorization are enabled" });
 
-    protected static final List<ServerAcl> loadAcl() {
-        final String fileName = Utils
-                .normalizePath(System.getProperty(Option.PROPERTY_PREFIX.concat(OPTION_ACL.getName()),
-                        OPTION_ACL.getDefaultValue()));
-        if (Checker.isNullOrEmpty(fileName)) {
+    protected static final List<ServerAcl> loadAcl(Properties config) {
+        Properties props = ConfigManager.loadConfig(OPTION_ACL.getJdbcxValue(config), null, null);
+        if (props.isEmpty()) {
             log.debug("No ACL config file specified");
             return Collections.emptyList();
         }
 
         final List<ServerAcl> acl;
-        Path path = Paths.get(fileName);
-        if (!path.isAbsolute()) {
-            path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
+        final String suffix = ".token";
+        Set<String> list = new LinkedHashSet<>();
+        for (Entry<Object, Object> e : props.entrySet()) {
+            String key = (String) e.getKey();
+            String val = ((String) e.getValue()).trim();
+            if (key.endsWith(suffix) && !val.isEmpty()) {
+                list.add(key.substring(0, key.length() - suffix.length()));
+            }
         }
-        File file = path.toFile();
-        if (file.exists() && file.canRead()) {
-            Properties props = new Properties();
-            try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
-                props.load(reader);
-                log.debug("Loaded ACL config from file \"%s\".", fileName);
-            } catch (IOException e) {
-                log.warn("Failed to load ACL config from file \"%s\"", fileName, e);
-            }
 
-            final String suffix = ".token";
-            Set<String> list = new LinkedHashSet<>();
-            for (Entry<Object, Object> e : props.entrySet()) {
-                String key = (String) e.getKey();
-                String val = ((String) e.getValue()).trim();
-                if (key.endsWith(suffix) && !val.isEmpty()) {
-                    list.add(key.substring(0, key.length() - suffix.length()));
-                }
-            }
-
-            if (list.isEmpty()) {
-                acl = Collections.emptyList();
-            } else {
-                List<ServerAcl> items = new ArrayList<>(list.size());
-                for (String key : list) {
-                    // TODO decrypt token using server.secret
-                    items.add(new ServerAcl(props.getProperty(key + suffix), props.getProperty(key + ".hosts"),
-                            props.getProperty(key + ".ips")));
-                }
-                acl = Collections.unmodifiableList(items);
-            }
-        } else {
-            log.debug("Skip loading ACL config as file \"%s\" is not accessible.", fileName);
+        if (list.isEmpty()) {
             acl = Collections.emptyList();
+        } else {
+            List<ServerAcl> items = new ArrayList<>(list.size());
+            for (String key : list) {
+                // TODO decrypt token using server.secret
+                items.add(new ServerAcl(props.getProperty(key + suffix), props.getProperty(key + ".hosts"),
+                        props.getProperty(key + ".ips")));
+            }
+            acl = Collections.unmodifiableList(items);
         }
         return acl;
-    }
-
-    protected static final Properties loadConfig() {
-        Properties sysProps = System.getProperties();
-        final String fileName = Utils
-                .normalizePath(sysProps.getProperty(Option.PROPERTY_PREFIX.concat(Option.CONFIG_PATH.getName()),
-                        Option.CONFIG_PATH.getDefaultValue()));
-
-        if (Checker.isNullOrEmpty(fileName)) {
-            log.debug("No default config file specified");
-            return sysProps;
-        }
-
-        Properties defProps = new Properties(sysProps);
-        Path path = Paths.get(fileName);
-        if (!path.isAbsolute()) {
-            path = Paths.get(Constants.CURRENT_DIR, fileName).normalize();
-        }
-        File file = path.toFile();
-        if (file.exists() && file.canRead()) {
-            try (Reader reader = new InputStreamReader(new FileInputStream(file), Constants.DEFAULT_CHARSET)) {
-                defProps.load(reader);
-                log.debug("Loaded default config from file \"%s\".", fileName);
-            } catch (IOException e) {
-                log.warn("Failed to load default config from file \"%s\"", fileName, e);
-            }
-        } else {
-            log.debug("Skip loading default config as file \"%s\" is not accessible.", fileName);
-        }
-        return defProps;
     }
 
     private final PrometheusMeterRegistry promRegistry;
@@ -261,13 +212,16 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             }
         }
 
+        log.debug("Initializing metrics registry...");
         promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         promRegistry.config().commonTags("instance", baseUrl);
         new UptimeMetrics().bindTo(promRegistry);
 
-        String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
+        log.debug("Initializing connection pool...");
+        final String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
         HikariConfig config = null;
         if (!Checker.isNullOrEmpty(dsConfigFile)) {
+            log.debug("Loading HikariConfig from [%s]...", dsConfigFile);
             try {
                 config = new HikariConfig(dsConfigFile);
             } catch (Exception e) {
@@ -277,11 +231,16 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         if (config == null) {
             Properties properties = new Properties(props);
             String key = "jdbcUrl";
-            properties.setProperty(key, properties.getProperty(key, "jdbcx:"));
+            properties.setProperty(key, properties.getProperty(key, ConnectionManager.JDBCX_PREFIX));
             config = new HikariConfig(properties);
         }
-        config.setPoolName("default");
+        if (config.getPoolName() == null || config.getPoolName().startsWith("HikariPool-")) {
+            config.setPoolName("default");
+        }
         config.setMetricRegistry(promRegistry);
+        if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
+            config.addDataSourceProperty(Option.CONFIG_PATH.getJdbcxName(), Option.CONFIG_PATH.getJdbcxValue(props));
+        }
         datasource = new HikariDataSource(config);
 
         queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getJdbcxValue(props));
@@ -289,6 +248,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getJdbcxValue(props));
         final long requestTimeout = Long.parseLong(OPTION_REQUEST_TIMEOUT.getJdbcxValue(props));
 
+        log.debug("Initializing query cache...");
         // TODO load persistent requests from disk file or database
         Caffeine<String, QueryInfo> builder = Caffeine.newBuilder()
                 .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT).removalListener(this);
@@ -305,7 +265,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         defaultFormat = Format.valueOf(Option.SERVER_FORMAT.getJdbcxValue(props));
         defaultCompress = Compression.valueOf(Option.SERVER_COMPRESSION.getJdbcxValue(props));
 
-        acl = auth ? loadAcl() : Collections.emptyList();
+        acl = auth ? loadAcl(props) : Collections.emptyList();
         essentials = new Properties();
         Option.SERVER_AUTH.setValue(essentials, Boolean.toString(auth));
         Option.SERVER_URL.setValue(essentials, baseUrl);
@@ -402,7 +362,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             stmt = conn.createStatement();
             final Result<?> result;
             if (request.isMutation()) {
-                result = Result.of(stmt.executeQuery(info.query));
+                long count = -1L;
+                try { // NOSONAR
+                    count = stmt.executeLargeUpdate(info.query);
+                } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
+                    log.debug("Fall back to executeUpdate() due to: %s", e.getMessage());
+                    count = stmt.executeUpdate(info.query);
+                }
+                result = Result.of(count);
             } else {
                 result = Result.of(rs = stmt.executeQuery(info.query));
             }

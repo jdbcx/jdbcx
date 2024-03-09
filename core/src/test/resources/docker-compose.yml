@@ -3,16 +3,6 @@
 # Any changes made to this file should be propagated to class BaseIntegrationTest.
 #
 
-# https://hub.docker.com/r/datafuselabs/databend
-databend:
-  image: datafuselabs/databend:v1.2.344
-  entrypoint: bash
-  command: |-
-    -c 'sed -i -e "s|^\(\[storage\]\)$$|\1\nallow_insecure = true|g" /bootstrap.sh && dumb-init -- /bootstrap.sh'
-  environment:
-    QUERY_DEFAULT_USER: "default"
-    QUERY_DEFAULT_PASSWORD: "d"
-
 # https://hub.docker.com/_/mariadb
 mariadb:
   image: mariadb:11.3

@@ -93,18 +93,17 @@ public class WrappedConnection implements ManagedConnection {
     private final AtomicReference<SQLWarning> warning;
 
     protected WrappedConnection(Connection conn) throws SQLException {
-        this(conn, conn.getMetaData().getURL());
+        this(HelpDriverExtension.ActivityListener.defaultDriverInfo, conn, conn.getMetaData().getURL());
     }
 
-    protected WrappedConnection(Connection conn, String url) {
+    protected WrappedConnection(DriverInfo info, Connection conn, String url) {
         if (conn instanceof WrappedConnection) {
             WrappedConnection wrappedConn = (WrappedConnection) conn;
             this.manager = wrappedConn.manager;
             this.warning = wrappedConn.warning;
         } else {
-            DriverInfo info = HelpDriverExtension.ActivityListener.defaultDriverInfo;
-            this.manager = new ConnectionManager(info.getExtensions(), info.extension, conn, url, info.extensionProps,
-                    info.normalizedInfo, info.mergedInfo);
+            this.manager = new ConnectionManager(info.configManager, info.getExtensions(), info.extension, conn, url,
+                    info.extensionProps, info.normalizedInfo, info.mergedInfo);
             this.warning = new AtomicReference<>();
         }
     }
@@ -119,9 +118,11 @@ public class WrappedConnection implements ManagedConnection {
         try (QueryContext context = manager.createContext()) {
             final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, stmt.queryResult);
-            List<String> queries = builder.build();
+            final List<String> queries = builder.build();
             if (queries.isEmpty()) {
                 return Collections.emptyList();
+            } else if (manager.isUsingDatabaseExtension()) {
+                return Collections.unmodifiableList(queries);
             }
 
             w = builder.getLastWarning();

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.driver;
+package io.github.jdbcx.config;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -23,22 +23,26 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
-import io.github.jdbcx.interpreter.ConfigManager;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
-public class FileBasedConfigManagerTest {
+public class PropertyFileConfigManagerTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertNotNull(ConfigManager.getInstance());
-        Assert.assertEquals(ConfigManager.getInstance().getClass(), FileBasedConfigManager.class);
+        Assert.assertNotNull(ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, null));
+        Assert.assertNotNull(ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, new Properties()));
+        Assert.assertEquals(
+                ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, new Properties()).getClass(),
+                PropertyFileConfigManager.class);
     }
 
-    @Test(groups = { "private" })
+    @Test(groups = { "integration" })
     public void testGetConnectionById() throws Exception {
-        ConfigManager manager = ConfigManager.getInstance();
-        manager.reload(null);
-        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "ch-dev"), null);
+        Properties config = new Properties();
+        PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(config, "target/test-classes/config");
+        final ConfigManager manager = ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, config);
+        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "my-sqlite"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 5")) {
             Assert.assertTrue(rs.next());
@@ -48,14 +52,13 @@ public class FileBasedConfigManagerTest {
 
         Properties props = new Properties();
         ConfigManager.OPTION_CACHE.setJdbcxValue(props, Constants.TRUE_EXPR);
-        FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, "non-existent-directory");
+        PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(props, "non-existent-directory");
         manager.reload(props);
-        Assert.assertThrows(IllegalArgumentException.class,
-                () -> ConfigManager.getInstance().getConfig("db", "ch-dev"));
+        Assert.assertThrows(IllegalArgumentException.class, () -> manager.getConfig("db", "my-sqlite"));
 
-        FileBasedConfigManager.OPTION_DIRECTORY.setJdbcxValue(props, null); // reset to default
+        PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(props, "target/test-classes/config");
         manager.reload(props);
-        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "ch-dev"), null);
+        try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "my-sqlite"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 6")) {
             Assert.assertTrue(rs.next());

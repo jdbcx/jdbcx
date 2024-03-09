@@ -61,4 +61,31 @@ public class ParsedQueryTest {
                         Arrays.asList(new ExecutableBlock(1, "", new Properties(), "", true))).isDirectQuery(),
                 true);
     }
+
+    @Test(groups = { "unit" })
+    public void testQueryCategory() {
+        ParsedQuery query = new ParsedQuery(Arrays.asList("1", "2", "3"),
+                Arrays.asList(new ExecutableBlock(0, "db", new Properties(), "select 1", true)));
+        Assert.assertEquals(query.isDirectQuery(), false);
+        Assert.assertEquals(query.isStaticQuery(), false);
+
+        query = new ParsedQuery(Arrays.asList("--1", "--2", "--3"),
+                Arrays.asList(new ExecutableBlock(0, "db", new Properties(), "select 1", true)));
+        Assert.assertEquals(query.isDirectQuery(), true);
+        Assert.assertEquals(query.isStaticQuery(), false);
+
+        query = new ParsedQuery(Arrays.asList("1", "--2", "--3"),
+                Arrays.asList(new ExecutableBlock(0, "db", new Properties(), "select 1", false)));
+        Assert.assertEquals(query.isDirectQuery(), false);
+        Assert.assertEquals(query.isStaticQuery(), true);
+
+        query = new ParsedQuery(Collections.emptyList(),
+                Arrays.asList(new ExecutableBlock(0, "db", new Properties(), "select 1", true)));
+        Assert.assertEquals(query.isDirectQuery(), true);
+        Assert.assertEquals(query.isStaticQuery(), false);
+
+        query = new ParsedQuery(Collections.emptyList(), Collections.emptyList());
+        Assert.assertEquals(query.isDirectQuery(), true);
+        Assert.assertEquals(query.isStaticQuery(), true);
+    }
 }

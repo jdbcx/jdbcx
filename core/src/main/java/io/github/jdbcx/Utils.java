@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
 import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -392,6 +393,81 @@ public final class Utils {
         }
 
         return defaultInstance;
+    }
+
+    public static Class<?> toPrimitiveType(Class<?> clazz) {
+        if (Checker.nonNull(clazz, Class.class).isPrimitive()) {
+            return clazz;
+        }
+
+        final Class<?> primitiveClass;
+        if (Boolean.class.equals(clazz)) {
+            primitiveClass = boolean.class;
+        } else if (Character.class.equals(clazz)) {
+            primitiveClass = char.class;
+        } else if (Byte.class.equals(clazz)) {
+            primitiveClass = byte.class;
+        } else if (Short.class.equals(clazz)) {
+            primitiveClass = short.class;
+        } else if (Integer.class.equals(clazz)) {
+            primitiveClass = int.class;
+        } else if (Long.class.equals(clazz)) {
+            primitiveClass = long.class;
+        } else if (Float.class.equals(clazz)) {
+            primitiveClass = float.class;
+        } else if (Double.class.equals(clazz)) {
+            primitiveClass = double.class;
+        } else {
+            primitiveClass = clazz;
+        }
+        return primitiveClass;
+    }
+
+    public static <T> T newInstance(Class<T> clazz, String className, Object... args) {
+        final int len;
+        final Class<?>[] argClasses;
+        final Class<?>[] altArgClasses;
+        if (clazz == null || Checker.isNullOrEmpty(className) || args == null) {
+            throw new IllegalArgumentException("Non-null arguments are required");
+        } else {
+            len = args.length;
+            argClasses = new Class[len];
+            Class<?>[] alternatives = new Class[len];
+            boolean hasPrimitiveType = false;
+            for (int i = 0; i < len; i++) {
+                Object arg = args[i];
+                if (arg == null) {
+                    throw new IllegalArgumentException("Non-null arguments are required");
+                }
+                Class<?> c = arg.getClass();
+                argClasses[i] = c;
+                alternatives[i] = toPrimitiveType(c);
+                if (c != alternatives[i]) {
+                    hasPrimitiveType = true;
+                }
+            }
+            altArgClasses = hasPrimitiveType ? alternatives : argClasses;
+        }
+
+        try {
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            if (loader == null) {
+                loader = clazz.getClassLoader();
+            }
+            Class<?> c = loader.loadClass(className);
+            Constructor<?> constructor = null;
+            try { // NOSONAR
+                constructor = c.getConstructor(argClasses);
+            } catch (NoSuchMethodException e) {
+                if (altArgClasses == argClasses) {
+                    throw e;
+                }
+                constructor = c.getConstructor(altArgClasses);
+            }
+            return clazz.cast(constructor.newInstance(args));
+        } catch (Throwable t) { // NOSONAR
+            throw new IllegalArgumentException("Failed to create instance for " + className, t);
+        }
     }
 
     /**

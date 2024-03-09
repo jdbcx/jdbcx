@@ -86,7 +86,6 @@
         <brotli4j.version>1.16.0</brotli4j.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <databend.version>0.1.9</databend.version>
         <codec.version>1.16.1</codec.version>
         <compress.version>1.26.0</compress.version>
         <!--
@@ -156,6 +155,8 @@
         <skipITs>${skipTests}</skipITs>
         <skipUTs>${skipTests}</skipUTs>
 
+        <jacocoUTArgLine></jacocoUTArgLine>
+        <jacocoITArgLine></jacocoITArgLine>
         <failsafeArgLine>--add-opens=java.base/java.nio=ALL-UNNAMED</failsafeArgLine>
         <surefireArgLine>--add-opens=java.base/java.nio=ALL-UNNAMED</surefireArgLine>
 
@@ -205,11 +206,6 @@
                 <artifactId>clickhouse-jdbc</artifactId>
                 <classifier>http</classifier>
                 <version>${clickhouse.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.databend</groupId>
-                <artifactId>databend-jdbc</artifactId>
-                <version>${databend.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
@@ -713,7 +709,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${failsafe-plugin.version}</version>
                     <configuration>
-                        <argLine>${failsafeArgLine}</argLine>
+                        <argLine>@{jacocoITArgLine} ${failsafeArgLine}</argLine>
                         <includes>**/*.java</includes>
                         <groups>integration</groups>
                         <skipTests>${skipTests}</skipTests>
@@ -736,7 +732,7 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire-plugin.version}</version>
                     <configuration>
-                        <argLine>${surefireArgLine}</argLine>
+                        <argLine>@{jacocoUTArgLine} ${surefireArgLine}</argLine>
                         <excludedGroups>${excludedGroups}</excludedGroups>
                         <groups>unit</groups>
                         <skipTests>${skipUTs}</skipTests>
@@ -930,8 +926,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
+                                    <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -940,8 +935,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
+                                    <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -951,9 +945,8 @@
                                 </goals>
                                 <configuration>
                                     <skip>${skipUTs}</skip>
-                                    <destFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
-                                    <propertyName>surefireArgLine</propertyName>
+                                    <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
+                                    <propertyName>jacocoUTArgLine</propertyName>
                                     <append>true</append>
                                 </configuration>
                             </execution>
@@ -964,9 +957,8 @@
                                 </goals>
                                 <configuration>
                                     <skip>${skipITs}</skip>
-                                    <destFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
-                                    <propertyName>failsafeArgLine</propertyName>
+                                    <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
+                                    <propertyName>jacocoITArgLine</propertyName>
                                     <append>true</append>
                                 </configuration>
                             </execution>
@@ -977,8 +969,7 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</dataFile>
+                                    <dataFile>${project.build.directory}/coverage-reports/jacoco-it.exec</dataFile>
                                     <outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
                                 </configuration>
                             </execution>
@@ -989,8 +980,7 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>
-                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
+                                    <dataFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
                                     <outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1009,8 +999,7 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
-                                    <destFile>
-                                        ${project.build.directory}/coverage-reports/aggregate.exec</destFile>
+                                    <destFile>${project.build.directory}/coverage-reports/aggregate.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1020,10 +1009,8 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>
-                                        ${project.build.directory}/coverage-reports/aggregate.exec</dataFile>
-                                    <outputDirectory>
-                                        ${project.reporting.outputDirectory}/jacoco-aggregate</outputDirectory>
+                                    <dataFile>${project.build.directory}/coverage-reports/aggregate.exec</dataFile>
+                                    <outputDirectory>${project.reporting.outputDirectory}/jacoco-aggregate</outputDirectory>
                                     <rules>
                                         <rule>
                                             <element>CLASS</element>

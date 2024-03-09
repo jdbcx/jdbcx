@@ -71,17 +71,17 @@ public class AvroSerdeTest {
 
         Assert.assertEquals(
                 AvroSerde.buildSchema(Result.of(Row.of(Collections.emptyList(), Collections.emptyList()))).toString(),
-                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"io.github.jdbcx\",\"fields\":[]}");
+                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"JDBCX\",\"fields\":[]}");
         Assert.assertEquals(
                 AvroSerde
                         .buildSchema(Result.of(Constants.EMPTY_STRING_ARRAY, Field.of("f1", JDBCType.BIGINT, false)))
                         .toString(),
-                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"io.github.jdbcx\",\"fields\":[{\"name\":\"f1\",\"type\":\"long\"}]}");
+                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"JDBCX\",\"fields\":[{\"name\":\"f1\",\"type\":\"long\"}]}");
 
         Assert.assertEquals(
                 AvroSerde.buildSchema(Result.of(Constants.EMPTY_STRING_ARRAY, Field.of("", JDBCType.BIGINT, false),
                         Field.of("f2", "", JDBCType.BIGINT, false, 0, 0, false))).toString(),
-                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"io.github.jdbcx\",\"fields\":[{\"name\":\"f1\",\"type\":\"long\"},{\"name\":\"f2\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":19,\"scale\":0}}]}");
+                "{\"type\":\"record\",\"name\":\"Result\",\"namespace\":\"JDBCX\",\"fields\":[{\"name\":\"f1\",\"type\":\"long\"},{\"name\":\"f2\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":19,\"scale\":0}}]}");
     }
 
     @Test(groups = { "unit" })
@@ -90,12 +90,12 @@ public class AvroSerdeTest {
         AvroSerde serde = new AvroSerde(config);
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(Result.of("123"), out);
-            Assert.assertEquals(out.toByteArray().length, 177);
+            Assert.assertEquals(out.toByteArray().length, 167);
         }
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(Result.of(Arrays.asList(Field.of(""), Field.of("1", JDBCType.INTEGER)),
                     new Object[][] { { null, 1 }, { "123", null } }), out);
-            Assert.assertEquals(out.toByteArray().length, 214);
+            Assert.assertEquals(out.toByteArray().length, 204);
         }
 
         AvroSerde.OPTION_ENCODER.setValue(config, AvroSerde.ENCODER_BINARY);

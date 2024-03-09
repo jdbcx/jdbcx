@@ -19,28 +19,28 @@ import java.util.Locale;
 
 public enum Format {
     // https://www.iana.org/assignments/media-types/text/csv
-    CSV("text/csv", "csv"),
+    CSV(true, "text/csv", "csv"),
     // https://www.iana.org/assignments/media-types/text/tab-separated-values
-    TSV("text/tab-separated-values", "tsv"),
-    TXT("text/plain", "txt"),
+    TSV(true, "text/tab-separated-values", "tsv"),
+    TXT(true, "text/plain", "txt"),
     // https://www.iana.org/assignments/media-types/application/json
-    JSON("application/json", "json"),
+    JSON(true, "application/json", "json"),
     // https://www.iana.org/assignments/media-types/application/xml
-    XML("application/xml", "xml"),
+    XML(true, "application/xml", "xml"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.file
-    ARROW("application/vnd.apache.arrow.file", "arrow"),
+    ARROW(false, "application/vnd.apache.arrow.file", "arrow"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream
-    ARROW_STREAM("application/vnd.apache.arrow.stream", "arrows"),
+    ARROW_STREAM(false, "application/vnd.apache.arrow.stream", "arrows"),
     // non-standard
     // https://avro.apache.org/docs/1.11.1/specification/#encodings
-    AVRO("avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
-    AVRO_BINARY("application/vnd.apache.avro+binary", "avrob"),
-    AVRO_JSON("application/vnd.apache.avro+json", "avroj"),
-    BSON("application/bson", "bson"),
-    JSONL("application/jsonl", "jsonl"), // or application/json-lines?
-    NDJSON("application/x-ndjson", "ndjson"), // or application/json-seq?
+    AVRO(false, "avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
+    AVRO_BINARY(true, "application/vnd.apache.avro+binary", "avrob"),
+    AVRO_JSON(true, "application/vnd.apache.avro+json", "avroj"),
+    BSON(true, "application/bson", "bson"),
+    JSONL(true, "application/jsonl", "jsonl"), // or application/json-lines?
+    NDJSON(true, "application/x-ndjson", "ndjson"), // or application/json-seq?
     // https://issues.apache.org/jira/browse/PARQUET-1889
-    PARQUET("application/vnd.apache.parquet", "parquet");
+    PARQUET(false, "application/vnd.apache.parquet", "parquet");
 
     /**
      * Get preferred data format based on given MIME types.
@@ -162,14 +162,20 @@ public enum Format {
         return builder.toString();
     }
 
-    private String mimeType;
-    private String fileExt;
-    private String fileExtWithDot;
+    private final boolean schemaless;
+    private final String mimeType;
+    private final String fileExt;
+    private final String fileExtWithDot;
 
-    Format(String mimeType, String fileExt) {
+    Format(boolean schemaless, String mimeType, String fileExt) {
+        this.schemaless = schemaless;
         this.mimeType = mimeType;
         this.fileExt = fileExt;
         this.fileExtWithDot = ".".concat(fileExt);
+    }
+
+    public boolean isSchemaless() {
+        return schemaless;
     }
 
     public String mimeType() {

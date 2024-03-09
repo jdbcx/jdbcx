@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.driver;
+package io.github.jdbcx.config;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,18 +45,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
-import io.github.jdbcx.interpreter.ConfigManager;
 
-public class FileBasedConfigManager extends ConfigManager {
-    private static final Logger log = LoggerFactory.getLogger(FileBasedConfigManager.class);
+public class PropertyFileConfigManager extends ConfigManager {
+    private static final Logger log = LoggerFactory.getLogger(PropertyFileConfigManager.class);
 
-    static final Option OPTION_DIRECTORY = Option
-            .of(new String[] { "directory", "Configuration directory without backslash suffix", Constants.CONF_DIR });
+    static final Option OPTION_BASE_DIR = Option
+            .of(new String[] { "base.dir", "Base directory without backslash suffix for finding named connections",
+                    Constants.CONF_DIR });
     static final String FILE_EXTENSION = ".properties";
 
     private final AtomicReference<Thread> monitor;
@@ -67,13 +68,14 @@ public class FileBasedConfigManager extends ConfigManager {
     private final AtomicReference<Path> path;
     private final AtomicBoolean managed;
 
-    public FileBasedConfigManager() {
+    public PropertyFileConfigManager(Properties props) {
+        super(props);
         monitor = new AtomicReference<>();
 
         categories = Collections.synchronizedSet(new LinkedHashSet<>());
         config = new ConcurrentHashMap<>();
 
-        path = new AtomicReference<>(Utils.getPath(OPTION_DIRECTORY.getDefaultValue(), true));
+        path = new AtomicReference<>(Utils.getPath(OPTION_BASE_DIR.getJdbcxValue(props), true));
         managed = new AtomicBoolean(false);
     }
 
@@ -84,9 +86,11 @@ public class FileBasedConfigManager extends ConfigManager {
             return;
         }
 
+        final Path baseDir = path.get();
+        log.debug("Loading named connections from [%s]", baseDir);
         Set<String> ids = new HashSet<>();
         try {
-            File[] files = path.get().toFile().listFiles();
+            File[] files = baseDir.toFile().listFiles();
             if (files == null) {
                 config.clear();
                 log.debug("Deleted configuration cache to force re-initialization.");
@@ -248,7 +252,8 @@ public class FileBasedConfigManager extends ConfigManager {
             }
         } else {
             props = new Properties();
-            Path p = path.get().resolve(getUniqueId(category, id).concat(FILE_EXTENSION));
+            final Path baseDir = path.get();
+            Path p = baseDir.resolve(getUniqueId(category, id).concat(FILE_EXTENSION));
             log.debug("Loading configuration [%s] from [%s]...", id, p);
             try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
                 props.load(reader);
@@ -271,7 +276,7 @@ public class FileBasedConfigManager extends ConfigManager {
     @Override
     public void reload(Properties props) {
         final Path currentPath = path.get();
-        final Path newPath = Utils.getPath(OPTION_DIRECTORY.getJdbcxValue(props), true);
+        final Path newPath = Utils.getPath(OPTION_BASE_DIR.getJdbcxValue(props), true);
         if (newPath.equals(currentPath) && (managed.get() || !managed.compareAndSet(false, true))) {
             return;
         }
@@ -281,7 +286,9 @@ public class FileBasedConfigManager extends ConfigManager {
             thread.interrupt();
         }
 
-        if (!path.compareAndSet(currentPath, newPath)) {
+        if (path.compareAndSet(currentPath, newPath)) {
+            log.debug("Changed base directory of named connections from [%s] to [%s]", currentPath, newPath);
+        } else {
             log.warn("Failed to change connection configuration path from [%s] to [%s], could be a problem",
                     currentPath, newPath);
         }

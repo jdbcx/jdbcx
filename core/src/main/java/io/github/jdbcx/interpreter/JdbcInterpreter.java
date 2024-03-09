@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.ExpandedUrlClassLoader;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
@@ -220,7 +221,10 @@ public class JdbcInterpreter extends AbstractInterpreter {
         this.defaultConnectionProps = OPTION_PROPERTIES.getValue(config);
 
         if (Boolean.parseBoolean(ConfigManager.OPTION_MANAGED.getValue(config))) {
-            ConfigManager.getInstance().reload(config);
+            ConfigManager manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
+            if (manager != null) {
+                manager.reload(config);
+            }
         }
 
         this.loader = loader;

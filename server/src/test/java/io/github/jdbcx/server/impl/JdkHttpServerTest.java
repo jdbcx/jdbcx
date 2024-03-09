@@ -15,10 +15,16 @@
  */
 package io.github.jdbcx.server.impl;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.Properties;
 
+import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import io.github.jdbcx.Option;
 import io.github.jdbcx.server.BaseBridgeServerTest;
@@ -28,8 +34,9 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
         super();
 
         Properties props = new Properties();
+        Option.CONFIG_PATH.setJdbcxValue(props, "target/test-classes/test-config.properties");
         Option.SERVER_URL.setJdbcxValue(props, getServerUrl());
-        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "/datasource.properties");
+        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "/test-datasource.properties");
         server = new JdkHttpServer(props);
     }
 
@@ -43,8 +50,25 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
         server.stop();
     }
 
-    // @Test(groups = { "integration" })
-    // public void testAny() throws Exception {
-    //     super.testDefaultBridge();
-    // }
+    @Test(groups = { "integration" })
+    public void testAny() throws Exception {
+        Properties props = new Properties();
+        // props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-duckdb: select 1}}")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next());
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-sqlite: select 1}}")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next());
+        }
+    }
 }

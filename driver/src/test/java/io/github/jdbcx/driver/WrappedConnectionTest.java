@@ -39,7 +39,6 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
     public Object[][] getTestConnections() {
         return new Object[][] {
                 { "jdbcx:ch://" + getClickHouseServer(), true },
-                { "jdbcx:databend://" + getDatabendServer() + "/default?user=default&password=d", false },
                 { "jdbcx:duckdb:", false },
                 { "jdbcx:arrow-flight-sql://" + getFlightSqlServer()
                         + "?useEncryption=false&user=flight_username&password=f&disableCertificateVerification=true",
@@ -56,9 +55,6 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
         return new Object[][] {
                 { "jdbcx:ch://" + getClickHouseServer(), "select * from numbers(2)",
                         "select 2 + number from numbers(3)" },
-                { "jdbcx:databend://" + getDatabendServer() + "/default?user=default&password=d",
-                        "select * from numbers(3) order by number",
-                        "select 3 + number from numbers(2) order by number" },
                 { "jdbcx:duckdb:", "select 0 union select 1 order by 1",
                         "select 2 union select 3 union select 4 order by 1" },
                 { "jdbcx:arrow-flight-sql://" + getFlightSqlServer()

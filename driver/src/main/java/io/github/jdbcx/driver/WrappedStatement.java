@@ -98,9 +98,18 @@ public class WrappedStatement implements Statement {
         try {
             int size = queries.size();
             if (size == 1) {
+                rs = new ResultSet[2];
                 String newQuery = queries.get(0);
-                log.debug("Executing statement: [%s]", newQuery);
-                result = stmt.execute(newQuery);
+                log.debug("Executing [%s]: [%s]", this, newQuery);
+                if (result = stmt.execute(newQuery)) {
+                    rs[1] = stmt.getResultSet();
+                } else {
+                    try { // NOSONAR
+                        rs[0] = stmt.getGeneratedKeys();
+                    } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
+                        // ignore
+                    }
+                }
             } else {
                 ResultSet[] keys = new ResultSet[size];
                 ResultSet[] results = new ResultSet[size];
@@ -115,8 +124,8 @@ public class WrappedStatement implements Statement {
                         keys[i] = callback.getGeneratedKeys();
                     }
                 }
-                queryResult.updateAll(rs[0], rs[1], affectedRows);
             }
+            queryResult.updateAll(rs[0], rs[1], affectedRows);
             return result;
         } catch (Exception e) {
             log.error("Failed to invoke execute(*): %s", queries);

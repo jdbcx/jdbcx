@@ -316,6 +316,20 @@ public final class Result<T> implements AutoCloseable {
         return new Result<>(DEFAULT_FIELDS, str, String.class, Collections.singletonList(Row.of(str)));
     }
 
+    public static Result<?> of(List<String> list) { // NOSONAR
+        final Row[] rows;
+        if (list != null) {
+            rows = new Row[list.size()];
+            int index = 0;
+            for (String str : list) {
+                rows[index++] = Row.of(DEFAULT_FIELDS, Values.of(str));
+            }
+        } else {
+            rows = new Row[0];
+        }
+        return of(DEFAULT_FIELDS, rows);
+    }
+
     public static Result<Long> of(Long l) {
         return new Result<>(DEFAULT_FIELDS, l, Long.class, Collections.singletonList(Row.of(l)));
     }
@@ -430,6 +444,10 @@ public final class Result<T> implements AutoCloseable {
                     StringBuilder builder = new StringBuilder();
                     while (rs.next()) {
                         builder.append(rs.getString(1)).append('\n');
+                    }
+                    int len = builder.length() - 1;
+                    if (len >= 0) {
+                        builder.setLength(len);
                     }
                     str = builder.toString();
                 } catch (SQLException e) {

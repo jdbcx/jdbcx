@@ -96,7 +96,7 @@ public class DriverInfoTest {
     }
 
     @Test(groups = { "unit" })
-    public void testLoadDefaultConfig() {
+    public void testDefaultConfig() {
         Properties props = new Properties();
         props.setProperty("non-related", "");
         props.setProperty("jdbcx.config.path", "target/test-classes/test-config.properties");

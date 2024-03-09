@@ -28,6 +28,7 @@ public final class ParsedQuery {
     private final List<ExecutableBlock> blocks;
 
     private final boolean directQuery;
+    private final boolean staticQuery;
 
     ParsedQuery(List<String> parts, List<ExecutableBlock> blocks) {
         if (parts == null || blocks == null) {
@@ -45,17 +46,15 @@ public final class ParsedQuery {
             }
         }
 
-        if (found) {
-            this.directQuery = false;
-        } else {
-            int count = 0;
-            for (ExecutableBlock b : blocks) {
-                if (b.hasOutput()) {
-                    count++;
-                }
+        int outputs = 0;
+        for (ExecutableBlock b : blocks) {
+            if (b.hasOutput()) {
+                outputs++;
             }
-            this.directQuery = count < 2;
         }
+
+        this.directQuery = !found && outputs < 2;
+        this.staticQuery = outputs == 0;
     }
 
     public List<String> getStaticParts() {
@@ -68,6 +67,17 @@ public final class ParsedQuery {
 
     public boolean isDirectQuery() {
         return directQuery;
+    }
+
+    /**
+     * Checks whether this parsed query is static or not. A static query is composed
+     * of zero or more static parts, and zero or more executable blocks with no
+     * output.
+     *
+     * @return true if the parsed query is static; false otherwise
+     */
+    public boolean isStaticQuery() {
+        return staticQuery;
     }
 
     @Override

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;
@@ -77,14 +78,14 @@ public class ScriptDriverExtension implements DriverExtension {
     }
 
     @Override
-    public List<String> getSchemas(String pattern, Properties props) {
+    public List<String> getSchemas(ConfigManager manager, String pattern, Properties props) {
         return DriverExtension.getMatched(ScriptExecutor.getAllSupportedLanguages(loader), pattern);
     }
 
     @Override
-    public ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
-            throws SQLException {
-        List<String> engineNames = getSchemas(schemaPattern, props);
+    public ResultSet getTables(ConfigManager manager, String schemaPattern, String tableNamePattern, String[] types,
+            Properties props) throws SQLException {
+        List<String> engineNames = getSchemas(manager, schemaPattern, props);
         if (engineNames == null || engineNames.isEmpty()) {
             return null;
         } else if (types != null) {
@@ -119,7 +120,8 @@ public class ScriptDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, conn, getConfig(props), loader);
+        return new ActivityListener(context, conn,
+                getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props), loader);
     }
 
     @Override

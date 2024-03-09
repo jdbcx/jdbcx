@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 module io.github.jdbcx.driver {
-    provides io.github.jdbcx.interpreter.ConfigManager with io.github.jdbcx.driver.FileBasedConfigManager;
-
     requires transitive io.github.jdbcx.core;
 
     requires static java.logging;

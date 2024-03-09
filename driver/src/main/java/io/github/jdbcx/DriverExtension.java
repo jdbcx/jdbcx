@@ -30,7 +30,6 @@ import java.util.regex.Pattern;
 
 import io.github.jdbcx.driver.DefaultActivityListener;
 import io.github.jdbcx.driver.DefaultDriverExtension;
-import io.github.jdbcx.interpreter.ConfigManager;
 
 // driver extension:
 // query extension:
@@ -127,30 +126,25 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return Collections.emptyList();
     }
 
-    default boolean hasConfig(String id) {
-        return ConfigManager.getInstance().hasConfig(getName(), id);
-    }
-
-    default Properties getConfig(String id) {
-        return ConfigManager.getInstance().getConfig(getName(), id);
-    }
-
     /**
      * Gets configuration for this extension.
      *
-     * @param props optional properties to merge into the configuration, could be
-     *              null
+     * @param manager optional configuration manager
+     * @param props   optional properties to merge into the configuration, could be
+     *                null
      * @return non-null configuration for this extension
      */
-    default Properties getConfig(Properties props) {
+    default Properties getConfig(ConfigManager manager, Properties props) {
         if (props == null) {
             return getDefaultConfig();
+        } else if (manager == null) {
+            return props;
         }
 
         Properties defined = new Properties();
         String id = Option.ID.getValue(props);
         if (!Checker.isNullOrEmpty(id)) {
-            defined = getConfig(id);
+            defined = manager.getConfig(getName(), id);
         }
 
         // ensures the configured properties won't be overrided
@@ -166,16 +160,16 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         return config;
     }
 
-    default Connection getConnection(String url, Properties props) throws SQLException {
+    default Connection getConnection(ConfigManager manager, String url, Properties props) throws SQLException {
         return null;
     }
 
-    default List<String> getSchemas(String pattern, Properties props) {
-        return DriverExtension.getMatched(ConfigManager.getInstance().getAllIDs(getName()), pattern);
+    default List<String> getSchemas(ConfigManager manager, String pattern, Properties props) {
+        return DriverExtension.getMatched(manager.getAllIDs(getName()), pattern);
     }
 
-    default ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
-            throws SQLException {
+    default ResultSet getTables(ConfigManager manager, String schemaPattern, String tableNamePattern, String[] types,
+            Properties props) throws SQLException {
         return null;
     }
 

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Logger;
@@ -32,7 +33,6 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
-import io.github.jdbcx.interpreter.ConfigManager;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 public class DbDriverExtension implements DriverExtension {
@@ -57,24 +57,24 @@ public class DbDriverExtension implements DriverExtension {
     }
 
     @Override
-    public Connection getConnection(String url, Properties props) throws SQLException {
-        return hasConfig(url)
-                ? JdbcInterpreter.getConnectionByConfig(getConfig(url), loader)
+    public Connection getConnection(ConfigManager manager, String url, Properties props) throws SQLException {
+        final String category = getName();
+        return manager.hasConfig(category, url)
+                ? JdbcInterpreter.getConnectionByConfig(manager.getConfig(category, url), loader)
                 : JdbcInterpreter.getConnectionByUrl(url, props, loader);
     }
 
     @Override
-    public ResultSet getTables(String schemaPattern, String tableNamePattern, String[] types, Properties props)
-            throws SQLException {
-        List<String> ids = getSchemas(schemaPattern, props);
+    public ResultSet getTables(ConfigManager manager, String schemaPattern, String tableNamePattern, String[] types,
+            Properties props) throws SQLException {
+        List<String> ids = getSchemas(manager, schemaPattern, props);
         if (ids == null || ids.isEmpty()) {
             return null;
         }
 
+        final String category = getName();
         int len = ids.size();
         ResultSet[] arr = new ResultSet[len];
-        String category = getName();
-        ConfigManager manager = ConfigManager.getInstance();
         SQLWarning w = null;
         for (int i = 0; i < len; i++) {
             String id = ids.get(i);
@@ -111,7 +111,8 @@ public class DbDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig(props), loader);
+        return new ActivityListener(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props),
+                loader);
     }
 
     @Override

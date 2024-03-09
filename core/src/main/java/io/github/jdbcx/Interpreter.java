@@ -19,10 +19,20 @@ import java.util.Properties;
 import java.util.concurrent.CompletionException;
 
 public interface Interpreter {
+    /**
+     * Gets context bound to current thread.
+     *
+     * @return context bound to current thread
+     */
     default QueryContext getContext() {
         return QueryContext.getCurrentContext();
     }
 
+    /**
+     * Gets variable tag can be used in query.
+     *
+     * @return non-null variable tag
+     */
     default VariableTag getVariableTag() {
         return VariableTag.BRACE;
     }
