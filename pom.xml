@@ -165,8 +165,8 @@
         <sonar.organization>jdbcx</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.projectVersion>0.5.0</sonar.projectVersion>
-        <sonar.cpd.exclusions>
-            **/*0*.java,**/value/*Value.java,**/value/array/*Value.java,**/stream/*Stream.java</sonar.cpd.exclusions>
+        <sonar.coverage.jacoco.xmlReportPaths>**/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.cpd.exclusions>**/*0*.java,**/value/*Value.java,**/value/array/*Value.java,**/stream/*Stream.java</sonar.cpd.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -926,7 +926,8 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -935,7 +936,8 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -945,7 +947,8 @@
                                 </goals>
                                 <configuration>
                                     <skip>${skipUTs}</skip>
-                                    <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
                                     <propertyName>jacocoUTArgLine</propertyName>
                                     <append>true</append>
                                 </configuration>
@@ -957,7 +960,8 @@
                                 </goals>
                                 <configuration>
                                     <skip>${skipITs}</skip>
-                                    <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
                                     <propertyName>jacocoITArgLine</propertyName>
                                     <append>true</append>
                                 </configuration>
@@ -969,7 +973,8 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/coverage-reports/jacoco-it.exec</dataFile>
+                                    <dataFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-it.exec</dataFile>
                                     <outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
                                 </configuration>
                             </execution>
@@ -980,7 +985,8 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
+                                    <dataFile>
+                                        ${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
                                     <outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
                                 </configuration>
                             </execution>
@@ -999,7 +1005,8 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
-                                    <destFile>${project.build.directory}/coverage-reports/aggregate.exec</destFile>
+                                    <destFile>
+                                        ${project.build.directory}/coverage-reports/aggregate.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1009,8 +1016,10 @@
                                     <goal>report</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/coverage-reports/aggregate.exec</dataFile>
-                                    <outputDirectory>${project.reporting.outputDirectory}/jacoco-aggregate</outputDirectory>
+                                    <dataFile>
+                                        ${project.build.directory}/coverage-reports/aggregate.exec</dataFile>
+                                    <outputDirectory>
+                                        ${project.reporting.outputDirectory}/jacoco-aggregate</outputDirectory>
                                     <rules>
                                         <rule>
                                             <element>CLASS</element>
@@ -1026,6 +1035,17 @@
                                             </limits>
                                         </rule>
                                     </rules>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>merge-report</id>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <configuration>
+                                    <formats>
+                                        <format>XML</format>
+                                    </formats>
                                 </configuration>
                             </execution>
                         </executions>
