@@ -35,9 +35,7 @@ public interface JdbcActivityListener {
         return metaData;
     }
 
-    // onPrepare
-
-    default Result<?> onQuery(String query) throws SQLException {
+    default Result<?> onQuery(String query) throws SQLException { // NOSONAR
         return Result.of(query);
     }
 

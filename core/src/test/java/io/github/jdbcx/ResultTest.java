@@ -181,6 +181,15 @@ public class ResultTest {
     }
 
     @Test(groups = "unit")
+    public void testGetFieldCount() {
+        Assert.assertEquals(Result.of(Row.EMPTY).getFieldCount(), 0);
+        Assert.assertEquals(Result.of("123").getFieldCount(), 1);
+        Assert.assertEquals(Result.of(1L).getFieldCount(), 1);
+
+        Assert.assertEquals(Result.of(Arrays.asList(Field.of("a1"), Field.of("a2"))).getFieldCount(), 2);
+    }
+
+    @Test(groups = "unit")
     public void testRows() throws SQLException {
         Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((Row) null));
 

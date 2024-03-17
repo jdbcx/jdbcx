@@ -482,6 +482,10 @@ public final class Result<T> implements AutoCloseable {
                 Utils.format("Cannot convert value from [%s] to [%s]", valueType, clazz));
     }
 
+    public int getFieldCount() {
+        return fields.size();
+    }
+
     public Class<?> type() {
         return valueType;
     }

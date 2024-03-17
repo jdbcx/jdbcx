@@ -145,9 +145,9 @@ public final class Option implements Serializable {
             .of(new String[] { "result.format", "Output format to use for query results." });
     public static final Option RESULT_VAR = Option
             .of(new String[] { "result.var", "Unique variable name of the query result." });
-    public static final Option RESULT_REUSE = Option
-            .of(new String[] { "result.reuse", "Whether to reuse the result, only works when result.var is specified.",
-                    Constants.TRUE_EXPR, Constants.FALSE_EXPR });
+    public static final Option RESULT_REUSE = Option.of(new String[] { "result.reuse",
+            "Whether to reuse previous result by retrieving the variable from context, only works when result.var is specified.",
+            Constants.TRUE_EXPR, Constants.FALSE_EXPR });
     public static final Option RESULT_SCOPE = Option
             .of(new String[] { "result.scope", "Scope of the result, only works when result.var is specified.",
                     Constants.SCOPE_QUERY, Constants.SCOPE_THREAD, Constants.SCOPE_GLOBAL });
