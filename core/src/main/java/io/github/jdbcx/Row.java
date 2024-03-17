@@ -16,13 +16,39 @@
 package io.github.jdbcx;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 import io.github.jdbcx.data.DefaultRow;
 
 public interface Row extends Serializable {
-    static final Row EMPTY = DefaultRow.EMPTY;
+    static final Row EMPTY = new Row() {
+        @Override
+        public Field field(int index) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+
+        @Override
+        public List<Field> fields() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Value value(int index) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+
+        @Override
+        public List<Value> values() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
+    };
 
     static Row of(List<Field> fields, Object value) {
         final Row row;

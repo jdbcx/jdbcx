@@ -27,8 +27,6 @@ import io.github.jdbcx.Value;
 public final class DefaultRow implements Row {
     static final List<Field> defaultFields = Collections.singletonList(Field.DEFAULT);
 
-    public static final DefaultRow EMPTY = new DefaultRow(Collections.emptyList());
-
     private final List<Field> fields;
     private final Value[] values;
     private final int size;
@@ -36,8 +34,8 @@ public final class DefaultRow implements Row {
     public DefaultRow(Value... values) {
         int len = 0;
         if (values == null) {
-            this.fields = EMPTY.fields;
-            this.values = EMPTY.values;
+            this.fields = Collections.emptyList();
+            this.values = new Value[0];
         } else if ((len = values.length) == 1) {
             this.fields = defaultFields;
             this.values = values;
