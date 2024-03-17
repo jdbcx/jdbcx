@@ -545,4 +545,73 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertFalse(rs.next());
         }
     }
+
+    @Test(groups = { "integration" })
+    public void testResultVar() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+        try (Connection conn = d.connect("jdbcx:", props);
+                Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt
+                    .executeQuery("0,{{ script(result.var=x): 1}},{{ shell(result.var=x): echo 2}},${x}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,1,1,1");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery("{%var:x=3%}0,{{ script(result.var=x): 1}},{{ shell(result.var=x): echo 2}},${x}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,3,3,3");
+                Assert.assertFalse(rs.next());
+            }
+
+            // empty result
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "0,{{ db(url=jdbc:sqlite::memory:,result.var=x): select name from sqlite_schema where 1=0}},${x},${x.name}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,,,${x.name}");
+                Assert.assertFalse(rs.next());
+            }
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "0,{{ db(url=jdbc:sqlite::memory:,result.var=x): select name, type from sqlite_schema where 1=0}},${x},${x.name},${x.type}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,,,,");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery("0,{{ db(url=jdbc:sqlite::memory:,result.var=x): select 1 a}},${x},${x.a}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,1,1,${x.a}");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "0,{{ db(url=jdbc:sqlite::memory:,result.var=x): select 1 A union select 2 union select 3}},${x.A}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0,1,2,3,${x.A}");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "0;{{ db(url=jdbc:sqlite::memory:,result.var=x): select 'a' s, 1 n}};${x.s};${x.n};${x.x}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0;;a;1;${x.x}");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            "0;{{ db(url=jdbc:sqlite::memory:,result.var=x): select 'a' s, 1 n union select 'b', 2}};${x.s};${x.n};${x.x}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "0;;a,b;1,2;${x.x}");
+                Assert.assertFalse(rs.next());
+            }
+        }
+    }
 }

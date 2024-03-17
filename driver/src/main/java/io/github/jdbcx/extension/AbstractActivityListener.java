@@ -21,11 +21,13 @@ import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 abstract class AbstractActivityListener implements JdbcActivityListener {
@@ -54,7 +56,45 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
 
             final Result<?> result = interpreter.interpret(query, config);
             if (saveResult) {
-                String value = result.get(String.class);
+                final int len = result.getFieldCount();
+                final String value;
+                if (len <= 0) {
+                    value = Constants.EMPTY_STRING;
+                } else if (len == 1) {
+                    StringBuilder builder = new StringBuilder();
+                    for (Row r : result.rows()) {
+                        builder.append(r.value(0).asString()).append(',');
+                    }
+                    int l = builder.length() - 1;
+                    if (l >= 0) {
+                        builder.setLength(l);
+                    }
+                    value = builder.toString();
+                } else {
+                    String[] vars = new String[len];
+                    StringBuilder[] vals = new StringBuilder[len];
+                    int i = 0;
+                    for (Field f : result.fields()) {
+                        vars[i] = new StringBuilder(resultVar).append('.').append(f.name()).toString();
+                        vals[i++] = new StringBuilder();
+                    }
+
+                    for (Row r : result.rows()) {
+                        for (i = 0; i < len; i++) {
+                            vals[i].append(r.value(i).asString()).append(',');
+                        }
+                    }
+
+                    final boolean trim = vals[0].length() > 0;
+                    for (i = 0; i < len; i++) {
+                        StringBuilder builder = vals[i];
+                        if (trim) {
+                            builder.setLength(builder.length() - 1);
+                        }
+                        context.setVariableInScope(scope, vars[i], builder.toString());
+                    }
+                    value = Constants.EMPTY_STRING;
+                }
                 context.setVariableInScope(scope, resultVar, value);
                 return Result.of(value);
             }
