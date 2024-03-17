@@ -43,12 +43,12 @@ public class ArrowSerdeTest {
         for (String reset : new String[] { "", "true", "false" }) {
             config.clear();
             if (!Checker.isNullOrEmpty(reset)) {
-                ArrowSerde.OPTION_CLEAR.setValue(config, reset);
+                ArrowSerde.OPTION_RESET.setValue(config, reset);
             }
             for (int i = 0; i < 5; i++) {
                 config.remove(ArrowSerde.OPTION_STREAM.getName());
                 if (i != 0) {
-                    ArrowSerde.OPTION_BATCH.setValue(config, Integer.toString(i));
+                    ArrowSerde.OPTION_ROWS.setValue(config, Integer.toString(i));
                 }
                 serde = new ArrowSerde(config);
                 try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

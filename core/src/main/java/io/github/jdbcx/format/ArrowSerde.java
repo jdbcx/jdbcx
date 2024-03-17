@@ -65,10 +65,10 @@ import io.github.jdbcx.Utils;
 import io.github.jdbcx.Value;
 
 public class ArrowSerde implements Serialization {
-    public static final Option OPTION_BATCH = Option
-            .of(new String[] { "batch", "Batch size for serialization", "100" });
-    public static final Option OPTION_CLEAR = Option
-            .of(new String[] { "clear", "Whether to clear and reallocate buffer after each batch write",
+    public static final Option OPTION_ROWS = Option
+            .of(new String[] { "rows", "Maximum row count per serialization batch", "100" });
+    public static final Option OPTION_RESET = Option
+            .of(new String[] { "reset", "Whether to clear and reallocate buffer after each batch write",
                     Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option OPTION_STREAM = Option
             .of(new String[] { "stream", "Whether to use stream format or not", Constants.FALSE_EXPR,
@@ -257,12 +257,12 @@ public class ArrowSerde implements Serialization {
     }
 
     protected final int batchSize;
-    protected final boolean clear;
+    protected final boolean reset;
     protected final boolean stream;
 
     public ArrowSerde(Properties config) {
-        this.batchSize = Integer.parseInt(OPTION_BATCH.getValue(config));
-        this.clear = Boolean.parseBoolean(OPTION_CLEAR.getValue(config));
+        this.batchSize = Integer.parseInt(OPTION_ROWS.getValue(config));
+        this.reset = Boolean.parseBoolean(OPTION_RESET.getValue(config));
         this.stream = Boolean.parseBoolean(OPTION_STREAM.getValue(config));
     }
 
@@ -290,18 +290,18 @@ public class ArrowSerde implements Serialization {
             }
 
             final int size = this.batchSize;
-            final boolean reset = this.clear;
+            final boolean clear = this.reset;
             try (VectorSchemaRoot root = new VectorSchemaRoot(fields, vectors, 0);
                     ArrowWriter writer = stream ? new ArrowStreamWriter(root, null, Channels.newChannel(out))
                             : new ArrowFileWriter(root, null, Channels.newChannel(out))) {
-                if (!reset) {
+                if (!clear) {
                     root.allocateNew();
                 }
                 writer.start();
 
                 int index = 0;
                 for (io.github.jdbcx.Row r : result.rows()) {
-                    if (reset && index == 0) {
+                    if (clear && index == 0) {
                         root.allocateNew();
                     }
 
@@ -317,7 +317,7 @@ public class ArrowSerde implements Serialization {
                     if (++index >= size) {
                         root.setRowCount(index);
                         writer.writeBatch();
-                        if (reset) {
+                        if (clear) {
                             root.clear();
                         }
                         index = 0;
@@ -326,7 +326,7 @@ public class ArrowSerde implements Serialization {
                 if (index > 0) {
                     root.setRowCount(index);
                     writer.writeBatch();
-                    if (reset) {
+                    if (clear) {
                         root.clear();
                     }
                 }

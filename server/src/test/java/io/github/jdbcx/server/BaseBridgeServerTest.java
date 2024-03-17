@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -35,6 +36,7 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.Stream;
@@ -121,7 +123,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         // try again using POST
         conn = web.openConnection(new URL(url), config, headers);
-        conn.setRequestProperty(BridgeServer.HEADER_QUERY_ID, "non-exist-query.id");
+        conn.setRequestProperty(RequestParameter.QUERY_ID.header(), "non-exist-query.id");
         conn.setRequestMethod("POST");
         conn.setDoOutput(false);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
@@ -169,8 +171,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
-        headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
-        headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
+        headers.put(RequestParameter.FORMAT.header(), "application/bson");
+        headers.put(RequestParameter.COMPRESSION.header(), "xz,lz4,gzip");
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?q=select+1"), config, headers);
@@ -202,8 +204,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
-        headers.put(BridgeServer.HEADER_ACCEPT, "application/bson");
-        headers.put(BridgeServer.HEADER_ACCEPT_ENCODING, "xz,lz4,gzip");
+        headers.put(RequestParameter.FORMAT.header(), "application/bson");
+        headers.put(RequestParameter.COMPRESSION.header(), "xz,lz4,gzip");
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         HttpURLConnection conn = web.openConnection(new URL(url + "?m=r&q=select+1"), config, headers);
@@ -239,6 +241,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();
+        headers.put(RequestParameter.FORMAT.header(), "");
         // use query parameters
         WebExecutor web = new WebExecutor(null, config);
         HttpURLConnection conn = web.openConnection(new URL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
@@ -248,7 +251,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         // mixed
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        headers.put(BridgeServer.HEADER_ACCEPT, "application/jsonl");
+        headers.put(RequestParameter.FORMAT.header(), "application/jsonl");
         web = new WebExecutor(null, config);
         conn = web.openConnection(new URL(url + "?m=d"), config, headers);
         conn.setRequestMethod("POST");
@@ -346,6 +349,28 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getString(1), "x");
                 Assert.assertFalse(rs.next());
             }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testBridgedQuery() throws Exception {
+        Properties props = new Properties();
+        // props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-duckdb: select 1}}")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next());
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-sqlite: select 1}}")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertFalse(rs.next());
         }
     }
 }

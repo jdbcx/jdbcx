@@ -27,6 +27,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.SchemaBuilder.FieldAssembler;
 import org.apache.avro.SchemaBuilder.FieldBuilder;
+import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -37,6 +38,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Format;
@@ -51,6 +53,12 @@ public class AvroSerde implements Serialization {
     public static final String ENCODER_BINARY = "binary";
     public static final String ENCODER_JSON = "json";
 
+    public static final Option OPTION_CODEC = Option.of(new String[] { "codec", "Compression codec" });
+    public static final Option OPTION_LEVEL = Option.of(new String[] { "level", "Compression level" });
+    public static final Option OPTION_CHECKSUM = Option.of(new String[] { "checksum",
+            "Whether should use checksum in zstd compression", Constants.FALSE_EXPR, Constants.TRUE_EXPR });
+    public static final Option OPTION_BUFFER_POOL = Option.of(new String[] { "bufferPool",
+            "Whether should use buffer pool in zstd compression", Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option OPTION_ENCODER = Option
             .of(new String[] { "encoder",
                     "Preferred encoder(" + ENCODER_BINARY + " or " + ENCODER_JSON
@@ -197,9 +205,34 @@ public class AvroSerde implements Serialization {
         return value;
     }
 
+    protected final CodecFactory codecFactory;
     protected final String encoder;
 
     public AvroSerde(Properties config) {
+        String codec = OPTION_CODEC.getValue(config);
+        String levelStr = OPTION_LEVEL.getValue(config);
+        if (Checker.isNullOrEmpty(codec)) {
+            codecFactory = null;
+        } else if (Compression.BZIP2.name().equalsIgnoreCase(codec)) {
+            codecFactory = CodecFactory.bzip2Codec();
+        } else if (Compression.DEFLATE.name().equalsIgnoreCase(codec)) {
+            int level = Checker.isNullOrEmpty(levelStr) ? 6 : Integer.parseInt(levelStr);
+            codecFactory = CodecFactory.deflateCodec(level < 1 ? 1 : (level > 9 ? 9 : level));
+        } else if (Compression.SNAPPY.name().equalsIgnoreCase(codec)) {
+            codecFactory = CodecFactory.snappyCodec();
+        } else if (Compression.XZ.name().equalsIgnoreCase(codec)) {
+            int level = Checker.isNullOrEmpty(levelStr) ? 6 : Integer.parseInt(levelStr);
+            codecFactory = CodecFactory.xzCodec(level < 1 ? 1 : (level > 9 ? 9 : level));
+        } else if (Compression.ZSTD.name().equalsIgnoreCase(codec)) {
+            int level = Checker.isNullOrEmpty(levelStr) ? 3 : Integer.parseInt(levelStr);
+            codecFactory = CodecFactory.zstandardCodec(level < -5 ? -5 : (level > 22 ? 22 : level),
+                    Boolean.parseBoolean(OPTION_CHECKSUM.getValue(config)),
+                    Boolean.parseBoolean(OPTION_BUFFER_POOL.setValue(config)));
+        } else if (Constants.NULL_STR.equalsIgnoreCase(codec)) {
+            codecFactory = CodecFactory.nullCodec();
+        } else {
+            codecFactory = CodecFactory.fromString(codec);
+        }
         encoder = OPTION_ENCODER.getValue(config);
     }
 
@@ -208,7 +241,6 @@ public class AvroSerde implements Serialization {
         throw new UnsupportedOperationException("Unimplemented method 'deserialize'");
     }
 
-    @SuppressWarnings("resource")
     @Override
     public void serialize(Result<?> result, OutputStream out) throws IOException {
         final Schema schema = buildSchema(result);
@@ -216,7 +248,11 @@ public class AvroSerde implements Serialization {
         if (Checker.isNullOrEmpty(encoder)) {
             final int len = result.fields().size();
             final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
-            try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(datumWriter).create(schema, out)) {
+            try (DataFileWriter<GenericRecord> writer = new DataFileWriter<>(datumWriter)) {
+                if (codecFactory != null) {
+                    writer.setCodec(codecFactory);
+                }
+                writer.create(schema, out);
                 final GenericRecord data = new GenericData.Record(schema);
                 for (Row r : result.rows()) {
                     for (int i = 0; i < len; i++) {

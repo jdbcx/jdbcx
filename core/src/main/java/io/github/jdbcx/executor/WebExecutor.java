@@ -62,8 +62,6 @@ public class WebExecutor extends AbstractExecutor {
     public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String HEADER_USER_AGENT = "User-Agent";
-    public static final String HEADER_QUERY_MODE = "X-Query-Mode";
-    public static final String HEADER_QUERY_USER = "X-Query-User";
 
     public static final Option OPTION_CONNECT_TIMEOUT = Option
             .of(new String[] { "connect.timeout",
@@ -194,9 +192,7 @@ public class WebExecutor extends AbstractExecutor {
                         hasUserAgent = true;
                     }
                     String str = Utils.applyVariables(val.toString(), defaultTag, config);
-                    if (!Checker.isNullOrBlank(str)) {
-                        conn.setRequestProperty(k, val.toString());
-                    }
+                    conn.setRequestProperty(k, Checker.isNullOrBlank(str) ? Constants.EMPTY_STRING : str);
                 }
             }
             if (!hasUserAgent) {

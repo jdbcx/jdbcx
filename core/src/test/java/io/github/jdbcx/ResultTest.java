@@ -19,7 +19,12 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -176,9 +181,11 @@ public class ResultTest {
     }
 
     @Test(groups = "unit")
-    public void testRows() throws Exception {
-        Result<?> r = Result.of((Row) null);
-        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+    public void testRows() throws SQLException {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((Row) null));
+
+        Result<?> r = Result.of(Row.EMPTY);
+        Assert.assertEquals(r.fields(), Collections.emptyList());
         Assert.assertEquals(r.rows(), Collections.emptyList());
         Assert.assertEquals(r.get(), null);
         Assert.assertEquals(r.type(), Row.class);
@@ -266,8 +273,10 @@ public class ResultTest {
 
     @Test(groups = "unit")
     public void testListOfString() {
-        Result<?> result = Result.of((List<String>) null);
-        Assert.assertEquals(result.get(), null);
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of((List<String>) null));
+
+        Result<?> result = Result.of(Collections.emptyList());
+        Assert.assertEquals(result.get(), Collections.emptyList());
         Assert.assertEquals(result.fields().size(), 1);
         int i = 0;
         for (Row r : result.rows()) {
@@ -296,5 +305,31 @@ public class ResultTest {
             i++;
         }
         Assert.assertEquals(i, 2);
+    }
+
+    @Test(groups = "unit")
+    public void testConvertToString() throws Exception {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of("123").get(null));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Result.of("123").get(null, null));
+
+        Result<?> result = Result.of(1L);
+        Assert.assertEquals(result.get(String.class), "1");
+
+        result = Result.of(Arrays.asList("a", "b", "c"));
+        Assert.assertEquals(result.get(String.class), "a\nb\nc");
+
+        result = Result.of(Row.of("123"));
+        Assert.assertEquals(result.get(String.class), "123");
+
+        result = Result.of(Arrays.asList(Field.of(""), Field.of("1", JDBCType.INTEGER)),
+                new Object[][] { { null, 1 }, { "123", null }, { "456", 2 } });
+        Assert.assertEquals(result.get(String.class), ",1\n123,\n456,2");
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:");
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select 1 union select 2 union select 3 order by 1")) {
+            result = Result.of(rs);
+            Assert.assertEquals(result.get(String.class), "1\n2\n3");
+        }
     }
 }

@@ -120,7 +120,11 @@ public class Request {
         }
         builder.append(info.qid).append(info.format.fileExtension());
         if (info.compress != Compression.NONE) {
-            builder.append(info.compress.fileExtension());
+            if (info.format.supportsCompressionCodec()) {
+                builder.append("?codec=").append(info.compress.name());
+            } else {
+                builder.append(info.compress.fileExtension());
+            }
         }
 
         String url = builder.toString();
