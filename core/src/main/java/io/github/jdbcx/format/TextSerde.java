@@ -41,7 +41,7 @@ public abstract class TextSerde implements Serialization {
     public static final Option OPTION_CHARSET = Option.of(new String[] { "charset", "Character set" });
     public static final Option OPTION_HEADER = Option.of(new String[] { "header", "Whether contains header or not" });
     public static final Option OPTION_NULL_VALUE = Option
-            .of(new String[] { "null.value", "String literal representing null value, defaults to empty string" });
+            .of(new String[] { "nullValue", "String literal representing null value, defaults to empty string" });
 
     protected final int buffer;
     protected final Charset charset;
@@ -59,9 +59,9 @@ public abstract class TextSerde implements Serialization {
         nullValue = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
     }
 
-    protected abstract Result<?> deserialize(Reader reader) throws IOException; // NOSONAR
+    public abstract Result<?> deserialize(Reader reader) throws IOException; // NOSONAR
 
-    protected abstract void serialize(Result<?> result, Writer writer) throws IOException;
+    public abstract void serialize(Result<?> result, Writer writer) throws IOException;
 
     @Override
     public Result<?> deserialize(InputStream in) throws IOException {

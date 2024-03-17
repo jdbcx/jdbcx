@@ -235,22 +235,22 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<Object[]> of(Object[] arr, Field... fields) {
-        return of(fields != null && fields.length > 0 ? Arrays.asList(fields) : DEFAULT_FIELDS, arr);
+        return of(Arrays.asList(fields), arr);
     }
 
     public static Result<Object[]> of(List<Field> fields, Object[] arr) {
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        IterableArray wrapper = new IterableArray(fields, arr);
-        return new Result<>(fields, arr, arr.getClass(), wrapper);
+        return new Result<>(fields, Checker.nonNull(arr, Object[].class), arr.getClass(),
+                new IterableArray(fields, arr));
     }
 
     public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) { // NOSONAR
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        IterableWrapper wrapper = new IterableWrapper(fields, it);
+        IterableWrapper wrapper = new IterableWrapper(fields, it); // only works when both arguments are not null
         return new Result<>(fields, it, it.getClass(), wrapper);
     }
 
@@ -258,25 +258,22 @@ public final class Result<T> implements AutoCloseable {
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        return rows != null && rows.length > 0 ? new Result<>(fields, rows, rows.getClass(), Arrays.asList(rows))
-                : new Result<>(fields, null, Void.class, Collections.emptyList());
+        return new Result<>(fields, Checker.nonNull(rows, Row[].class), rows.getClass(), Arrays.asList(rows));
     }
 
     public static Result<?> of(Row row, Row... more) { // NOSONAR
         final int len;
-        if (more == null || (len = more.length) == 0) {
-            return row != null ? new Result<>(row.fields(), row, row.getClass(), Collections.singletonList(row))
-                    : new Result<>(DEFAULT_FIELDS, null, Row.class, Collections.emptyList());
+        final List<Field> fields;
+        if (row == null || more == null) {
+            throw new IllegalArgumentException("Non-null row is required");
+        } else if ((fields = row.fields()).isEmpty()) {
+            return new Result<>(fields, null, Row.class, Collections.emptyList());
+        } else if ((len = more.length) == 0) {
+            return new Result<>(fields, row, row.getClass(), Collections.singletonList(row));
         }
 
-        final List<Field> fields;
         List<Row> rows = new ArrayList<>(len + 1);
-        if (row != null) {
-            fields = row.fields();
-            rows.add(row);
-        } else {
-            fields = DEFAULT_FIELDS;
-        }
+        rows.add(row);
         for (int i = 0; i < len; i++) {
             Row r = more[i];
             if (r != null) {
@@ -316,18 +313,8 @@ public final class Result<T> implements AutoCloseable {
         return new Result<>(DEFAULT_FIELDS, str, String.class, Collections.singletonList(Row.of(str)));
     }
 
-    public static Result<?> of(List<String> list) { // NOSONAR
-        final Row[] rows;
-        if (list != null) {
-            rows = new Row[list.size()];
-            int index = 0;
-            for (String str : list) {
-                rows[index++] = Row.of(DEFAULT_FIELDS, Values.of(str));
-            }
-        } else {
-            rows = new Row[0];
-        }
-        return of(DEFAULT_FIELDS, rows);
+    public static Result<?> of(Collection<String> list) { // NOSONAR
+        return of(DEFAULT_FIELDS, list);
     }
 
     public static Result<Long> of(Long l) {
@@ -453,28 +440,26 @@ public final class Result<T> implements AutoCloseable {
                 } catch (SQLException e) {
                     str = (handler != null ? handler : defaultErrorHandler).handle(e);
                 }
-            } else if (Iterable.class.isAssignableFrom(valueType)) {
-                StringBuilder builder = new StringBuilder();
-                for (Object obj : ((Iterable<?>) rawValue)) {
-                    if (obj instanceof Row) {
-                        List<Value> values = ((Row) obj).values();
-                        for (Value v : values) {
+            } else if (Iterable.class.isAssignableFrom(valueType) || valueType.isArray()) {
+                if (fields.isEmpty()) {
+                    str = Constants.EMPTY_STRING;
+                } else {
+                    StringBuilder builder = new StringBuilder();
+                    for (Row r : rows()) {
+                        for (Value v : r.values()) {
                             builder.append(v.asString()).append(',');
                         }
-                        if (!values.isEmpty()) {
-                            builder.setLength(builder.length() - 1);
-                        }
-                    } else if (obj instanceof Value) {
-                        builder.append(((Value) obj).asString());
-                    } else {
-                        builder.append(obj);
+                        builder.setLength(builder.length() - 1);
+                        builder.append('\n');
                     }
-                    builder.append('\n');
+                    int len = builder.length() - 1;
+                    if (len < 0) {
+                        str = Constants.EMPTY_STRING;
+                    } else {
+                        builder.setLength(len);
+                        str = builder.toString();
+                    }
                 }
-                if (builder.length() > 0) {
-                    builder.setLength(builder.length() - 1);
-                }
-                str = builder.toString();
             } else if (Row.class.isAssignableFrom(valueType)) {
                 StringBuilder builder = new StringBuilder();
                 List<Value> values = ((Row) rawValue).values();

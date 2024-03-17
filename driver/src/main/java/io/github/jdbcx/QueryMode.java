@@ -15,75 +15,136 @@
  */
 package io.github.jdbcx;
 
-import java.util.Locale;
-
 public enum QueryMode {
     /**
-     * Submits the query for execution later.
+     * Submits a query for later execution.
      */
-    SUBMIT("s"),
+    SUBMIT("submit", 's', 'S'),
     /**
-     * Submits the query and expects a redirect to the URL for retrieving results.
+     * Submits a query and gets redirected to retrieve the results.
      */
-    REDIRECT("r"),
+    REDIRECT("redirect", 'r', 'R'),
     /**
-     * Executes the query asynchronously immediately.
+     * Executes a query asynchronously.
      */
-    ASYNC("a"),
+    ASYNC("async", 'a', 'A'),
     /**
-     * Executes the query and waits the result.
+     * Executes a query immediately and waits the result.
      */
-    DIRECT("d"), // execute query
+    DIRECT("query", 'q', 'Q', 'd', 'D'),
     /**
-     * Executes a mutation and waits for the result.
+     * Executes a mutation immediately and waits for the result.
      */
-    MUTATION("m"); // mutation
+    MUTATION("mutate", 'm', 'M');
 
-    private String code;
+    private final char[] codes;
+    private final String path;
 
-    QueryMode(String code) {
-        this.code = code;
+    QueryMode(String path, char... codes) {
+        this.path = path;
+        this.codes = codes;
     }
 
-    public String code() {
-        return code;
+    /**
+     * Gets a single character code representing the query mode.
+     *
+     * @return single character code
+     */
+    public char code() {
+        return codes[0];
     }
 
-    public static QueryMode of(String str) {
-        QueryMode mode = null;
-        if (str == null || str.isEmpty()) {
+    /**
+     * Gets semantic relative path used in constructing the query URL.
+     *
+     * @return non-empty semantic relative path
+     */
+    public String path() {
+        return path;
+    }
+
+    /**
+     * Gets query mode based on given path.
+     *
+     * @param path path
+     * @return non-null query mode, defaults to {@link #SUBMIT}
+     */
+    public static QueryMode fromPath(String path) {
+        return fromPath(path, SUBMIT);
+    }
+
+    /**
+     * Gets query mode based on given path.
+     *
+     * @param path        path
+     * @param defaultMode default mode
+     * @return query mode
+     */
+    public static QueryMode fromPath(String path, QueryMode defaultMode) {
+        final QueryMode mode;
+        if (ASYNC.path.equals(path)) {
+            mode = ASYNC;
+        } else if (DIRECT.path.equals(path)) {
+            mode = DIRECT;
+        } else if (REDIRECT.path.equals(path)) {
+            mode = REDIRECT;
+        } else if (MUTATION.path.equals(path)) {
+            mode = MUTATION;
+        } else if (SUBMIT.path.equals(path)) {
             mode = SUBMIT;
-        } else if (str.length() == 1) {
-            switch (str.charAt(0)) {
-                case 'a':
-                case 'A':
-                    mode = ASYNC;
-                    break;
-                case 's':
-                case 'S':
-                    mode = SUBMIT;
-                    break;
-                case 'r':
-                case 'R':
-                    mode = REDIRECT;
-                    break;
-                case 'd':
-                case 'D':
-                    mode = DIRECT;
-                    break;
-                case 'm':
-                case 'M':
-                    mode = MUTATION;
-                    break;
-                default:
-                    break;
-            }
         } else {
-            mode = valueOf(str.toUpperCase(Locale.ROOT));
-        }
-        if (mode == null) {
-            throw new IllegalArgumentException("Unsupported query mode: " + str);
+            mode = defaultMode;
         }
         return mode;
+    }
+
+    /**
+     * Gets query mode based on the given code.
+     *
+     * @param code code
+     * @return non-null query mode, defaults to {@link #SUBMIT}
+     */
+    public static QueryMode fromCode(char code) {
+        return fromCode(code, SUBMIT);
+    }
+
+    /**
+     * Gets query mode based on the given code.
+     *
+     * @param code        code
+     * @param defaultMode default mode
+     * @return query mode
+     */
+    public static QueryMode fromCode(char code, QueryMode defaultMode) {
+        for (QueryMode m : values()) {
+            for (char c : m.codes) {
+                if (c == code) {
+                    return m;
+                }
+            }
+        }
+        return defaultMode;
+    }
+
+    /**
+     * Gets query mode based on given string, which could be a single character
+     * {@code code}, {@code path} or {@code name}.
+     *
+     * @param str single character, path or name
+     * @return non-null query mode, defaults to {@link #SUBMIT}
+     */
+    public static QueryMode of(String str) {
+        QueryMode mode = null;
+        if (Checker.isNullOrEmpty(str)) {
+            mode = SUBMIT;
+        } else if (str.length() == 1) {
+            mode = fromCode(str.charAt(0), null);
+            if (mode == null) {
+                throw new IllegalArgumentException("Invalid single character code: " + str);
+            }
+        } else {
+            mode = fromPath(str, null);
+        }
+        return mode != null ? mode : valueOf(str);
     }
 }

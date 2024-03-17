@@ -57,12 +57,12 @@ public class NdJsonSerde extends TextSerde {
     }
 
     @Override
-    protected Result<?> deserialize(Reader reader) throws IOException {
+    public Result<?> deserialize(Reader reader) throws IOException {
         throw new UnsupportedOperationException("Unimplemented method 'deserialize'");
     }
 
     @Override
-    protected void serialize(Result<?> result, Writer writer) throws IOException {
+    public void serialize(Result<?> result, Writer writer) throws IOException {
         final List<Field> fields = result.fields();
         final int size = fields.size();
 

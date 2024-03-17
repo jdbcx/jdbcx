@@ -60,7 +60,7 @@ public class CsvSerdeTest {
             Assert.assertEquals(new String(out.toByteArray(), charset), expected);
         }
 
-        CsvSerde.OPTION_USEQUOTES.setValue(config, "true");
+        CsvSerde.OPTION_QUOTES.setValue(config, "true");
         serde = new CsvSerde(config);
         charset = ((CsvSerde) serde).charset;
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

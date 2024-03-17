@@ -19,28 +19,28 @@ import java.util.Locale;
 
 public enum Format {
     // https://www.iana.org/assignments/media-types/text/csv
-    CSV(true, "text/csv", "csv"),
+    CSV(false, false, false, "text/csv", "csv"),
     // https://www.iana.org/assignments/media-types/text/tab-separated-values
-    TSV(true, "text/tab-separated-values", "tsv"),
-    TXT(true, "text/plain", "txt"),
+    TSV(false, false, false, "text/tab-separated-values", "tsv"),
+    TXT(false, false, false, "text/plain", "txt"),
     // https://www.iana.org/assignments/media-types/application/json
-    JSON(true, "application/json", "json"),
+    JSON(false, false, false, "application/json", "json"),
     // https://www.iana.org/assignments/media-types/application/xml
-    XML(true, "application/xml", "xml"),
+    XML(false, false, false, "application/xml", "xml"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.file
-    ARROW(false, "application/vnd.apache.arrow.file", "arrow"),
+    ARROW(false, false, true, "application/vnd.apache.arrow.file", "arrow"),
     // https://www.iana.org/assignments/media-types/application/vnd.apache.arrow.stream
-    ARROW_STREAM(false, "application/vnd.apache.arrow.stream", "arrows"),
+    ARROW_STREAM(false, false, true, "application/vnd.apache.arrow.stream", "arrows"),
     // non-standard
     // https://avro.apache.org/docs/1.11.1/specification/#encodings
-    AVRO(false, "avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
-    AVRO_BINARY(true, "application/vnd.apache.avro+binary", "avrob"),
-    AVRO_JSON(true, "application/vnd.apache.avro+json", "avroj"),
-    BSON(true, "application/bson", "bson"),
-    JSONL(true, "application/jsonl", "jsonl"), // or application/json-lines?
-    NDJSON(true, "application/x-ndjson", "ndjson"), // or application/json-seq?
+    AVRO(true, false, true, "avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
+    AVRO_BINARY(false, false, false, "application/vnd.apache.avro+binary", "avrob"),
+    AVRO_JSON(false, false, false, "application/vnd.apache.avro+json", "avroj"),
+    BSON(false, false, false, "application/bson", "bson"),
+    JSONL(false, false, false, "application/jsonl", "jsonl"), // or application/json-lines?
+    NDJSON(false, false, false, "application/x-ndjson", "ndjson"), // or application/json-seq?
     // https://issues.apache.org/jira/browse/PARQUET-1889
-    PARQUET(false, "application/vnd.apache.parquet", "parquet");
+    PARQUET(true, true, true, "application/vnd.apache.parquet", "parquet");
 
     /**
      * Get preferred data format based on given MIME types.
@@ -162,20 +162,20 @@ public enum Format {
         return builder.toString();
     }
 
-    private final boolean schemaless;
+    private final boolean codec;
+    private final boolean encryption;
+    private final boolean schema;
     private final String mimeType;
     private final String fileExt;
     private final String fileExtWithDot;
 
-    Format(boolean schemaless, String mimeType, String fileExt) {
-        this.schemaless = schemaless;
+    Format(boolean codec, boolean encryption, boolean schema, String mimeType, String fileExt) {
+        this.codec = codec;
+        this.encryption = encryption;
+        this.schema = schema;
         this.mimeType = mimeType;
         this.fileExt = fileExt;
         this.fileExtWithDot = ".".concat(fileExt);
-    }
-
-    public boolean isSchemaless() {
-        return schemaless;
     }
 
     public String mimeType() {
@@ -188,5 +188,17 @@ public enum Format {
 
     public String fileExtension(boolean withDot) {
         return withDot ? fileExtWithDot : fileExt;
+    }
+
+    public boolean supportsCompressionCodec() {
+        return codec;
+    }
+
+    public boolean supportsEncryption() {
+        return encryption;
+    }
+
+    public boolean supportsSchema() {
+        return schema;
     }
 }

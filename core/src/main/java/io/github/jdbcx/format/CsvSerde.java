@@ -29,8 +29,8 @@ import io.github.jdbcx.Row;
 import io.github.jdbcx.Value;
 
 public class CsvSerde extends TextSerde {
-    public static final Option OPTION_USEQUOTES = Option
-            .of(new String[] { "useQuotes", "Quote character", Constants.FALSE_EXPR, Constants.TRUE_EXPR });
+    public static final Option OPTION_QUOTES = Option
+            .of(new String[] { "quotes", "Whether to use quote character", Constants.FALSE_EXPR, Constants.TRUE_EXPR });
     public static final Option OPTION_DELIMITER = Option.of(new String[] { "delimChar", "Delimiter character", "," });
     public static final Option OPTION_LINE = Option.of(new String[] { "lineChar", "New line character", "\n" });
     public static final Option OPTION_QUOTE = Option.of(new String[] { "quoteChar", "Quote character", "\"" });
@@ -45,7 +45,7 @@ public class CsvSerde extends TextSerde {
     public CsvSerde(Properties config) {
         super(config);
 
-        this.useQuotes = Boolean.parseBoolean(OPTION_USEQUOTES.getValue(config));
+        this.useQuotes = Boolean.parseBoolean(OPTION_QUOTES.getValue(config));
         this.delimChar = OPTION_DELIMITER.getValue(config).charAt(0);
         this.quoteChar = OPTION_QUOTE.getValue(config).charAt(0);
         this.escapeChar = OPTION_ESCAPE.getValue(config).charAt(0);
@@ -107,12 +107,12 @@ public class CsvSerde extends TextSerde {
     }
 
     @Override
-    protected Result<?> deserialize(Reader reader) throws IOException {
+    public Result<?> deserialize(Reader reader) throws IOException {
         throw new UnsupportedOperationException("Unimplemented method 'deserialize'");
     }
 
     @Override
-    protected void serialize(Result<?> result, Writer writer) throws IOException {
+    public void serialize(Result<?> result, Writer writer) throws IOException {
         final List<Field> fields = result.fields();
         final int size = fields.size();
 

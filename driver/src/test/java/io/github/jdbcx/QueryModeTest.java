@@ -22,19 +22,39 @@ import org.testng.annotations.Test;
 
 public class QueryModeTest {
     @Test(groups = { "unit" })
-    public void testConstructor() {
+    public void testFromCode() {
+        Assert.assertNull(QueryMode.fromCode('?', null));
+        Assert.assertEquals(QueryMode.fromCode('a', QueryMode.DIRECT), QueryMode.ASYNC);
+
+        Assert.assertEquals(QueryMode.fromCode('?'), QueryMode.SUBMIT);
+        Assert.assertEquals(QueryMode.fromCode('q'), QueryMode.DIRECT);
+        Assert.assertEquals(QueryMode.fromCode('?', QueryMode.MUTATION), QueryMode.MUTATION);
+    }
+
+    @Test(groups = { "unit" })
+    public void testFromPath() {
+        Assert.assertNull(QueryMode.fromPath("?", null));
+        Assert.assertEquals(QueryMode.fromPath("async", QueryMode.DIRECT), QueryMode.ASYNC);
+
+        Assert.assertEquals(QueryMode.fromPath("?"), QueryMode.SUBMIT);
+        Assert.assertEquals(QueryMode.fromPath("query"), QueryMode.DIRECT);
+        Assert.assertEquals(QueryMode.fromPath("?", QueryMode.MUTATION), QueryMode.MUTATION);
+    }
+
+    @Test(groups = { "unit" })
+    public void testOf() {
         Assert.assertEquals(QueryMode.of(null), QueryMode.SUBMIT);
         Assert.assertEquals(QueryMode.of(""), QueryMode.SUBMIT);
         for (QueryMode m : QueryMode.values()) {
-            Assert.assertEquals(QueryMode.of(m.code()), m);
+            final String str = new String(new char[] { m.code() });
+            Assert.assertEquals(QueryMode.of(str), m);
+            Assert.assertEquals(QueryMode.of(str.toLowerCase(Locale.ROOT)), m);
+            Assert.assertEquals(QueryMode.of(str.toUpperCase(Locale.ROOT)), m);
+            Assert.assertEquals(QueryMode.of(m.path()), m);
             Assert.assertEquals(QueryMode.of(m.name()), m);
-            Assert.assertEquals(QueryMode.of(m.name().toLowerCase()), m);
-            Assert.assertEquals(QueryMode.of(m.code().toLowerCase(Locale.ROOT)), m);
-            Assert.assertEquals(QueryMode.of(m.code().toUpperCase(Locale.ROOT)), m);
         }
 
         Assert.assertThrows(IllegalArgumentException.class, () -> QueryMode.of(" "));
-        Assert.assertThrows(IllegalArgumentException.class, () -> QueryMode.of("?"));
         Assert.assertThrows(IllegalArgumentException.class, () -> QueryMode.of("123"));
     }
 }

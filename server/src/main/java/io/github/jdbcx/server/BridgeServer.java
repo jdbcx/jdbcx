@@ -58,6 +58,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryMode;
+import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
@@ -71,29 +72,14 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
 
-    // format
-    public static final String HEADER_ACCEPT = WebExecutor.HEADER_ACCEPT.toLowerCase(Locale.ROOT);
-    // compression
-    public static final String HEADER_ACCEPT_ENCODING = WebExecutor.HEADER_ACCEPT_ENCODING.toLowerCase(Locale.ROOT);
     public static final String HEADER_ACCEPT_RANGES = "accept-ranges";
     public static final String HEADER_AUTHORIZATION = WebExecutor.HEADER_AUTHORIZATION.toLowerCase(Locale.ROOT);
     public static final String HEADER_CONNECTION = "connection";
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
     public static final String HEADER_LOCATION = "location";
-    public static final String HEADER_QUERY_ID = "x-query-id";
-    public static final String HEADER_QUERY_MODE = WebExecutor.HEADER_QUERY_MODE.toLowerCase(Locale.ROOT);
-    public static final String HEADER_QUERY_USER = WebExecutor.HEADER_QUERY_USER.toLowerCase(Locale.ROOT);
-    public static final String HEADER_TRANSACTION_ID = "x-transaction-id";
-    public static final String HEADER_USER_AGENT = WebExecutor.HEADER_USER_AGENT.toLowerCase(Locale.ROOT);
 
     public static final String METHOD_HEAD = "HEAD";
-
-    public static final String PARAM_COMPRESSION = "c";
-    public static final String PARAM_FORMAT = "f";
-    public static final String PARAM_REDIRECT = "r";
-    public static final String PARAM_QUERY = "q";
-    public static final String PARAM_QUERY_MODE = "m";
 
     public static final String PATH_CONFIG = "config";
     public static final String PATH_METRICS = "metrics";
@@ -121,6 +107,15 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final Option OPTION_SECRET = Option
             .of(new String[] { "server.secret",
                     "Server secret for ACL encryption, only used when authentication & authorization are enabled" });
+
+    protected static final Properties extractConfig(Map<String, String> params) {
+        Properties config = new Properties();
+        config.putAll(params);
+        for (RequestParameter p : RequestParameter.values()) {
+            config.remove(p.parameter());
+        }
+        return config;
+    }
 
     protected static final List<ServerAcl> loadAcl(Properties config) {
         Properties props = ConfigManager.loadConfig(OPTION_ACL.getJdbcxValue(config), null, null);
@@ -319,7 +314,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         }
     }
 
-    protected void query(Request request) throws IOException {
+    protected void query(Request request, Properties config) throws IOException {
         final QueryInfo info = request.getQueryInfo();
         log.debug("Executing query [%s]...", info.qid);
         boolean success = false;
@@ -333,7 +328,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 if (warning != null) {
                     log.warn("SQLWarning from [%s]", stmt, warning);
                 }
-                Result.writeTo(result, info.format, null, out);
+                Result.writeTo(result, info.format, config, out);
             }
             // in case the query took too long
             queries.put(info.qid, info);
@@ -430,6 +425,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected void dispatch(String method, String path, InetSocketAddress clientAddress, String encodedToken,
             Map<String, String> headers, Map<String, String> params, Object implementation) throws IOException {
+        final QueryMode defaultMode;
         if (!path.startsWith(context)) {
             throw new IOException(Utils.format("Request URI must starts with [%s]", context));
         } else {
@@ -437,35 +433,46 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             if (!path.isEmpty() && path.charAt(0) == '/') {
                 path = path.substring(1);
             }
+
+            if (PATH_CONFIG.equals(path)) {
+                log.debug("Sending server configuration to %s", clientAddress);
+                showConfig(implementation);
+                return;
+            } else if (PATH_METRICS.equals(path)) {
+                log.debug("Sending server metrics to %s", clientAddress);
+                showMetrics(implementation);
+                return;
+            }
+
+            final int index = path.indexOf('/');
+            QueryMode m = QueryMode.fromPath(index > 0 ? path.substring(0, index) : path, null);
+            if (m != null) {
+                defaultMode = m;
+                if (index > 0) {
+                    path = path.substring(index + 1);
+                }
+            } else {
+                defaultMode = QueryMode.SUBMIT;
+            }
         }
 
-        if (PATH_CONFIG.equals(path)) {
-            log.debug("Sending server configuration to %s", clientAddress);
-            showConfig(implementation);
-            return;
-        } else if (PATH_METRICS.equals(path)) {
-            log.debug("Sending server metrics to %s", clientAddress);
-            showMetrics(implementation);
-            return;
-        }
+        String qid = RequestParameter.QUERY_ID.getValue(headers, params, Constants.EMPTY_STRING);
+        String txid = RequestParameter.TRANSACTION_ID.getValue(headers, params, Constants.EMPTY_STRING);
 
-        String qid = headers.get(HEADER_QUERY_ID);
-        String txid = headers.get(HEADER_TRANSACTION_ID);
-
-        // priorities: parameter > path > header > default
-        final String compressParam = params.get(PARAM_COMPRESSION);
-        final String formatParam = params.get(PARAM_FORMAT);
+        // priorities: header > parameter > path > default
+        final String compressParam = RequestParameter.COMPRESSION.getValue(null, params, Constants.EMPTY_STRING);
+        final String formatParam = RequestParameter.FORMAT.getValue(null, params, Constants.EMPTY_STRING);
 
         List<String> parts = Utils.split(path, '.');
         int size = parts.size();
-        Compression compress = Compression.fromEncoding(headers.get(HEADER_ACCEPT_ENCODING), defaultCompress);
-        Format format = Format.fromMimeType(headers.get(HEADER_ACCEPT), defaultFormat);
+        Compression compress = Compression.fromEncoding(headers.get(RequestParameter.COMPRESSION.header()),
+                defaultCompress);
+        Format format = Format.fromMimeType(headers.get(RequestParameter.FORMAT.header()), defaultFormat);
         if (size >= 3) { // my.tsv.gz
-            compress = Checker.isNullOrEmpty(compressParam)
-                    ? Compression.fromFileExtension(parts.get(size - 1), compress)
-                    : Compression.fromFileExtension(compressParam, compress);
-            format = Checker.isNullOrEmpty(formatParam) ? Format.fromFileExtension(parts.get(size - 2), format)
-                    : Format.fromFileExtension(formatParam, format);
+            compress = Compression.fromFileExtension(
+                    Checker.isNullOrEmpty(compressParam) ? parts.get(size - 1) : compressParam, compress);
+            format = Format.fromFileExtension(Checker.isNullOrEmpty(formatParam) ? parts.get(size - 2) : formatParam,
+                    format);
             if (Checker.isNullOrEmpty(qid)) {
                 qid = String.join(".", parts.subList(0, size - 2));
             }
@@ -476,15 +483,13 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 compress = Checker.isNullOrEmpty(compressParam) ? c
                         : Compression.fromFileExtension(compressParam, compress);
             } else {
-                format = Checker.isNullOrEmpty(formatParam) ? Format.fromFileExtension(ext, format)
-                        : Format.fromFileExtension(formatParam, format);
+                format = Format.fromFileExtension(Checker.isNullOrEmpty(formatParam) ? ext : formatParam, format);
             }
             if (Checker.isNullOrEmpty(qid)) {
                 qid = parts.get(0);
             }
         } else if (Checker.isNullOrEmpty(qid)) {
             qid = path;
-
             if (!Checker.isNullOrEmpty(compressParam)) {
                 compress = Compression.fromFileExtension(compressParam, compress);
             }
@@ -493,15 +498,18 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             }
         }
 
-        final String queryMode = params.getOrDefault(PARAM_QUERY_MODE, headers.get(HEADER_QUERY_MODE));
+        final String queryMode = RequestParameter.MODE.getValue(headers, params, Constants.EMPTY_STRING);
         final QueryMode mode;
-        if (Checker.isNullOrEmpty(queryMode)) {
-            mode = Checker.isNullOrEmpty(qid) ? QueryMode.SUBMIT : QueryMode.DIRECT;
+        if (queryMode.isEmpty()) {
+            mode = Checker.isNullOrEmpty(qid) ? defaultMode : QueryMode.DIRECT;
         } else {
             mode = QueryMode.of(queryMode);
         }
-        Request request = create(method, mode, qid, params.get(PARAM_QUERY), txid, format, compress, encodedToken,
-                headers.get(HEADER_QUERY_USER), headers.get(HEADER_USER_AGENT), implementation);
+        final Properties config = extractConfig(params);
+        final Request request = create(method, mode, qid,
+                RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
+                encodedToken, RequestParameter.USER.getValue(headers, params),
+                RequestParameter.AGENT.getValue(headers, params), implementation);
         log.debug("Dispatching %s", request);
         if (Checker.isNullOrBlank(request.getQuery())) {
             log.warn("Non-existent or expired %s", request);
@@ -541,11 +549,11 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                                     Result<?> result = info.getResult();
                                     OutputStream out = request.getCompression().provider()
                                             .compress(prepareResponse(request))) {
-                                Result.writeTo(result, info.format, null, out);
+                                Result.writeTo(result, info.format, config, out);
                                 log.debug("Query [%s] finished successfully", info.qid);
                             }
                         } else {
-                            query(request);
+                            query(request, config);
                         }
                     }
                     break;

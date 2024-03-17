@@ -39,6 +39,7 @@ import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
+import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
@@ -98,13 +99,13 @@ public final class QueryBuilder {
                 VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
                 WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
                 StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT).append('=')
-                        .append(Utils.escape(md.getProduct(), ',')).append(',').append(WebExecutor.HEADER_QUERY_MODE)
-                        .append('=').append(QueryMode.ASYNC.code()).append(',').append(WebExecutor.HEADER_ACCEPT)
+                        .append(Utils.escape(md.getProduct(), ',')).append(',').append(RequestParameter.MODE.header())
+                        .append('=').append(QueryMode.ASYNC.code()).append(',').append(RequestParameter.FORMAT.header())
                         .append('=').append(getMimeTypes(dialect, props)).append(',')
-                        .append(WebExecutor.HEADER_ACCEPT_ENCODING)
+                        .append(RequestParameter.COMPRESSION.header())
                         .append('=').append(getEncodings(dialect, props));
                 if (md.hasUserName()) {
-                    builder.append(',').append(WebExecutor.HEADER_QUERY_USER).append('=')
+                    builder.append(',').append(RequestParameter.USER.header()).append('=')
                             .append(Utils.escape(md.getUserName(), ','));
                 }
                 WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props, builder.toString());

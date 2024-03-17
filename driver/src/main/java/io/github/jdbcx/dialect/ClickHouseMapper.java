@@ -242,7 +242,7 @@ public class ClickHouseMapper implements ResultMapper {
         builder.append(',').append(toClickHouseDataFormat(format));
         final boolean hasFormat = format != null;
         final Field[] fields;
-        if ((!hasFormat || format.isSchemaless()) && result != null
+        if ((!hasFormat || !format.supportsSchema()) && result != null
                 && (fields = result.fields().toArray(new Field[0])).length > 0) {
             builder.append(EXPR_PART).append(Utils.escape(toColumnDefinition(fields), '\'', '\\')).append('\'');
         }
@@ -251,7 +251,11 @@ public class ClickHouseMapper implements ResultMapper {
             parts.add(new StringBuilder(EXPR_ACCEPT).append(format.mimeType()).append('\'').toString());
         }
         if (compress != null && compress != Compression.NONE) {
-            parts.add(new StringBuilder(EXPR_ENCODING).append(compress.encoding()).append('\'').toString());
+            if (hasFormat && format.supportsCompressionCodec()) {
+                // do nothing as it should be set as codec in url
+            } else {
+                parts.add(new StringBuilder(EXPR_ENCODING).append(compress.encoding()).append('\'').toString());
+            }
         }
         if (parts.isEmpty()) {
             builder.append(')');

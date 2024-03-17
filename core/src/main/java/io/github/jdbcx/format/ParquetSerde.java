@@ -33,7 +33,6 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 
 import io.github.jdbcx.Checker;
-import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Serialization;
@@ -101,13 +100,12 @@ public class ParquetSerde implements Serialization {
         }
     }
 
-    public static final Option OPTION_COMPRSESION = Option.of(new String[] { "compression", "Compression codec" });
-
     protected final CompressionCodecName codec;
     protected final int buffer;
 
     public ParquetSerde(Properties config) {
-        String value = OPTION_COMPRSESION.getValue(config);
+        // TODO encryption support
+        String value = AvroSerde.OPTION_CODEC.getValue(config);
         codec = Checker.isNullOrEmpty(value) ? CompressionCodecName.UNCOMPRESSED : CompressionCodecName.fromConf(value);
         value = OPTION_BUFFER.getValue(config);
         buffer = Checker.isNullOrEmpty(value) ? 8192 : Integer.parseInt(value);
