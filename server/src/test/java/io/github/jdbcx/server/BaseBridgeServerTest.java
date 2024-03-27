@@ -31,6 +31,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
@@ -44,7 +45,93 @@ import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.server.impl.JdkHttpServer;
 
 public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
+    protected static final String DUCKDB_TEST_QUERY = "SELECT generate_series::INT n, date_add(today(), n) d, d::VARCHAR s FROM generate_series(1, %d)";
+
     protected JdkHttpServer server;
+
+    @DataProvider(name = "clickhouseQueries")
+    public Object[][] getClickHouseQueries() {
+        return new Object[][] {
+                { "{{ db.my-duckdb: %s }}" }, // direct query, no need to add 'select * from '
+                { "select * from {{ table.db: %s }}" }, // default db connection is duckdb
+                { "select * from {{ table.db.my-duckdb: %s }}" },
+                { "select * from {{ bridge(path=async): %s }}" },
+                { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
+                { "select * from {{ bridge(path=async?format=parquet&codec=zstd&level=9): %s }}" },
+                { "select * from {{ bridge(mode=a): %s }}" },
+                { "select * from {{ bridge(mode=a, compression=br, format=csv): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv.br): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv.gz): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv.zstd): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() + ".avro): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".avro?codec=gzip): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".avro?codec=lz4): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".avro?codec=zstd): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".parquet): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=gzip): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=lz4): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=zstd): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrows): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrows.gz): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrows.zstd): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrow): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrow.gz): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".arrow.zstd): %s }}" },
+        };
+    }
+
+    @DataProvider(name = "duckdbQueries")
+    public Object[][] getDuckDBQueries() {
+        return new Object[][] {
+                { "{{ db: %s }}" }, // direct query using default connection
+                { "{{ db.my-duckdb: %s }}" }, // direct query, no need to add 'select * from '
+                { "select * from {{ table.db: %s }}" }, // default db connection is duckdb
+                { "select * from {{ table.db.my-duckdb: %s }}" },
+                { "select * from {{ bridge(path=async): %s }}" },
+                { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
+                { "select * from {{ bridge(path=async?format=parquet&codec=zstd&level=9): %s }}" },
+                { "select * from {{ bridge(mode=a): %s }}" },
+                { "select * from {{ bridge(mode=a, compression=zstd, format=csv): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".csv.gz): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".jsonl): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".jsonl.gz): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".jsonl.zstd): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                        ".parquet): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=gzip): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=lz4): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=snappy): %s }}" },
+                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
+                        + ".parquet?codec=zstd): %s }}" },
+        };
+    }
 
     @Test(groups = { "integration" })
     public void testConnect() throws Exception {
@@ -301,6 +388,56 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testBridgeExtension() throws SQLException {
+        final String bridgeUrl = getServerUrl();
+        final String expected = "x (\"'x'\") VALUES\n('x')";
+
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            Utils.format("x {{ bridge(url=%s,format=VALUES, mode=d): select 'x' }}", bridgeUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), expected);
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        props.setProperty("jdbcx.server.url", bridgeUrl);
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt.executeQuery("x {{ bridge(path=/a.values): select 'x' }}")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), expected);
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt.executeQuery("x {{ bridge(format=VALUES, mode=d): select 'x' }}")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), expected);
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery(
+                            Utils.format("x {{ bridge(url=%sx, format=tsv,compression=none): select 'x' }}",
+                                    bridgeUrl))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "x 'x'\nx");
+                Assert.assertFalse(rs.next());
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testDefaultBridge() throws IOException, SQLException {
         final String bridgeUrl = getServerUrl();
         final String chServerUrl = getClickHouseServer();
@@ -312,7 +449,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement();) {
             final String url;
-            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
+            try (ResultSet rs = stmt.executeQuery(Utils.format("{{ table.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
                 url = rs.getString(1);
@@ -331,7 +468,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             stmt.execute("install httpfs");
 
             try (ResultSet rs = stmt
-                    .executeQuery(Utils.format("select * from {{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
+                    .executeQuery(Utils.format("select * from {{ table.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getString(1), "x");
@@ -343,7 +480,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Statement stmt = conn.createStatement();) {
             try (ResultSet rs = stmt
                     .executeQuery(Utils.format(
-                            "select * from {{ bridge.db(url=%s): select 'x' }}", jdbcUrl))) {
+                            "select * from {{ table.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
                 Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getString(1), "x");
@@ -359,7 +496,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-duckdb: select 1}}")) {
+                ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-duckdb: select 1}}")) {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next());
@@ -367,10 +504,108 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-sqlite: select 1}}")) {
+                ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-sqlite: select 1}}")) {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next());
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("insert into my_table {{ values.db.my-sqlite: select 1 a }}")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getString(1), "insert into my_table (\"a\") VALUES\n(1)");
+            Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test(dataProvider = "clickhouseQueries", groups = { "integration" })
+    public void testClickHouseQueries(String query) throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        final int count = 100000;
+        final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt
+                        .executeQuery(
+                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+            for (int i = 1; i <= count; i++) {
+                Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
+                Assert.assertEquals(rs.getInt(1), i, query);
+                Assert.assertEquals(rs.getString(2), rs.getString(3), query);
+            }
+            Assert.assertFalse(rs.next(), "Should NOT have more records from query: " + query);
+        }
+    }
+
+    @Test(dataProvider = "duckdbQueries", groups = { "integration" })
+    public void testDuckDBQueries(String query) throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        final int count = 100000;
+        final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
+        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt
+                        .executeQuery(
+                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+            for (int i = 1; i <= count; i++) {
+                Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
+                Assert.assertEquals(rs.getInt(1), i, query);
+                Assert.assertEquals(rs.getString(2), rs.getString(3), query);
+            }
+            Assert.assertFalse(rs.next(), "Should NOT have more records from query: " + query);
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testInsertQueries() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt
+                        .executeQuery("select '{{ values.db.my-duckdb: select 1 as id, 2 as name }}'")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getString(1), "(\"id\",\"name\") VALUES\n(1,2)");
+            Assert.assertFalse(rs.next());
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:mysql://root@" + getMySqlServer(), props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt
+                        .executeQuery("select '{{ values.db.my-duckdb: select 1 as id, 2 as name }}'")) {
+            Assert.assertTrue(rs.next());
+            Assert.assertEquals(rs.getString(1), "(\"id\",\"name\") VALUES\n(1,2)");
+            Assert.assertFalse(rs.next());
+        }
+
+        final int count = 1000;
+        final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement()) {
+            stmt.execute("drop table if exists test_inserts;"
+                    + "create table test_inserts(n UInt32, d Date, s String)engine=Memory");
+            for (String query : new String[] {
+                    "insert into test_inserts {{ values.db.my-duckdb: %s }}",
+                    "insert into test_inserts {{ bridge(path=query/a.values): %s }}",
+                    "insert into test_inserts {{ bridge(path=query/a.values): {{ db.my-duckdb: %s }\\} }}",
+            }) {
+                stmt.executeUpdate("truncate table test_inserts");
+                stmt.executeUpdate(Utils.format(query, innerQuery));
+                try (ResultSet rs = stmt.executeQuery("select * from test_inserts order by n")) {
+                    for (int i = 1; i <= count; i++) {
+                        Assert.assertTrue(rs.next(), "Should have record #" + i);
+                        Assert.assertEquals(rs.getInt(1), i);
+                        Assert.assertEquals(rs.getString(2), rs.getString(3));
+                    }
+                    Assert.assertFalse(rs.next(), "Should NOT have more records");
+                }
+            }
         }
     }
 }

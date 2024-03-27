@@ -186,6 +186,27 @@ public class AvroSerde implements Serialization {
                 value = Utils.toEpochNanoSeconds(v.asDateTime(), v.getFactory().getZoneOffset())
                         / (f.scale() > 3 ? 1_000L : 1_000_000L);
                 break;
+            case TINYINT:
+                if (f.isSigned()) {
+                    value = v.asByte();
+                } else {
+                    value = v.asShort();
+                }
+                break;
+            case SMALLINT:
+                if (f.isSigned()) {
+                    value = v.asShort();
+                } else {
+                    value = v.asInt();
+                }
+                break;
+            case INTEGER:
+                if (f.isSigned()) {
+                    value = v.asInt();
+                } else {
+                    value = v.asLong();
+                }
+                break;
             case BIGINT:
                 if (f.isSigned()) {
                     value = v.asLong();

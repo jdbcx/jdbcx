@@ -129,7 +129,7 @@ public final class Version {
             builder.append('.').append(patch);
         }
         if (!additional.isEmpty()) {
-            builder.append(' ').append(additional);
+            builder.append(additional);
         }
         return builder.toString();
     }

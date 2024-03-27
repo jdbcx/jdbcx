@@ -191,7 +191,7 @@ public class WrappedConnection implements ManagedConnection {
                     String val = Utils.applyVariables(entry.getValue().toString(), tag, p);
                     p.setProperty(key, val);
                 }
-                JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p); // NOSONAR
+                JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p); // NOSONAR
                 if (block.hasOutput()) {
                     try {
                         parts[block.getIndex()] = ConnectionManager.normalize(ConnectionManager.convertTo(

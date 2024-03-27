@@ -1,4 +1,5 @@
 io.github.jdbcx.driver.HelpDriverExtension
+io.github.jdbcx.extension.BridgeDriverExtension
 io.github.jdbcx.extension.CodeQLDriverExtension
 io.github.jdbcx.extension.DbDriverExtension
 io.github.jdbcx.extension.PromptDriverExtension

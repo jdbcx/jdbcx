@@ -22,64 +22,10 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.Compression;
-import io.github.jdbcx.Format;
-import io.github.jdbcx.JdbcDialect;
-import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
-import io.github.jdbcx.ResultMapper;
 import io.github.jdbcx.WrappedDriver;
 
 public class QueryBuilderTest {
-    static class TestJdbcDialect implements JdbcDialect {
-        @Override
-        public Compression getPreferredCompression() {
-            return Compression.ZSTD;
-        }
-
-        @Override
-        public Format getPreferredFormat() {
-            return Format.AVRO_JSON;
-        }
-
-        @Override
-        public boolean supports(Compression compress) {
-            return compress != null && compress != Compression.GZIP;
-        }
-
-        @Override
-        public boolean supports(Format format) {
-            return format != null && format != Format.PARQUET;
-        }
-
-        @Override
-        public ResultMapper getMapper() {
-            return null;
-        }
-    }
-
-    @Test(groups = { "unit" })
-    public void testGetEncodings() {
-        final TestJdbcDialect dialect = new TestJdbcDialect();
-        Assert.assertEquals(QueryBuilder.getEncodings(dialect, null), "zstd;identity");
-
-        Properties config = new Properties();
-        Assert.assertEquals(QueryBuilder.getEncodings(dialect, config), "zstd;identity");
-        Option.SERVER_COMPRESSION.setValue(config, "GZIP");
-        Assert.assertEquals(QueryBuilder.getEncodings(dialect, config), "zstd");
-    }
-
-    @Test(groups = { "unit" })
-    public void testGetMimeTypes() {
-        final TestJdbcDialect dialect = new TestJdbcDialect();
-        Assert.assertEquals(QueryBuilder.getMimeTypes(dialect, null), "application/vnd.apache.avro+json;text/csv");
-
-        Properties config = new Properties();
-        Assert.assertEquals(QueryBuilder.getMimeTypes(dialect, config), "application/vnd.apache.avro+json;text/csv");
-        Option.SERVER_FORMAT.setValue(config, "PARQUET");
-        Assert.assertEquals(QueryBuilder.getMimeTypes(dialect, config), "application/vnd.apache.avro+json");
-    }
-
     @Test(groups = { "unit" })
     public void testBuild() throws SQLException {
         String url = "jdbcx:sqlite::memory:";

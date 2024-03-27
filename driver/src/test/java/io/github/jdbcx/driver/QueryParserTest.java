@@ -421,24 +421,27 @@ public class QueryParserTest {
                         Arrays.asList(new ExecutableBlock(1, "var", props, "x=ch-dev", false),
                                 new ExecutableBlock(3, "web", expectedProps, "my request", true))));
 
-        // bridge
+        // remote table
         props.clear();
         expectedProps.clear();
-        Assert.assertEquals(QueryParser.parse("{{ bridge }}", VariableTag.BRACE, props),
+        Assert.assertEquals(QueryParser.parse("{{ table }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""),
-                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "", true))));
-        Assert.assertEquals(QueryParser.parse("{{ bridge. }}", VariableTag.BRACE, props),
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ table. }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""),
-                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "", true))));
-        Assert.assertEquals(QueryParser.parse("{{ bridge() }}", VariableTag.BRACE, props),
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ table: }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""),
-                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "()", true))));
-        Assert.assertEquals(QueryParser.parse("{{ bridge. web() }}", VariableTag.BRACE, props),
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "", true))));
+        Assert.assertEquals(QueryParser.parse("{{ table() }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""),
-                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "web()", true))));
-        Assert.assertEquals(QueryParser.parse("select {{ bridge.db.db1: select 1 }}", VariableTag.BRACE, props),
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "()", true))));
+        Assert.assertEquals(QueryParser.parse("{{ table. web() }}", VariableTag.BRACE, props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "web()", true))));
+        Assert.assertEquals(QueryParser.parse("select {{ table.db.db1: select 1 }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("select ", ""),
-                        Arrays.asList(new ExecutableBlock(1, "bridge", props, "db.db1: select 1", true))));
+                        Arrays.asList(new ExecutableBlock(1, "table", props, "db.db1: select 1", true))));
     }
 
     @Test(groups = { "unit" })

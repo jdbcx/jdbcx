@@ -31,7 +31,8 @@ import io.github.jdbcx.Checker;
  */
 public final class ExecutableBlock {
     // reserved keyword
-    static final String KEYWORD_BRIDGE = "bridge";
+    static final String KEYWORD_TABLE = "table";
+    static final String KEYWORD_VALUES = "values";
 
     private final int index;
     private final String extension;
@@ -86,7 +87,7 @@ public final class ExecutableBlock {
     }
 
     public boolean useBridge() {
-        return KEYWORD_BRIDGE.equals(extension);
+        return KEYWORD_TABLE.equals(extension) || KEYWORD_VALUES.equals(extension);
     }
 
     @Override

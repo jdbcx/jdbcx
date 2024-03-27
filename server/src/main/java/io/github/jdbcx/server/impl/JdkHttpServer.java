@@ -224,7 +224,8 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     @Override
     public void start() {
         server.start();
-        log.info("Bridge server %s started: %s", Version.current().toCompactString(), baseUrl);
+        log.info("%s bridge server %s started at %s", Constants.PRODUCT_NAME, Version.current().toCompactString(),
+                baseUrl);
     }
 
     @Override
