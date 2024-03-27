@@ -47,6 +47,7 @@ public class ClickHouseMapper implements ResultMapper {
     static final String FORMAT_JSONEACHROW = "JSONEachRow";
     static final String FORMAT_LINEASSTRING = "LineAsString";
     static final String FORMAT_PARQUET = "Parquet";
+    static final String FORMAT_VALUES = "Values";
 
     static final String TYPE_NULLABLE = "Nullable";
 
@@ -89,6 +90,9 @@ public class ClickHouseMapper implements ResultMapper {
                 break;
             case PARQUET:
                 format = FORMAT_PARQUET;
+                break;
+            case VALUES:
+                format = FORMAT_VALUES;
                 break;
             case TSV:
                 format = FORMAT_TSV;

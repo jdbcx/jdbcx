@@ -34,6 +34,6 @@ public class DuckDBDialect implements JdbcDialect {
 
     @Override
     public boolean supports(Format format) {
-        return format == Format.CSV || format == Format.PARQUET;
+        return format == Format.CSV || format == Format.JSONL || format == Format.PARQUET || format == Format.VALUES;
     }
 }

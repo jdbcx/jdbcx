@@ -47,6 +47,7 @@ import io.github.jdbcx.format.JsonlSerde;
 import io.github.jdbcx.format.NdJsonSerde;
 import io.github.jdbcx.format.ParquetSerde;
 import io.github.jdbcx.format.TsvSerde;
+import io.github.jdbcx.format.ValuesSerde;
 
 public final class Result<T> implements AutoCloseable {
     public static final class Builder {
@@ -208,6 +209,9 @@ public final class Result<T> implements AutoCloseable {
                 break;
             case PARQUET:
                 serde = new ParquetSerde(config);
+                break;
+            case VALUES:
+                serde = new ValuesSerde(config);
                 break;
             default:
                 throw new IllegalArgumentException("Unsupport format: " + format);
