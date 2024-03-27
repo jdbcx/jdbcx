@@ -40,7 +40,8 @@ public enum Format {
     JSONL(false, false, false, "application/jsonl", "jsonl"), // or application/json-lines?
     NDJSON(false, false, false, "application/x-ndjson", "ndjson"), // or application/json-seq?
     // https://issues.apache.org/jira/browse/PARQUET-1889
-    PARQUET(true, true, true, "application/vnd.apache.parquet", "parquet");
+    PARQUET(true, true, true, "application/vnd.apache.parquet", "parquet"),
+    VALUES(false, false, false, "application/x-values", "values");
 
     /**
      * Get preferred data format based on given MIME types.
