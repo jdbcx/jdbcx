@@ -19,25 +19,35 @@ curl http://localhost:8080/config
 curl http://localhost:8080/metrics
 
 # execute query and get result in CSV format, without compression
-curl --data "select 1 as a, '2' as b" http://localhost:8080/query
+curl -d "select 1 as a, '2' as b" http://localhost:8080/query
 # same query, using GET instead of POST
 curl --get --data-urlencode "q=select 1 as a, '2' as b" http://localhost:8080/query
+# CSV without header
+curl -d "select 1 as a, '2' as b" 'http://localhost:8080/query/unique-id.csv?header=false'
 
 # execute dynamic query and get results in JSONL format with gzip compression
-curl --data "select {{ script: [1,2,3] }} n, '{{script:['a','b']}}' s" \
+curl -d "select {{ script: [1,2,3] }} n, '{{script:['a','b']}}' s" \
     http://localhost:8080/query/unique-id.jsonl.gz | gzip -d
 # same query, utilizing HTTP headers instead of semantic URL
 curl -H 'Accept: application/jsonl' -H 'Accept-Encoding: gzip' \
-    --data "select {{ script: [1,2,3] }} n, '{{script:['a','b']}}' s" \
-    http://localhost:8181/query | gzip -d
+    -d "select {{ script: [1,2,3] }} n, '{{script:['a','b']}}' s" \
+    http://localhost:8080/query | gzip -d
 
 # shutdown and remove the bridge server
 docker stop bridge
 ```
 
-If you're using Duck DB or ClickHouse, you can use the bridge server to load data and combine queries from different sources.
+You can utilize the bridge server in [DuckDB](https://duckdb.org/) and [ClickHouse](https://clickhouse.com/) for seamless data loading and querying across databases.
 
 ```sql
+-- data loading (requires JDBCX driver)
+-- same as: insert into my_table (n, s) VALUES (1, 'a') (2, 'b')
+insert into my_table {{ values.db.duckdb-local:
+  select 1 n, 'a' s union select 2, 'b' }}
+-- same query using bridge extension
+insert into my_table {{ bridge(path=query/unique-id.values):
+  select 1 n, 'a' s union select 2, 'b' }}
+
 -- on DuckDB
 select t1.a, t2.b
 from read_parquet('http://<my-bridge-server>/query/<unique-id1>.parquet?q=select%20%271%27%20a&codec=zstd') t1
@@ -45,14 +55,14 @@ inner join read_csv_auto('http://<my-bridge-server>/query/<unique-id2>.csv.gz?q=
     header=true, compression='gzip') t2 on t1.a=t2.b
 -- or below if you're using JDBCX driver
 select t1.a, t2.b
-from {{ bridge.db.duckdb-local: select '1' a }} t1
-inner join {{ bridge.db.duckdb-local: select '1' b }} t2 on t1.a=t2.b
+from {{ table.db.duckdb-local: select '1' a }} t1
+inner join {{ table.db.duckdb-local: select '1' b }} t2 on t1.a=t2.b
 
 -- on ClickHouse
 select *
 from url('http://<my-bridge-server>/query/<unique-id>.parquet?q=select%20%271%27%20a&codec=zstd', Parquet)
 -- or below if you're using JDBCX driver
-select * from {{ bridge.db.ch-play: select '1' a }}
+select * from {{ table.db.ch-play: select '1' a }}
 ```
 
 ## Configuration
