@@ -35,6 +35,12 @@ import io.github.jdbcx.driver.DefaultDriverExtension;
 // query extension:
 // result extension
 public interface DriverExtension extends Comparable<DriverExtension> {
+    static final String PROPERTY_BRIDGE_URL = "url";
+    static final String PROPERTY_BRIDGE_TOKEN = "token";
+    static final String PROPERTY_PATH = "path";
+    static final String PROPERTY_PRODUCT = "product";
+    static final String PROPERTY_USER = "user";
+
     static final String DEFAULT_JDBC_TABLE_TYPE = "TABLE";
 
     static final List<Field> JDBC_TABLE_FIELDS = Collections
@@ -244,6 +250,16 @@ public interface DriverExtension extends Comparable<DriverExtension> {
      *         properties and content; false otherwise
      */
     default boolean supportsNoArguments() {
+        return false;
+    }
+
+    /**
+     * Whether this extension requires bridge context(e.g. current DB product, user,
+     * and bridge config etc.) or not.
+     *
+     * @return true if bridge context is required; false otherwise
+     */
+    default boolean requiresBridgeContext() {
         return false;
     }
 

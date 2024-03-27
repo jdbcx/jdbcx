@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx;
 
+import java.util.Locale;
+
 public enum QueryMode {
     /**
      * Submits a query for later execution.
@@ -145,6 +147,6 @@ public enum QueryMode {
         } else {
             mode = fromPath(str, null);
         }
-        return mode != null ? mode : valueOf(str);
+        return mode != null ? mode : valueOf(str.toUpperCase(Locale.ROOT));
     }
 }

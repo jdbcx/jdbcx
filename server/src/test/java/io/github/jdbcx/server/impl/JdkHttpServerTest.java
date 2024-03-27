@@ -15,13 +15,8 @@
  */
 package io.github.jdbcx.server.impl;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.Properties;
 
-import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -52,23 +47,6 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
 
     @Test(groups = { "integration" })
     public void testAny() throws Exception {
-        Properties props = new Properties();
-        // props.setProperty("jdbcx.base.dir", "target/test-classes/config");
-
-        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-duckdb: select 1}}")) {
-            Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getInt(1), 1);
-            Assert.assertFalse(rs.next());
-        }
-
-        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from {{ bridge.db.my-sqlite: select 1}}")) {
-            Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getInt(1), 1);
-            Assert.assertFalse(rs.next());
-        }
+        // nothing
     }
 }

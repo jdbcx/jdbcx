@@ -228,13 +228,13 @@ public final class QueryParser {
     }
 
     static String[] extractBridgeBlock(String block, String extension, int beginIndex, int len) {
-        if (!ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
+        if (!ExecutableBlock.KEYWORD_TABLE.equals(extension) && !ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
             return Constants.EMPTY_STRING_ARRAY;
         }
 
         for (int i = beginIndex; i < len; i++) {
             char ch = block.charAt(i);
-            if (ch == '.') {
+            if (ch == '.' || ch == ':') {
                 beginIndex = i + 1;
                 break;
             } else if (!Character.isWhitespace(ch)) {
@@ -242,7 +242,7 @@ public final class QueryParser {
                 break;
             }
         }
-        return new String[] { ExecutableBlock.KEYWORD_BRIDGE, block.substring(beginIndex) };
+        return new String[] { extension, block.substring(beginIndex) };
     }
 
     static String[] parseExecutableBlock(String block, VariableTag tag, Properties props) {
@@ -325,8 +325,9 @@ public final class QueryParser {
 
                     if (j == len) {
                         extension = block.substring(beginIndex, i);
-                        if (ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
-                            return new String[] { ExecutableBlock.KEYWORD_BRIDGE, Constants.EMPTY_STRING };
+                        if (ExecutableBlock.KEYWORD_TABLE.equals(extension)
+                                || ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
+                            return new String[] { extension, Constants.EMPTY_STRING };
                         }
                         script = Constants.EMPTY_STRING;
                         break;
@@ -358,8 +359,9 @@ public final class QueryParser {
         if (script == null) {
             if (scope == 0) {
                 extension = block.substring(beginIndex);
-                if (ExecutableBlock.KEYWORD_BRIDGE.equals(extension)) {
-                    return new String[] { ExecutableBlock.KEYWORD_BRIDGE, Constants.EMPTY_STRING };
+                if (ExecutableBlock.KEYWORD_TABLE.equals(extension)
+                        || ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
+                    return new String[] { extension, Constants.EMPTY_STRING };
                 }
                 script = Constants.EMPTY_STRING;
             } else {

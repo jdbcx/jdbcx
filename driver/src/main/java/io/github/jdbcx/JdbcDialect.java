@@ -67,6 +67,34 @@ public interface JdbcDialect {
         return Format.CSV;
     }
 
+    default String getEncodings(Compression serverCompress) {
+        final Compression defaultCompress;
+        if (serverCompress == null) {
+            return getPreferredCompression().encoding();
+        } else if (serverCompress == (defaultCompress = getPreferredCompression())) {
+            return serverCompress.encoding();
+        }
+        StringBuilder builder = new StringBuilder();
+        if (supports(serverCompress)) {
+            builder.append(serverCompress.encoding()).append(';');
+        }
+        return builder.append(defaultCompress.encoding()).toString();
+    }
+
+    default String getMimeTypes(Format serverFormat) {
+        final Format defaultFormat;
+        if (serverFormat == null) {
+            return getPreferredFormat().mimeType();
+        } else if (serverFormat == (defaultFormat = getPreferredFormat())) {
+            return serverFormat.mimeType();
+        }
+        StringBuilder builder = new StringBuilder();
+        if (supports(serverFormat)) {
+            builder.append(serverFormat.mimeType()).append(';');
+        }
+        return builder.append(defaultFormat.mimeType()).toString();
+    }
+
     default VariableTag getVariableTag() {
         return VariableTag.BRACE;
     }
@@ -82,7 +110,7 @@ public interface JdbcDialect {
      * shown below.
      * 
      * <pre>
-     * select * from {{ bridge.db.mysql1: select 1 }}
+     * select * from {{ table.db.mysql1: select 1 }}
      * </pre>
      * 
      * The inner query will be translated to

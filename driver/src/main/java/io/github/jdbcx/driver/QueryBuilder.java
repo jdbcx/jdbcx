@@ -28,51 +28,22 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import java.util.Properties;
+import java.util.UUID;
 
-import io.github.jdbcx.Checker;
-import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcActivityListener;
-import io.github.jdbcx.JdbcDialect;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
-import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
-import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
-import io.github.jdbcx.interpreter.WebInterpreter;
 
 public final class QueryBuilder {
-    static final String getEncodings(JdbcDialect dialect, Properties config) {
-        Compression serverCompress = Compression.valueOf(Option.SERVER_COMPRESSION.getValue(config));
-        if (serverCompress == dialect.getPreferredCompression()) {
-            return serverCompress.encoding();
-        }
-        StringBuilder builder = new StringBuilder(dialect.getPreferredCompression().encoding());
-        if (dialect.supports(serverCompress)) {
-            builder.append(';').append(serverCompress.encoding());
-        }
-        return builder.toString();
-    }
-
-    static final String getMimeTypes(JdbcDialect dialect, Properties config) {
-        Format serverFormat = Format.valueOf(Option.SERVER_FORMAT.getValue(config));
-        if (serverFormat == dialect.getPreferredFormat()) {
-            return serverFormat.mimeType();
-        }
-        StringBuilder builder = new StringBuilder(dialect.getPreferredFormat().mimeType());
-        if (dialect.supports(serverFormat)) {
-            builder.append(';').append(serverFormat.mimeType());
-        }
-        return builder.toString();
-    }
-
     private final QueryContext context;
 
     private final boolean directQuery;
@@ -93,34 +64,19 @@ public final class QueryBuilder {
         for (int i = 0, len = blocks.length; i < len; i++) {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
-                ConnectionMetaData md = manager.getMetaData();
-                JdbcDialect dialect = manager.getDialect();
-                Properties props = manager.getBridgeConfig();
-                VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
-                WebInterpreter.OPTION_BASE_URL.setValue(props, manager.getBridgeUrl());
-                StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT).append('=')
-                        .append(Utils.escape(md.getProduct(), ',')).append(',').append(RequestParameter.MODE.header())
-                        .append('=').append(QueryMode.ASYNC.code()).append(',').append(RequestParameter.FORMAT.header())
-                        .append('=').append(getMimeTypes(dialect, props)).append(',')
-                        .append(RequestParameter.COMPRESSION.header())
-                        .append('=').append(getEncodings(dialect, props));
-                if (md.hasUserName()) {
-                    builder.append(',').append(RequestParameter.USER.header()).append('=')
-                            .append(Utils.escape(md.getUserName(), ','));
-                }
-                WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props, builder.toString());
-                final String token = manager.getBridgeToken();
-                if (!Checker.isNullOrEmpty(token) && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(props))) {
-                    WebInterpreter.OPTION_AUTH_BEARER_TOKEN.setValue(props, token);
-                }
-                final String fullQuery;
-                // TODO escaping when server uses different variable tag
-                if (block.hasOutput()) {
-                    fullQuery = tag.function(block.getContent());
+                Properties props = new Properties();
+                props.putAll(manager.getBridgeContext());
+                if (ExecutableBlock.KEYWORD_VALUES.equals(block.getExtensionName())) {
+                    StringBuilder builder = new StringBuilder(QueryMode.DIRECT.path()).append('/')
+                            .append(UUID.randomUUID().toString()).append(Format.VALUES.fileExtension(true));
+                    props.setProperty(DriverExtension.PROPERTY_PATH, builder.toString());
                 } else {
-                    fullQuery = tag.procedure(block.getContent());
+                    props.setProperty(DriverExtension.PROPERTY_PATH, QueryMode.ASYNC.path());
                 }
-                this.blocks[i] = new ExecutableBlock(block.getIndex(), "web", props, fullQuery, block.hasOutput());
+                VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
+                this.blocks[i] = new ExecutableBlock(block.getIndex(), QueryContext.KEY_BRIDGE, props,
+                        block.hasOutput() ? tag.function(block.getContent()) : tag.procedure(block.getContent()),
+                        block.hasOutput());
             }
         }
 
@@ -133,19 +89,6 @@ public final class QueryBuilder {
     public SQLWarning getLastWarning() {
         return lastWarning;
     }
-
-    // List<String> buildQueries()
-    // String buildConsolidatedQuery(String delimiter) // delimiter could be ";" or
-    // even "\n union all \n"
-    // or just let the caller to combine
-
-    // public String build() throws SQLException {
-    // return String.join(";\n", buildForQuery());
-    // }
-
-    // public void buildForUpdate() throws SQLException {
-
-    // }
 
     public List<String> build() throws SQLException { // timeout
         final int len = blocks.length;
@@ -191,7 +134,7 @@ public final class QueryBuilder {
                         return Collections.emptyList();
                     }
 
-                    JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
+                    JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p);
                     Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()));
                     if (directQuery
                             && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
@@ -205,7 +148,7 @@ public final class QueryBuilder {
                     results[i] = Result.of(block.getContent());
                 }
             } else {
-                JdbcActivityListener cl = ext.createListener(context, manager.getConnection(), p);
+                JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p);
                 try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()))) {
                     results[i] = Result.of(Constants.EMPTY_STRING);
                 }

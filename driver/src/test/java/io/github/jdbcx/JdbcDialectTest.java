@@ -19,7 +19,34 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class JdbcDialectTest {
+    static class TestDefaultJdbcDialect implements JdbcDialect {
+        @Override
+        public ResultMapper getMapper() {
+            return null;
+        }
+    }
+
     static class TestJdbcDialect implements JdbcDialect {
+        @Override
+        public Compression getPreferredCompression() {
+            return Compression.ZSTD;
+        }
+
+        @Override
+        public Format getPreferredFormat() {
+            return Format.AVRO_JSON;
+        }
+
+        @Override
+        public boolean supports(Compression compress) {
+            return compress != null && compress != Compression.GZIP;
+        }
+
+        @Override
+        public boolean supports(Format format) {
+            return format != null && format != Format.PARQUET;
+        }
+
         @Override
         public ResultMapper getMapper() {
             return null;
@@ -28,7 +55,7 @@ public class JdbcDialectTest {
 
     @Test(groups = { "unit" })
     public void testDefaultImplmentation() {
-        JdbcDialect dialect = new TestJdbcDialect();
+        JdbcDialect dialect = new TestDefaultJdbcDialect();
         Assert.assertFalse(dialect.supports((Compression) null), "Should NOT support null compression");
         Assert.assertFalse(dialect.supports((Format) null), "Should NOT support null format");
         for (Compression c : Compression.values()) {
@@ -39,5 +66,23 @@ public class JdbcDialectTest {
         }
         Assert.assertEquals(dialect.getPreferredCompression(), Compression.NONE);
         Assert.assertEquals(dialect.getPreferredFormat(), Format.CSV);
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetEncodings() {
+        final TestJdbcDialect dialect = new TestJdbcDialect();
+        Assert.assertEquals(dialect.getEncodings(null), "zstd");
+
+        Assert.assertEquals(dialect.getEncodings(Compression.NONE), "identity;zstd");
+        Assert.assertEquals(dialect.getEncodings(Compression.GZIP), "zstd");
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetMimeTypes() {
+        final TestJdbcDialect dialect = new TestJdbcDialect();
+        Assert.assertEquals(dialect.getMimeTypes(null), "application/vnd.apache.avro+json");
+
+        Assert.assertEquals(dialect.getMimeTypes(Format.CSV), "text/csv;application/vnd.apache.avro+json");
+        Assert.assertEquals(dialect.getMimeTypes(Format.PARQUET), "application/vnd.apache.avro+json");
     }
 }

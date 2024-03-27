@@ -167,6 +167,20 @@ public final class ConnectionManager implements AutoCloseable {
     private final AtomicReference<ConnectionMetaData> metaDataRef;
     private final AtomicReference<JdbcDialect> dialectRef;
 
+    JdbcActivityListener createListener(DriverExtension ext, QueryContext context, Connection conn, Properties props) {
+        if (ext.requiresBridgeContext()) {
+            String key = QueryContext.KEY_BRIDGE;
+            if (context.get(key) == null) {
+                context.put(key, getBridgeContext());
+            }
+            key = QueryContext.KEY_DIALECT;
+            if (context.get(key) == null) {
+                context.put(key, getDialect());
+            }
+        }
+        return ext.createListener(context, conn, props);
+    }
+
     ConnectionManager(DriverInfo info) throws SQLException {
         this(info.configManager, info.getExtensions(), info.extension,
                 info.driver.connect(info.actualUrl, info.normalizedInfo),
@@ -249,11 +263,11 @@ public final class ConnectionManager implements AutoCloseable {
     }
 
     public JdbcActivityListener createDefaultListener(QueryContext context) {
-        return defaultExtension.createListener(context, conn, props);
+        return createListener(defaultExtension, context, conn, props);
     }
 
     public JdbcActivityListener createListener(QueryContext context) throws SQLException {
-        return getExtension(conn.getCatalog()).createListener(context, conn, props);
+        return createListener(getExtension(conn.getCatalog()), context, conn, props);
     }
 
     public Properties extractProperties(DriverExtension ext) {
@@ -365,7 +379,7 @@ public final class ConnectionManager implements AutoCloseable {
         return bridgeUrl;
     }
 
-    public Properties getBridgeConfig() {
+    public Properties getBridgeContext() {
         if (bridgeConfig.isEmpty()) {
             final String url = bridgeUrl + "config";
             try {
@@ -377,6 +391,16 @@ public final class ConnectionManager implements AutoCloseable {
                 try (InputStream input = web.get(new URL(url), config,
                         Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
                     bridgeConfig.load(input);
+                }
+                bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_URL, bridgeUrl);
+                if (!Checker.isNullOrEmpty(bridgeToken)
+                        && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(bridgeConfig))) {
+                    bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_TOKEN, bridgeToken);
+                }
+                ConnectionMetaData md = getMetaData();
+                bridgeConfig.setProperty(DriverExtension.PROPERTY_PRODUCT, md.getProduct());
+                if (md.hasUserName()) {
+                    bridgeConfig.setProperty(DriverExtension.PROPERTY_USER, md.getUserName());
                 }
             } catch (Exception e) {
                 log.error("Failed to get bridge server config from: " + url, e);

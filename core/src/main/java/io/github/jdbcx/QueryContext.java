@@ -29,8 +29,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class QueryContext implements AutoCloseable, Serializable {
     private static final long serialVersionUID = -7227092865499240252L;
 
+    /**
+     * Key for bridge configuration encapsulated in {@link Properties}.
+     */
+    public static final String KEY_BRIDGE = "bridge";
+    /**
+     * Key for {@link ConfigManager}.
+     */
     public static final String KEY_CONFIG = "config";
+    /**
+     * Key for function to get {@link java.sql.Connection}.
+     */
     public static final String KEY_CONNECTION = "connection";
+    /**
+     * Key for JDBC dialect.
+     */
+    public static final String KEY_DIALECT = "dialect";
+    /**
+     * Key for {@link VariableTag}.
+     */
     public static final String KEY_TAG = "tag";
 
     private static final QueryContext globalContext = new QueryContext(Constants.SCOPE_GLOBAL, null);

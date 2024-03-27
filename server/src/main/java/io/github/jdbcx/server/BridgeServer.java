@@ -304,7 +304,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     }
 
     protected final void writeConfig(OutputStream out) throws IOException {
-        essentials.store(out, Utils.format("Bridge server %s configuration", Version.current().toShortString()));
+        essentials.store(out, Utils.format("%s bridge server %s configuration", Constants.PRODUCT_NAME,
+                Version.current().toShortString()));
     }
 
     protected final void writeMetrics(OutputStream out) throws IOException {
@@ -452,7 +453,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                     path = path.substring(index + 1);
                 }
             } else {
-                defaultMode = QueryMode.SUBMIT;
+                defaultMode = null;
             }
         }
 
@@ -501,7 +502,13 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         final String queryMode = RequestParameter.MODE.getValue(headers, params, Constants.EMPTY_STRING);
         final QueryMode mode;
         if (queryMode.isEmpty()) {
-            mode = Checker.isNullOrEmpty(qid) ? defaultMode : QueryMode.DIRECT;
+            if (defaultMode != null) {
+                mode = defaultMode;
+            } else if (Checker.isNullOrEmpty(qid)) {
+                mode = QueryMode.SUBMIT;
+            } else {
+                mode = QueryMode.DIRECT;
+            }
         } else {
             mode = QueryMode.of(queryMode);
         }
