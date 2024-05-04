@@ -28,7 +28,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import org.testcontainers.containers.ContainerState;
-import org.testcontainers.containers.ComposeContainer;
+import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
@@ -68,7 +68,7 @@ public class BaseIntegrationTest {
             }
         }
 
-        String getAddress(ComposeContainer containers) {
+        String getAddress(DockerComposeContainer<?> containers) {
             return container
                     ? new StringBuilder(containers.getServiceHost(name, port)).append(':')
                             .append(containers.getServicePort(name, port)).toString()
@@ -84,7 +84,7 @@ public class BaseIntegrationTest {
     private static final ServiceConfig PROXY; // control port
 
     private static final List<ServiceConfig> services;
-    private static final ComposeContainer containers;
+    private static final DockerComposeContainer<?> containers;
 
     private static final String serverUrl;
 
@@ -132,7 +132,7 @@ public class BaseIntegrationTest {
             }
 
             final int defaultTimeout = 30; // seconds
-            ComposeContainer cc = new ComposeContainer(file);
+            DockerComposeContainer<?> cc = new DockerComposeContainer<>(file);
             for (ServiceConfig s : services) {
                 cc = cc.withExposedService(s.name, s.port,
                         s.healthCheck.isEmpty()
