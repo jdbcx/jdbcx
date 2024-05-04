@@ -135,7 +135,7 @@ public class BaseIntegrationTest {
             for (ServiceConfig s : services) {
                 cc = cc.withExposedService(s.name, s.port,
                         s.healthCheck.isEmpty()
-                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30))
+                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(180))
                                 : Wait.forHttp(s.healthCheck).forStatusCode(200)
                                         .withStartupTimeout(Duration.ofSeconds(180)));
             }
