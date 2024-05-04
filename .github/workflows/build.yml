@@ -53,7 +53,7 @@ jobs:
           java-version: 8
           cache: "maven"
       - name: Build and install libraries
-        run: mvn --batch-mode --show-version --strict-checksums --threads 2 -Dmaven.wagon.rto=30000 -Dj8 install
+        run: mvn --batch-mode --show-version --strict-checksums -Dj8 install
 
   test-docker:
     needs: compile

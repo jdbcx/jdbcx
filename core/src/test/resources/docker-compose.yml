@@ -11,7 +11,7 @@ mariadb:
 
 # https://hub.docker.com/_/mysql
 mysql:
-  image: mysql:8.3
+  image: mysql:8.4
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
@@ -30,7 +30,7 @@ clickhouse:
 
 # https://hub.docker.com/r/voltrondata/flight-sql
 flightsql:
-  image: voltrondata/flight-sql:v1.2.5
+  image: voltrondata/flight-sql:v1.3.4
   environment:
     TLS_ENABLED: "0"
     FLIGHT_PASSWORD: "f"
@@ -38,6 +38,8 @@ flightsql:
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
+  # 2.9.0 will somehow end up with the following error on GitHub CI:
+  # Timed out waiting for container port to open (localhost ports: [32769, 32770] should be listening)
   image: zhicwu/toxiproxy:2.8.0
   links:
     - clickhouse

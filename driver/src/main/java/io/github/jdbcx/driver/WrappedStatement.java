@@ -34,6 +34,8 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 public class WrappedStatement implements Statement {
     private static final Logger log = LoggerFactory.getLogger(WrappedStatement.class);
 
+    static final String MSG_FAILED_TO_CLOSE_RESULTSET = "Failed to close result set due to %s";
+
     protected final WrappedConnection conn;
     protected final AtomicReference<SQLWarning> warning;
     protected final QueryResult queryResult;
@@ -133,7 +135,7 @@ public class WrappedStatement implements Statement {
                 try {
                     new CombinedResultSet(rs).close();
                 } catch (Exception ex) {
-                    log.debug("Failed to close result set due to %s", ex.getMessage());
+                    log.debug(MSG_FAILED_TO_CLOSE_RESULTSET, ex.getMessage());
                 }
             }
             throw SqlExceptionUtils.handle(e);
@@ -174,7 +176,7 @@ public class WrappedStatement implements Statement {
                 try {
                     rs.close();
                 } catch (Exception ex) {
-                    log.debug("Failed to close result set due to %s", ex.getMessage());
+                    log.debug(MSG_FAILED_TO_CLOSE_RESULTSET, ex.getMessage());
                 }
             }
             throw SqlExceptionUtils.handle(e);
@@ -229,7 +231,7 @@ public class WrappedStatement implements Statement {
                 try {
                     rs.close();
                 } catch (Exception ex) {
-                    log.debug("Failed to close result set due to %s", ex.getMessage());
+                    log.debug(MSG_FAILED_TO_CLOSE_RESULTSET, ex.getMessage());
                 }
             }
             throw SqlExceptionUtils.handle(e);

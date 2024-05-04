@@ -15,12 +15,13 @@
  */
 package io.github.jdbcx;
 
+import java.io.Serializable;
 import java.lang.reflect.Modifier;
 import java.sql.JDBCType;
 
 import io.github.jdbcx.value.StringValue;
 
-public class TypeMapping {
+public class TypeMapping implements Serializable {
     public static final String ANY_TYPE = "*";
 
     static JDBCType getJdbcType(String fromJdbcType) {

@@ -97,15 +97,16 @@ public class ValueFactory implements Serializable {
         return InstanceHolder.instance;
     }
 
-    static DateTimeFormatter newFromatter(String format) {
-        return format.indexOf('S') != -1 ? DateTimeFormatter.ofPattern(format)
-                : new DateTimeFormatterBuilder().appendPattern(format).optionalStart()
+    static DateTimeFormatter newFormatter(String format) {
+        return format.lastIndexOf('s') == format.length() - 1
+                ? new DateTimeFormatterBuilder().appendPattern(format).optionalStart()
                         .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-                        .optionalEnd().toFormatter();
+                        .optionalEnd().toFormatter()
+                : DateTimeFormatter.ofPattern(format);
     }
 
     // configuration
-    protected final Charset charset;
+    protected final transient Charset charset;
     protected final RoundingMode roundingMode;
     protected final TimeZone timeZone;
     protected final ZoneId zoneId;
@@ -113,9 +114,9 @@ public class ValueFactory implements Serializable {
     protected final int decimalScale;
     protected final int timeScale;
     protected final int timestampScale;
-    protected final DateTimeFormatter dateFormatter;
-    protected final DateTimeFormatter timeFormatter;
-    protected final DateTimeFormatter timestampFormatter;
+    protected final transient DateTimeFormatter dateFormatter;
+    protected final transient DateTimeFormatter timeFormatter;
+    protected final transient DateTimeFormatter timestampFormatter;
 
     // default values
     protected final boolean defaultBool;
@@ -150,9 +151,9 @@ public class ValueFactory implements Serializable {
         this.decimalScale = Integer.parseInt(OPTION_DECIMAL_SCALE.getValue(config));
         this.timeScale = Integer.parseInt(OPTION_TIME_SCALE.getValue(config));
         this.timestampScale = Integer.parseInt(OPTION_TIMESTAMP_SCALE.getValue(config));
-        this.dateFormatter = newFromatter(OPTION_DATE_FORMAT.getValue(config));
-        this.timeFormatter = newFromatter(OPTION_TIME_FORMAT.getValue(config));
-        this.timestampFormatter = newFromatter(OPTION_TIMESTAMP_FORMAT.getValue(config));
+        this.dateFormatter = newFormatter(OPTION_DATE_FORMAT.getValue(config));
+        this.timeFormatter = newFormatter(OPTION_TIME_FORMAT.getValue(config));
+        this.timestampFormatter = newFormatter(OPTION_TIMESTAMP_FORMAT.getValue(config));
 
         this.defaultBool = Converter.toBoolean(OPTION_BOOLEAN.getValue(config));
         this.defaultByte = Byte.parseByte(OPTION_BYTE.getValue(config));
@@ -276,7 +277,7 @@ public class ValueFactory implements Serializable {
      * @return non-null charset
      */
     public Charset getCharset() {
-        return charset;
+        return charset != null ? charset : Constants.DEFAULT_CHARSET;
     }
 
     /**
@@ -348,7 +349,7 @@ public class ValueFactory implements Serializable {
      * @return non-null date formatter
      */
     public DateTimeFormatter getDateFormatter() {
-        return dateFormatter;
+        return dateFormatter != null ? dateFormatter : Constants.DEFAULT_DATE_FORMATTER;
     }
 
     /**
@@ -357,7 +358,7 @@ public class ValueFactory implements Serializable {
      * @return non-null time formatter
      */
     public DateTimeFormatter getTimeFormatter() {
-        return timeFormatter;
+        return timeFormatter != null ? timeFormatter : Constants.DEFAULT_TIME_FORMATTER;
     }
 
     /**
@@ -366,7 +367,7 @@ public class ValueFactory implements Serializable {
      * @return non-null date time formatter
      */
     public DateTimeFormatter getDateTimeFormatter() {
-        return timestampFormatter;
+        return timestampFormatter != null ? timestampFormatter : Constants.DEFAULT_TIMESTAMP_FORMATTER;
     }
 
     /**

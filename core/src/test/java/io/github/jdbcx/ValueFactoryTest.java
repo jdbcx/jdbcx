@@ -106,6 +106,29 @@ public class ValueFactoryTest {
     }
 
     @Test(groups = { "unit" })
+    public void testNewFormatter() {
+        Assert.assertEquals(ValueFactory.newFormatter("yyyy-MM-dd").format(LocalDate.of(2024, 5, 4)), "2024-05-04");
+
+        Assert.assertEquals(ValueFactory.newFormatter("HH:mm:ss").format(LocalTime.of(12, 34, 56)), "12:34:56");
+        Assert.assertEquals(ValueFactory.newFormatter("HH:mm:ss").format(LocalTime.of(12, 34, 56, 987654321)),
+                "12:34:56.987654321");
+        Assert.assertEquals(ValueFactory.newFormatter("HH:mm:ss.S").format(LocalTime.of(12, 34, 56, 987654321)),
+                "12:34:56.9");
+
+        Assert.assertEquals(
+                ValueFactory.newFormatter("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.of(2024, 5, 4, 12, 34, 56)),
+                "2024-05-04 12:34:56");
+        Assert.assertEquals(
+                ValueFactory.newFormatter("yyyy-MM-dd HH:mm:ss")
+                        .format(LocalDateTime.of(2024, 5, 4, 12, 34, 56, 987654321)),
+                "2024-05-04 12:34:56.987654321");
+        Assert.assertEquals(
+                ValueFactory.newFormatter("yyyy-MM-dd HH:mm:ss.SS")
+                        .format(LocalDateTime.of(2024, 5, 4, 12, 34, 56, 987654321)),
+                "2024-05-04 12:34:56.98");
+    }
+
+    @Test(groups = { "unit" })
     public void testNewInstance() {
         final LocalDate localDate = LocalDate.of(2045, 1, 23);
         final LocalTime localTime = LocalTime.of(9, 10, 11, 12000);

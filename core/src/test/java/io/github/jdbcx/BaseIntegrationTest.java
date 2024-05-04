@@ -131,13 +131,14 @@ public class BaseIntegrationTest {
                 }
             }
 
+            final int defaultTimeout = 30; // seconds
             DockerComposeContainer<?> cc = new DockerComposeContainer<>(file);
             for (ServiceConfig s : services) {
                 cc = cc.withExposedService(s.name, s.port,
                         s.healthCheck.isEmpty()
-                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30))
+                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(defaultTimeout))
                                 : Wait.forHttp(s.healthCheck).forStatusCode(200)
-                                        .withStartupTimeout(Duration.ofSeconds(60)));
+                                        .withStartupTimeout(Duration.ofSeconds(defaultTimeout)));
             }
             containers = cc.withExposedService(PROXY.name, CLICKHOUSE.port).withLocalCompose(false);
         }

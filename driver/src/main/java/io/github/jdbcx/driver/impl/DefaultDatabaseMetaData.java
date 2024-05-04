@@ -35,6 +35,44 @@ import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMetaData {
+    static final String COL_COLUMN_DEF = "COLUMN_DEF";
+    static final String COL_COLUMN_NAME = "COLUMN_NAME";
+    static final String COL_COLUMN_SIZE = "COLUMN_SIZE";
+    static final String COL_COLUMN_USAGE = "COLUMN_USAGE";
+
+    static final String COL_DATA_TYPE = "DATA_TYPE";
+    static final String COL_PRECISION = "PRECISION";
+    static final String COL_SCALE = "SCALE";
+    static final String COL_SQL_DATETIME_SUB = "SQL_DATETIME_SUB";
+    static final String COL_CHAR_OCTET_LENGTH = "CHAR_OCTET_LENGTH";
+    static final String COL_ORDINAL_POSITION = "ORDINAL_POSITION";
+    static final String COL_NUM_PREC_RADIX = "NUM_PREC_RADIX";
+    static final String COL_DECIMAL_DIGITS = "DECIMAL_DIGITS";
+    static final String COL_SQL_DATA_TYPE = "SQL_DATA_TYPE";
+
+    static final String COL_GRANTEE = "GRANTEE";
+    static final String COL_GRANTOR = "GRANTOR";
+    static final String COL_IS_GRANTABLE = "IS_GRANTABLE";
+    static final String COL_PRIVILEGE = "PRIVILEGE";
+
+    static final String COL_IS_NULLABLE = "IS_NULLABLE";
+    static final String COL_NULLABLE = "NULLABLE";
+
+    static final String COL_KEY_SEQ = "KEY_SEQ";
+    static final String COL_PK_NAME = "PK_NAME";
+
+    static final String COL_REMARKS = "REMARKS";
+    static final String COL_SPECIFIC_NAME = "SPECIFIC_NAME";
+
+    static final String COL_TABLE_CAT = "TABLE_CAT";
+    static final String COL_TABLE_NAME = "TABLE_NAME";
+    static final String COL_TABLE_SCHEM = "TABLE_SCHEM";
+    static final String COL_TABLE_TYPE = "TABLE_TYPE";
+
+    static final String COL_TYPE_CAT = "TYPE_CAT";
+    static final String COL_TYPE_NAME = "TYPE_NAME";
+    static final String COL_TYPE_SCHEM = "TYPE_SCHEM";
+
     private final DefaultConnection conn;
 
     private final boolean readOnly;
@@ -644,9 +682,9 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("PROCEDURE_CAT", JDBCType.VARCHAR),
                 Field.of("PROCEDURE_SCHEM", JDBCType.VARCHAR), Field.of("RESERVED1", JDBCType.VARCHAR),
                 Field.of("RESERVED2", JDBCType.VARCHAR), Field.of("RESERVED3", JDBCType.VARCHAR),
-                Field.of("PROCEDURE_NAME", JDBCType.VARCHAR, false), Field.of("REMARKS", JDBCType.VARCHAR, false),
+                Field.of("PROCEDURE_NAME", JDBCType.VARCHAR, false), Field.of(COL_REMARKS, JDBCType.VARCHAR, false),
                 Field.of("PROCEDURE_TYPE", JDBCType.SMALLINT, false),
-                Field.of("SPECIFIC_NAME", JDBCType.VARCHAR, false))));
+                Field.of(COL_SPECIFIC_NAME, JDBCType.VARCHAR, false))));
     }
 
     @Override
@@ -654,26 +692,27 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
             String columnNamePattern) throws SQLException {
         return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("PROCEDURE_CAT", JDBCType.VARCHAR),
                 Field.of("PROCEDURE_SCHEM", JDBCType.VARCHAR), Field.of("PROCEDURE_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("COLUMN_TYPE", JDBCType.SMALLINT, false),
-                Field.of("DATA_TYPE", JDBCType.SMALLINT, false), Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
-                Field.of("PRECISION", JDBCType.INTEGER, false), Field.of("LENGTH", JDBCType.INTEGER, false),
-                Field.of("SCALE", JDBCType.SMALLINT, false), Field.of("RADIX", JDBCType.SMALLINT, false),
-                Field.of("NULLABLE", JDBCType.SMALLINT, false), Field.of("REMARKS", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_DEF", JDBCType.VARCHAR), Field.of("SQL_DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("SQL_DATETIME_SUB", JDBCType.INTEGER, false),
-                Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                Field.of("ORDINAL_POSITION", JDBCType.INTEGER, false), Field.of("IS_NULLABLE", JDBCType.VARCHAR, false),
-                Field.of("SPECIFIC_NAME", JDBCType.VARCHAR, false))));
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of("COLUMN_TYPE", JDBCType.SMALLINT, false),
+                Field.of(COL_DATA_TYPE, JDBCType.SMALLINT, false), Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_PRECISION, JDBCType.INTEGER, false), Field.of("LENGTH", JDBCType.INTEGER, false),
+                Field.of(COL_SCALE, JDBCType.SMALLINT, false), Field.of("RADIX", JDBCType.SMALLINT, false),
+                Field.of(COL_NULLABLE, JDBCType.SMALLINT, false), Field.of(COL_REMARKS, JDBCType.VARCHAR, false),
+                Field.of(COL_COLUMN_DEF, JDBCType.VARCHAR), Field.of(COL_SQL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_SQL_DATETIME_SUB, JDBCType.INTEGER, false),
+                Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                Field.of(COL_ORDINAL_POSITION, JDBCType.INTEGER, false),
+                Field.of(COL_IS_NULLABLE, JDBCType.VARCHAR, false),
+                Field.of(COL_SPECIFIC_NAME, JDBCType.VARCHAR, false))));
     }
 
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types)
             throws SQLException {
-        List<Field> fields = Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("TABLE_TYPE", JDBCType.VARCHAR, false), Field.of("REMARKS", JDBCType.VARCHAR),
-                Field.of("TYPE_CAT", JDBCType.VARCHAR), Field.of("TYPE_SCHEM", JDBCType.VARCHAR),
-                Field.of("TYPE_NAME", JDBCType.VARCHAR), Field.of("SELF_REFERENCING_COL_NAME", JDBCType.VARCHAR),
+        List<Field> fields = Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_TABLE_TYPE, JDBCType.VARCHAR, false), Field.of(COL_REMARKS, JDBCType.VARCHAR),
+                Field.of(COL_TYPE_CAT, JDBCType.VARCHAR), Field.of(COL_TYPE_SCHEM, JDBCType.VARCHAR),
+                Field.of(COL_TYPE_NAME, JDBCType.VARCHAR), Field.of("SELF_REFERENCING_COL_NAME", JDBCType.VARCHAR),
                 Field.of("REF_GENERATION", JDBCType.VARCHAR));
         final List<DriverExtension> exts = conn.manager.getMatchedExtensions(catalog);
 
@@ -704,30 +743,31 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
         }
 
         return new ReadOnlyResultSet(null,
-                Result.of(Collections.singletonList(Field.of("TABLE_CAT", JDBCType.VARCHAR, false)), names));
+                Result.of(Collections.singletonList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR, false)), names));
     }
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_TYPE", JDBCType.VARCHAR, false)),
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_TYPE, JDBCType.VARCHAR, false)),
                 new String[] { "TABLE", "VIEW" }));
     }
 
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
             throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("TYPE_NAME", JDBCType.VARCHAR, false), Field.of("COLUMN_SIZE", JDBCType.INTEGER, false),
-                Field.of("BUFFER_LENGTH", JDBCType.INTEGER, false), Field.of("DECIMAL_DIGITS", JDBCType.INTEGER, false),
-                Field.of("NUM_PREC_RADIX", JDBCType.INTEGER, false), Field.of("NULLABLE", JDBCType.INTEGER, false),
-                Field.of("REMARKS", JDBCType.VARCHAR), Field.of("COLUMN_DEF", JDBCType.VARCHAR),
-                Field.of("SQL_DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("SQL_DATETIME_SUB", JDBCType.INTEGER, false),
-                Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                Field.of("ORDINAL_POSITION", JDBCType.INTEGER, false),
-                Field.of("IS_NULLABLE", JDBCType.VARCHAR, false), Field.of("SCOPE_CATALOG", JDBCType.VARCHAR),
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false), Field.of(COL_COLUMN_SIZE, JDBCType.INTEGER, false),
+                Field.of("BUFFER_LENGTH", JDBCType.INTEGER, false),
+                Field.of(COL_DECIMAL_DIGITS, JDBCType.INTEGER, false),
+                Field.of(COL_NUM_PREC_RADIX, JDBCType.INTEGER, false), Field.of(COL_NULLABLE, JDBCType.INTEGER, false),
+                Field.of(COL_REMARKS, JDBCType.VARCHAR), Field.of(COL_COLUMN_DEF, JDBCType.VARCHAR),
+                Field.of(COL_SQL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_SQL_DATETIME_SUB, JDBCType.INTEGER, false),
+                Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                Field.of(COL_ORDINAL_POSITION, JDBCType.INTEGER, false),
+                Field.of(COL_IS_NULLABLE, JDBCType.VARCHAR, false), Field.of("SCOPE_CATALOG", JDBCType.VARCHAR),
                 Field.of("SCOPE_SCHEMA", JDBCType.VARCHAR), Field.of("SCOPE_TABLE", JDBCType.VARCHAR),
                 Field.of("SOURCE_DATA_TYPE", JDBCType.SMALLINT), Field.of("IS_AUTOINCREMENT", JDBCType.VARCHAR, false),
                 Field.of("IS_GENERATEDCOLUMN", JDBCType.VARCHAR, false))));
@@ -736,20 +776,20 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     @Override
     public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern)
             throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("GRANTOR", JDBCType.VARCHAR),
-                Field.of("GRANTEE", JDBCType.VARCHAR, false), Field.of("PRIVILEGE", JDBCType.VARCHAR, false),
-                Field.of("IS_GRANTABLE", JDBCType.VARCHAR))));
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of(COL_GRANTOR, JDBCType.VARCHAR),
+                Field.of(COL_GRANTEE, JDBCType.VARCHAR, false), Field.of(COL_PRIVILEGE, JDBCType.VARCHAR, false),
+                Field.of(COL_IS_GRANTABLE, JDBCType.VARCHAR))));
     }
 
     @Override
     public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
             throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("GRANTOR", JDBCType.VARCHAR), Field.of("GRANTEE", JDBCType.VARCHAR, false),
-                Field.of("PRIVILEGE", JDBCType.VARCHAR, false), Field.of("IS_GRANTABLE", JDBCType.VARCHAR))));
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_GRANTOR, JDBCType.VARCHAR), Field.of(COL_GRANTEE, JDBCType.VARCHAR, false),
+                Field.of(COL_PRIVILEGE, JDBCType.VARCHAR, false), Field.of(COL_IS_GRANTABLE, JDBCType.VARCHAR))));
     }
 
     @Override
@@ -761,19 +801,19 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     @Override
     public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
         return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("SCOPE", JDBCType.SMALLINT, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("TYPE_NAME", JDBCType.VARCHAR, false), Field.of("COLUMN_SIZE", JDBCType.INTEGER, false),
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false), Field.of(COL_COLUMN_SIZE, JDBCType.INTEGER, false),
                 Field.of("BUFFER_LENGTH", JDBCType.INTEGER, false),
-                Field.of("DECIMAL_DIGITS", JDBCType.SMALLINT, false),
+                Field.of(COL_DECIMAL_DIGITS, JDBCType.SMALLINT, false),
                 Field.of("PSEUDO_COLUMN", JDBCType.SMALLINT, false))));
     }
 
     @Override
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("KEY_SEQ", JDBCType.SMALLINT, false),
-                Field.of("PK_NAME", JDBCType.VARCHAR, false))));
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of(COL_KEY_SEQ, JDBCType.SMALLINT, false),
+                Field.of(COL_PK_NAME, JDBCType.VARCHAR, false))));
     }
 
     @Override
@@ -782,9 +822,9 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
                 Field.of("PKTABLE_SCHEM", JDBCType.VARCHAR), Field.of("PKTABLE_NAME", JDBCType.VARCHAR, false),
                 Field.of("PKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of("FKTABLE_CAT", JDBCType.VARCHAR),
                 Field.of("FKTABLE_SCHEM", JDBCType.VARCHAR), Field.of("FKTABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("FKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of("KEY_SEQ", JDBCType.SMALLINT, false),
+                Field.of("FKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of(COL_KEY_SEQ, JDBCType.SMALLINT, false),
                 Field.of("UPDATE_RULE", JDBCType.SMALLINT, false), Field.of("DELETE_RULE", JDBCType.SMALLINT, false),
-                Field.of("FK_NAME", JDBCType.VARCHAR), Field.of("PK_NAME", JDBCType.VARCHAR),
+                Field.of("FK_NAME", JDBCType.VARCHAR), Field.of(COL_PK_NAME, JDBCType.VARCHAR),
                 Field.of("DEFERRABILITY", JDBCType.SMALLINT, false))));
     }
 
@@ -800,37 +840,37 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
                 Field.of("PKTABLE_SCHEM", JDBCType.VARCHAR), Field.of("PKTABLE_NAME", JDBCType.VARCHAR, false),
                 Field.of("PKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of("FKTABLE_CAT", JDBCType.VARCHAR),
                 Field.of("FKTABLE_SCHEM", JDBCType.VARCHAR), Field.of("FKTABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("FKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of("KEY_SEQ", JDBCType.SMALLINT, false),
+                Field.of("FKCOLUMN_NAME", JDBCType.VARCHAR, false), Field.of(COL_KEY_SEQ, JDBCType.SMALLINT, false),
                 Field.of("UPDATE_RULE", JDBCType.SMALLINT, false), Field.of("DELETE_RULE", JDBCType.SMALLINT, false),
-                Field.of("FK_NAME", JDBCType.VARCHAR), Field.of("PK_NAME", JDBCType.VARCHAR),
+                Field.of("FK_NAME", JDBCType.VARCHAR), Field.of(COL_PK_NAME, JDBCType.VARCHAR),
                 Field.of("DEFERRABILITY", JDBCType.SMALLINT, false))));
     }
 
     @Override
     public ResultSet getTypeInfo() throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
-                Field.of("DATA_TYPE", JDBCType.INTEGER, false), Field.of("PRECISION", JDBCType.INTEGER, false),
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false), Field.of(COL_PRECISION, JDBCType.INTEGER, false),
                 Field.of("LITERAL_PREFIX", JDBCType.VARCHAR), Field.of("LITERAL_SUFFIX", JDBCType.VARCHAR),
-                Field.of("CREATE_PARAMS", JDBCType.VARCHAR), Field.of("NULLABLE", JDBCType.SMALLINT, false),
+                Field.of("CREATE_PARAMS", JDBCType.VARCHAR), Field.of(COL_NULLABLE, JDBCType.SMALLINT, false),
                 Field.of("CASE_SENSITIVE", JDBCType.BOOLEAN, false), Field.of("SEARCHABLE", JDBCType.SMALLINT, false),
                 Field.of("UNSIGNED_ATTRIBUTE", JDBCType.BOOLEAN, false),
                 Field.of("FIXED_PREC_SCALE", JDBCType.BOOLEAN, false),
                 Field.of("AUTO_INCREMENT", JDBCType.BOOLEAN, false), Field.of("LOCAL_TYPE_NAME", JDBCType.VARCHAR),
                 Field.of("MINIMUM_SCALE", JDBCType.SMALLINT, false),
                 Field.of("MAXIMUM_SCALE", JDBCType.SMALLINT, false),
-                Field.of("SQL_DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("SQL_DATETIME_SUB", JDBCType.INTEGER, false),
-                Field.of("NUM_PREC_RADIX", JDBCType.INTEGER, false))));
+                Field.of(COL_SQL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_SQL_DATETIME_SUB, JDBCType.INTEGER, false),
+                Field.of(COL_NUM_PREC_RADIX, JDBCType.INTEGER, false))));
     }
 
     @Override
     public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate)
             throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
                 Field.of("NON_UNIQUE", JDBCType.BOOLEAN, false), Field.of("INDEX_QUALIFIER", JDBCType.VARCHAR),
                 Field.of("INDEX_NAME", JDBCType.VARCHAR), Field.of("TYPE", JDBCType.SMALLINT, false),
-                Field.of("ORDINAL_POSITION", JDBCType.SMALLINT, false), Field.of("COLUMN_NAME", JDBCType.VARCHAR),
+                Field.of(COL_ORDINAL_POSITION, JDBCType.SMALLINT, false), Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR),
                 Field.of("ASC_OR_DESC", JDBCType.VARCHAR), Field.of("CARDINALITY", JDBCType.BIGINT, false),
                 Field.of("PAGES", JDBCType.BIGINT, false), Field.of("FILTER_CONDITION", JDBCType.VARCHAR))));
     }
@@ -899,10 +939,11 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types)
             throws SQLException {
         return new ReadOnlyResultSet(null,
-                Result.of(Arrays.asList(Field.of("TYPE_CAT", JDBCType.VARCHAR),
-                        Field.of("TYPE_SCHEM", JDBCType.VARCHAR), Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
-                        Field.of("CLASS_NAME", JDBCType.VARCHAR, false), Field.of("DATA_TYPE", JDBCType.INTEGER, false),
-                        Field.of("REMARKS", JDBCType.VARCHAR, false),
+                Result.of(Arrays.asList(Field.of(COL_TYPE_CAT, JDBCType.VARCHAR),
+                        Field.of(COL_TYPE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
+                        Field.of("CLASS_NAME", JDBCType.VARCHAR, false),
+                        Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false),
+                        Field.of(COL_REMARKS, JDBCType.VARCHAR, false),
                         Field.of("BASE_TYPE", JDBCType.SMALLINT, false))));
     }
 
@@ -934,8 +975,8 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     @Override
     public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
         return new ReadOnlyResultSet(null,
-                Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                        Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
+                Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                        Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
                         Field.of("SUPERTYPE_CAT", JDBCType.VARCHAR), Field.of("SUPERTYPE_SCHEM", JDBCType.VARCHAR),
                         Field.of("SUPERTYPE_NAME", JDBCType.VARCHAR, false))));
     }
@@ -943,8 +984,8 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     @Override
     public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
         return new ReadOnlyResultSet(null,
-                Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                        Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
+                Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                        Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
                         Field.of("SUPERTABLE_NAME", JDBCType.VARCHAR, false))));
     }
 
@@ -952,20 +993,21 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
     public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern,
             String attributeNamePattern) throws SQLException {
         return new ReadOnlyResultSet(null,
-                Result.of(Arrays.asList(Field.of("TYPE_CAT", JDBCType.VARCHAR),
-                        Field.of("TYPE_SCHEM", JDBCType.VARCHAR), Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
-                        Field.of("ATTR_NAME", JDBCType.VARCHAR, false), Field.of("DATA_TYPE", JDBCType.INTEGER, false),
+                Result.of(Arrays.asList(Field.of(COL_TYPE_CAT, JDBCType.VARCHAR),
+                        Field.of(COL_TYPE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
+                        Field.of("ATTR_NAME", JDBCType.VARCHAR, false),
+                        Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false),
                         Field.of("ATTR_TYPE_NAME", JDBCType.VARCHAR, false),
                         Field.of("ATTR_SIZE", JDBCType.INTEGER, false),
-                        Field.of("DECIMAL_DIGITS", JDBCType.INTEGER, false),
-                        Field.of("NUM_PREC_RADIX", JDBCType.INTEGER, false),
-                        Field.of("NULLABLE", JDBCType.INTEGER, false), Field.of("REMARKS", JDBCType.VARCHAR),
-                        Field.of("ATTR_DEF", JDBCType.VARCHAR), Field.of("SQL_DATA_TYPE", JDBCType.INTEGER, false),
-                        Field.of("SQL_DATETIME_SUB", JDBCType.INTEGER, false),
-                        Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                        Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                        Field.of("ORDINAL_POSITION", JDBCType.INTEGER, false),
-                        Field.of("IS_NULLABLE", JDBCType.VARCHAR, false),
+                        Field.of(COL_DECIMAL_DIGITS, JDBCType.INTEGER, false),
+                        Field.of(COL_NUM_PREC_RADIX, JDBCType.INTEGER, false),
+                        Field.of(COL_NULLABLE, JDBCType.INTEGER, false), Field.of(COL_REMARKS, JDBCType.VARCHAR),
+                        Field.of("ATTR_DEF", JDBCType.VARCHAR), Field.of(COL_SQL_DATA_TYPE, JDBCType.INTEGER, false),
+                        Field.of(COL_SQL_DATETIME_SUB, JDBCType.INTEGER, false),
+                        Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                        Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                        Field.of(COL_ORDINAL_POSITION, JDBCType.INTEGER, false),
+                        Field.of(COL_IS_NULLABLE, JDBCType.VARCHAR, false),
                         Field.of("SCOPE_CATALOG", JDBCType.VARCHAR, false),
                         Field.of("SCOPE_SCHEMA", JDBCType.VARCHAR, false),
                         Field.of("SCOPE_TABLE", JDBCType.VARCHAR, false),
@@ -1024,7 +1066,7 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
 
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-        List<Field> fields = Arrays.asList(Field.of("TABLE_SCHEM", JDBCType.VARCHAR, false),
+        List<Field> fields = Arrays.asList(Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR, false),
                 Field.of("TABLE_CATALOG", JDBCType.VARCHAR));
         final List<DriverExtension> exts = conn.manager.getMatchedExtensions(catalog);
         int len = exts.size();
@@ -1070,8 +1112,8 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
             throws SQLException {
         return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("FUNCTION_CAT", JDBCType.VARCHAR),
                 Field.of("FUNCTION_SCHEM", JDBCType.VARCHAR), Field.of("FUNCTION_NAME", JDBCType.VARCHAR, false),
-                Field.of("REMARKS", JDBCType.VARCHAR, false), Field.of("FUNCTION_TYPE", JDBCType.SMALLINT, false),
-                Field.of("SPECIFIC_NAME", JDBCType.VARCHAR, false))));
+                Field.of(COL_REMARKS, JDBCType.VARCHAR, false), Field.of("FUNCTION_TYPE", JDBCType.SMALLINT, false),
+                Field.of(COL_SPECIFIC_NAME, JDBCType.VARCHAR, false))));
     }
 
     @Override
@@ -1079,26 +1121,30 @@ final class DefaultDatabaseMetaData extends DefaultWrapper implements DatabaseMe
             String columnNamePattern) throws SQLException {
         return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("FUNCTION_CAT", JDBCType.VARCHAR),
                 Field.of("FUNCTION_SCHEM", JDBCType.VARCHAR), Field.of("FUNCTION_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("COLUMN_TYPE", JDBCType.SMALLINT, false),
-                Field.of("DATA_TYPE", JDBCType.SMALLINT, false), Field.of("TYPE_NAME", JDBCType.VARCHAR, false),
-                Field.of("PRECISION", JDBCType.INTEGER, false), Field.of("LENGTH", JDBCType.INTEGER, false),
-                Field.of("SCALE", JDBCType.SMALLINT, false), Field.of("RADIX", JDBCType.SMALLINT, false),
-                Field.of("NULLABLE", JDBCType.SMALLINT, false), Field.of("REMARKS", JDBCType.VARCHAR, false),
-                Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                Field.of("ORDINAL_POSITION", JDBCType.INTEGER, false), Field.of("IS_NULLABLE", JDBCType.VARCHAR, false),
-                Field.of("SPECIFIC_NAME", JDBCType.VARCHAR, false))));
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of("COLUMN_TYPE", JDBCType.SMALLINT, false),
+                Field.of(COL_DATA_TYPE, JDBCType.SMALLINT, false), Field.of(COL_TYPE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_PRECISION, JDBCType.INTEGER, false), Field.of("LENGTH", JDBCType.INTEGER, false),
+                Field.of(COL_SCALE, JDBCType.SMALLINT, false), Field.of("RADIX", JDBCType.SMALLINT, false),
+                Field.of(COL_NULLABLE, JDBCType.SMALLINT, false), Field.of(COL_REMARKS, JDBCType.VARCHAR, false),
+                Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                Field.of(COL_ORDINAL_POSITION, JDBCType.INTEGER, false),
+                Field.of(COL_IS_NULLABLE, JDBCType.VARCHAR, false),
+                Field.of(COL_SPECIFIC_NAME, JDBCType.VARCHAR, false))));
     }
 
     @Override
     public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
             String columnNamePattern) throws SQLException {
-        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of("TABLE_CAT", JDBCType.VARCHAR),
-                Field.of("TABLE_SCHEM", JDBCType.VARCHAR), Field.of("TABLE_NAME", JDBCType.VARCHAR, false),
-                Field.of("COLUMN_NAME", JDBCType.VARCHAR, false), Field.of("DATA_TYPE", JDBCType.INTEGER, false),
-                Field.of("COLUMN_SIZE", JDBCType.INTEGER, false), Field.of("DECIMAL_DIGITS", JDBCType.INTEGER, false),
-                Field.of("NUM_PREC_RADIX", JDBCType.INTEGER, false), Field.of("COLUMN_USAGE", JDBCType.SMALLINT, false),
-                Field.of("REMARKS", JDBCType.VARCHAR, false), Field.of("CHAR_OCTET_LENGTH", JDBCType.INTEGER, false),
-                Field.of("IS_NULLABLE", JDBCType.VARCHAR, false))));
+        return new ReadOnlyResultSet(null, Result.of(Arrays.asList(Field.of(COL_TABLE_CAT, JDBCType.VARCHAR),
+                Field.of(COL_TABLE_SCHEM, JDBCType.VARCHAR), Field.of(COL_TABLE_NAME, JDBCType.VARCHAR, false),
+                Field.of(COL_COLUMN_NAME, JDBCType.VARCHAR, false), Field.of(COL_DATA_TYPE, JDBCType.INTEGER, false),
+                Field.of(COL_COLUMN_SIZE, JDBCType.INTEGER, false),
+                Field.of(COL_DECIMAL_DIGITS, JDBCType.INTEGER, false),
+                Field.of(COL_NUM_PREC_RADIX, JDBCType.INTEGER, false),
+                Field.of(COL_COLUMN_USAGE, JDBCType.SMALLINT, false),
+                Field.of(COL_REMARKS, JDBCType.VARCHAR, false),
+                Field.of(COL_CHAR_OCTET_LENGTH, JDBCType.INTEGER, false),
+                Field.of(COL_IS_NULLABLE, JDBCType.VARCHAR, false))));
     }
 
     @Override
