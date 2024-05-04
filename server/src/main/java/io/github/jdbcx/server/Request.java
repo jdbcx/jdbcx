@@ -26,8 +26,9 @@ import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Result;
 
 public class Request {
-    protected final QueryMode mode;
     protected final String method;
+    protected final QueryMode mode;
+    protected final String rawParams;
     protected final boolean hasQid;
     protected final QueryInfo info;
     protected final JdbcDialect dialect;
@@ -36,17 +37,19 @@ public class Request {
     protected Request(String method, QueryMode mode, QueryInfo info, JdbcDialect dialect, Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
+        this.rawParams = Constants.EMPTY_STRING;
         this.hasQid = true;
         this.info = Checker.nonNull(info, QueryInfo.class);
         this.dialect = dialect;
         this.implementation = implementation;
     }
 
-    protected Request(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, String accessToken, String user, String client, JdbcDialect dialect,
+    protected Request(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
+            Format format, Compression compress, String accessToken, String user, String client, JdbcDialect dialect,
             Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
+        this.rawParams = rawParams != null ? rawParams : Constants.EMPTY_STRING;
         this.hasQid = !Checker.isNullOrEmpty(qid);
         this.info = new QueryInfo(qid, query, txid, format, compress, accessToken, user, client);
         this.dialect = dialect;
@@ -79,6 +82,10 @@ public class Request {
 
     public QueryMode getQueryMode() {
         return mode;
+    }
+
+    public String getRawParameters() {
+        return rawParams;
     }
 
     public String getQueryId() {
@@ -119,12 +126,20 @@ public class Request {
             builder.append(baseUrl);
         }
         builder.append(info.qid).append(info.format.fileExtension());
+
         if (info.compress != Compression.NONE) {
             if (info.format.supportsCompressionCodec()) {
-                builder.append("?codec=").append(info.compress.name());
+                builder.append('?');
+                if (rawParams.isEmpty()) {
+                    builder.append("codec=").append(info.compress.name());
+                } else {
+                    builder.append(rawParams);
+                }
             } else {
                 builder.append(info.compress.fileExtension());
             }
+        } else if (!rawParams.isEmpty()) {
+            builder.append('?').append(rawParams);
         }
 
         String url = builder.toString();
@@ -138,8 +153,9 @@ public class Request {
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = prime + mode.hashCode();
-        result = prime * result + method.hashCode();
+        int result = prime + method.hashCode();
+        result = prime * result + mode.hashCode();
+        result = prime * result + rawParams.hashCode();
         result = prime * result + (hasQid ? 1231 : 1237);
         result = prime * result + info.hashCode();
         result = prime * result + dialect.hashCode();
@@ -156,8 +172,9 @@ public class Request {
         }
 
         Request other = (Request) obj;
-        return method.equals(other.method) && mode == other.mode && info.equals(other.info)
-                && dialect.equals(other.dialect) && Objects.equals(implementation, other.implementation);
+        return method.equals(other.method) && mode == other.mode && rawParams.equals(other.rawParams)
+                && info.equals(other.info) && dialect.equals(other.dialect)
+                && Objects.equals(implementation, other.implementation);
     }
 
     @Override
@@ -167,9 +184,9 @@ public class Request {
         if (!hasQid) {
             builder.append('?');
         }
-        return builder.append(info.qid).append(", tx=").append(info.txid).append(", fmt=").append(info.format)
-                .append(", comp=").append(info.compress).append(", user=").append(info.user).append(", client=")
-                .append(info.client).append(", impl=").append(implementation).append("]:\n").append(info.query)
-                .toString();
+        return builder.append(info.qid).append(", params=").append(rawParams).append(", tx=").append(info.txid)
+                .append(", fmt=").append(info.format).append(", comp=").append(info.compress).append(", user=")
+                .append(info.user).append(", client=").append(info.client).append(", impl=").append(implementation)
+                .append("]:\n").append(info.query).toString();
     }
 }

@@ -79,13 +79,15 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     }
 
     @Override
-    protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, String token, String user, String client, Object implementation) throws IOException {
+    protected Request create(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
+            Format format, Compression compress, String token, String user, String client, Object implementation)
+            throws IOException {
         if (mode != QueryMode.MUTATION && Checker.isNullOrBlank(query)) {
             HttpExchange exchange = (HttpExchange) implementation;
             query = Stream.readAllAsString(exchange.getRequestBody());
         }
-        return super.create(method, mode, qid, query, txid, format, compress, token, user, client, implementation);
+        return super.create(method, mode, rawParams, qid, query, txid, format, compress, token, user, client,
+                implementation);
     }
 
     @Override
@@ -203,8 +205,8 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
             log.debug("Handling request[%s, from=%s, url=%s, headers=%s]", method, clientAddress, requestUri, headers);
 
-            dispatch(method, requestUri.getPath(), exchange.getRemoteAddress(), encodedToken, headers,
-                    Utils.toKeyValuePairs(requestUri.getRawQuery(), '&', true), exchange);
+            dispatch(method, requestUri.getPath(), requestUri.getRawQuery(), exchange.getRemoteAddress(), encodedToken,
+                    headers, exchange);
         } catch (Throwable e) { // NOSONAR
             log.error("Failed to handle request", e);
             try {

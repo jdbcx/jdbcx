@@ -495,7 +495,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 for (Field f : rs.fields()) {
                     counter++;
                     String str = expected.getProperty(f.name());
-                    String msg = f.toString() + " vs " + str;
+                    String msg = url + ", " + prefix + ": " + f.toString() + " vs " + str;
                     List<String> value = Utils.split(str, ';');
                     Assert.assertEquals(f.columnType(), value.get(0), msg);
                     Assert.assertEquals(f.type().getVendorTypeNumber(), Integer.parseInt(value.get(1)), msg);

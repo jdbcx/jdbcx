@@ -76,7 +76,8 @@ public class WebExecutor extends AbstractExecutor {
     static void checkResponse(HttpURLConnection conn) throws IOException {
         final int respCode = conn.getResponseCode();
         if (respCode != HttpURLConnection.HTTP_OK) {
-            log.debug("Got response code %d, trying to figure out why", respCode);
+            log.debug("Got response code %d from [%s %s], trying to figure out why", respCode, conn.getRequestMethod(),
+                    conn.getURL());
 
             String errorMsg = Stream.readAllAsString(conn.getErrorStream());
             if (Checker.isNullOrEmpty(errorMsg)) {

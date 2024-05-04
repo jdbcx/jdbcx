@@ -379,6 +379,11 @@ public final class ConnectionManager implements AutoCloseable {
         return bridgeUrl;
     }
 
+    /**
+     * Gets bridge context.
+     *
+     * @return non-empty {@link Properties} with the bridge server config as parent
+     */
     public Properties getBridgeContext() {
         if (bridgeConfig.isEmpty()) {
             final String url = bridgeUrl + "config";

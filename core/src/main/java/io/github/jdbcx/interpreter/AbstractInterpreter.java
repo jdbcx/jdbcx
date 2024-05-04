@@ -21,7 +21,6 @@ import java.io.Reader;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Properties;
-import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -38,13 +37,11 @@ abstract class AbstractInterpreter implements Interpreter {
     private final QueryContext context;
     private final VariableTag tag;
 
-    @SuppressWarnings("unchecked")
     protected AbstractInterpreter(QueryContext context) {
         this.context = context;
 
         if (context != null) {
-            Supplier<VariableTag> supplier = (Supplier<VariableTag>) context.get(QueryContext.KEY_TAG);
-            this.tag = supplier != null ? supplier.get() : VariableTag.BRACE;
+            this.tag = context.getVariableTag();
         } else {
             this.tag = VariableTag.BRACE;
         }

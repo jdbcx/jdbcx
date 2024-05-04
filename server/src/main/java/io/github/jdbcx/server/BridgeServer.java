@@ -276,8 +276,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         log.info("Initialized bridge server with below configuration:\n%s", essentials);
     }
 
-    protected Request create(String method, QueryMode mode, String qid, String query, String txid, Format format,
-            Compression compress, String token, String user, String client, Object implementation) throws IOException { // NOSONAR
+    protected Request create(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
+            Format format, Compression compress, String token, String user, String client, Object implementation)
+            throws IOException { // NOSONAR
         final QueryInfo info;
         final Request request;
         if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid) && (info = queries.getIfPresent(qid)) != null) {
@@ -291,7 +292,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                     log.warn("Failed to decode token [%s] due to: %s", token, e.getMessage());
                 }
             }
-            request = new Request(method, mode, qid, query, txid, format, compress, token, user, client,
+            request = new Request(method, mode, rawParams, qid, query, txid, format, compress, token, user, client,
                     ConnectionManager.findDialect(client), implementation);
         }
         return request;
@@ -424,8 +425,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected abstract void showMetrics(Object implementation) throws IOException;
 
-    protected void dispatch(String method, String path, InetSocketAddress clientAddress, String encodedToken,
-            Map<String, String> headers, Map<String, String> params, Object implementation) throws IOException {
+    protected void dispatch(String method, String path, String rawParams, InetSocketAddress clientAddress,
+            String encodedToken, Map<String, String> headers, Object implementation) throws IOException {
         final QueryMode defaultMode;
         if (!path.startsWith(context)) {
             throw new IOException(Utils.format("Request URI must starts with [%s]", context));
@@ -456,6 +457,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 defaultMode = null;
             }
         }
+
+        final Map<String, String> params = Utils.toKeyValuePairs(rawParams, '&', true);
 
         String qid = RequestParameter.QUERY_ID.getValue(headers, params, Constants.EMPTY_STRING);
         String txid = RequestParameter.TRANSACTION_ID.getValue(headers, params, Constants.EMPTY_STRING);
@@ -513,7 +516,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             mode = QueryMode.of(queryMode);
         }
         final Properties config = extractConfig(params);
-        final Request request = create(method, mode, qid,
+        final Request request = create(method, mode, rawParams, qid,
                 RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
                 encodedToken, RequestParameter.USER.getValue(headers, params),
                 RequestParameter.AGENT.getValue(headers, params), implementation);

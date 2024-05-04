@@ -51,6 +51,8 @@ public class BridgeDriverExtensionTest {
         props.setProperty("_secret2_", "***");
 
         try (QueryContext context = QueryContext.newContext()) {
+            Assert.assertThrows(NullPointerException.class, () -> BridgeDriverExtension.build(context, props));
+            context.put(QueryContext.KEY_BRIDGE, new Properties());
             Properties newProps = BridgeDriverExtension.build(context, props);
             for (Entry<Object, Object> e : props.entrySet()) {
                 Assert.assertEquals(newProps.getProperty((String) e.getKey()), e.getValue());
@@ -90,6 +92,7 @@ public class BridgeDriverExtensionTest {
         try (Connection conn = DriverManager.getConnection("jdbcx:db:sqlite::memory:", props);
                 QueryContext context = QueryContext.newContext()) {
             BridgeDriverExtension ext = new BridgeDriverExtension();
+            context.put(QueryContext.KEY_BRIDGE, new Properties());
             Properties newProps = BridgeDriverExtension.build(context, props);
             for (Entry<Object, Object> e : props.entrySet()) {
                 Assert.assertEquals(newProps.getProperty((String) e.getKey()), e.getValue());
@@ -108,6 +111,7 @@ public class BridgeDriverExtensionTest {
         try (Connection conn = DriverManager.getConnection("jdbcx:db:sqlite::memory:");
                 QueryContext context = QueryContext.newContext()) {
             BridgeDriverExtension ext = new BridgeDriverExtension();
+            context.put(QueryContext.KEY_BRIDGE, new Properties());
             BridgeDriverExtension.ActivityListener listener = ext.createListener(context, conn, new Properties());
 
             Assert.assertEquals(listener.rewrite(null), null);
