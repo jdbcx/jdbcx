@@ -137,7 +137,7 @@ public class BaseIntegrationTest {
                         s.healthCheck.isEmpty()
                                 ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(30))
                                 : Wait.forHttp(s.healthCheck).forStatusCode(200)
-                                        .withStartupTimeout(Duration.ofSeconds(60)));
+                                        .withStartupTimeout(Duration.ofSeconds(180)));
             }
             containers = cc.withExposedService(PROXY.name, CLICKHOUSE.port).withLocalCompose(false);
         }
