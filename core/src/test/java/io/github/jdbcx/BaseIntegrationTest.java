@@ -28,7 +28,7 @@ import java.util.Optional;
 import java.util.Properties;
 
 import org.testcontainers.containers.ContainerState;
-import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
@@ -68,7 +68,7 @@ public class BaseIntegrationTest {
             }
         }
 
-        String getAddress(DockerComposeContainer<?> containers) {
+        String getAddress(ComposeContainer containers) {
             return container
                     ? new StringBuilder(containers.getServiceHost(name, port)).append(':')
                             .append(containers.getServicePort(name, port)).toString()
@@ -84,7 +84,7 @@ public class BaseIntegrationTest {
     private static final ServiceConfig PROXY; // control port
 
     private static final List<ServiceConfig> services;
-    private static final DockerComposeContainer<?> containers;
+    private static final ComposeContainer containers;
 
     private static final String serverUrl;
 
@@ -131,13 +131,14 @@ public class BaseIntegrationTest {
                 }
             }
 
-            DockerComposeContainer<?> cc = new DockerComposeContainer<>(file);
+            final int defaultTimeout = 30; // seconds
+            ComposeContainer cc = new ComposeContainer(file);
             for (ServiceConfig s : services) {
                 cc = cc.withExposedService(s.name, s.port,
                         s.healthCheck.isEmpty()
-                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(180))
+                                ? Wait.forListeningPort().withStartupTimeout(Duration.ofSeconds(defaultTimeout))
                                 : Wait.forHttp(s.healthCheck).forStatusCode(200)
-                                        .withStartupTimeout(Duration.ofSeconds(180)));
+                                        .withStartupTimeout(Duration.ofSeconds(defaultTimeout)));
             }
             containers = cc.withExposedService(PROXY.name, CLICKHOUSE.port).withLocalCompose(false);
         }
