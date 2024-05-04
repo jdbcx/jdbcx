@@ -38,6 +38,6 @@ flightsql:
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
-  image: zhicwu/toxiproxy:2.8.0
+  image: zhicwu/toxiproxy:2.9.0
   links:
     - clickhouse
