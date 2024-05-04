@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx.extension;
 
+import java.io.InputStream;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -31,16 +33,21 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.JdbcDialect;
+import io.github.jdbcx.Logger;
+import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
 public class BridgeDriverExtension implements DriverExtension {
+    private static final Logger log = LoggerFactory.getLogger(BridgeDriverExtension.class);
+
     static final Option OPTION_COMPRESSION = Option.of(new String[] { "compression", "Compression algorithm" });
     static final Option OPTION_FORMAT = Option.of(new String[] { "format", "Data format" });
     static final Option OPTION_QUERY_MODE = Option.of(new String[] { "mode", "Query mode" });
@@ -95,6 +102,37 @@ public class BridgeDriverExtension implements DriverExtension {
         }
     }
 
+    static void updateBridgeConfig(Properties bridgeConfig, String url, VariableTag tag, String bridgeToken) {
+        try {
+            final StringBuilder builder;
+            int index = url.indexOf('?');
+            if (index != -1) {
+                builder = new StringBuilder(url.substring(0, index));
+            } else {
+                builder = new StringBuilder(url);
+            }
+            if (builder.charAt(builder.length() - 1) != '/') {
+                builder.append('/');
+            }
+            Properties config = new Properties();
+            WebExecutor web = new WebExecutor(tag, config);
+            WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
+            WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
+            WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+            try (InputStream input = web.get(new URL(builder.append("config").toString()), config,
+                    Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
+                bridgeConfig.load(input);
+            }
+
+            if (!Checker.isNullOrEmpty(bridgeToken)
+                    && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(bridgeConfig))) {
+                bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_TOKEN, bridgeToken);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update bridge server config from: " + url, e);
+        }
+    }
+
     /**
      * Builds new configuration for {@link WebInterpreter} according to the given
      * query context and configuration.
@@ -108,12 +146,18 @@ public class BridgeDriverExtension implements DriverExtension {
         final Properties bridgeCtx = (Properties) context.get(QueryContext.KEY_BRIDGE);
         final JdbcDialect dialect = (JdbcDialect) context.get(QueryContext.KEY_DIALECT);
 
+        final String defaultBridgeUrl = OPTION_URL.getValue(bridgeCtx);
         final String path = OPTION_PATH.getValue(config);
-        final String url = OPTION_URL.getValue(config);
-        if (!Checker.isNullOrEmpty(url)) { // URL takes priority
-            WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, url);
-        } else if (!Checker.isNullOrEmpty(path)) { // and then path
-            StringBuilder builder = new StringBuilder(OPTION_URL.getValue(bridgeCtx));
+
+        String url = OPTION_URL.getValue(config, defaultBridgeUrl);
+        if (url.isEmpty()) {
+            url = defaultBridgeUrl;
+        } else if (url != defaultBridgeUrl) { // NOSONAR
+            // here url could be different from the server.url returned from bridge server
+            updateBridgeConfig(bridgeCtx, url, context.getVariableTag(), OPTION_TOKEN.getValue(config));
+        }
+        if (!Checker.isNullOrEmpty(path)) { // URL takes priority and then path
+            StringBuilder builder = new StringBuilder(url);
             int len = builder.length() - 1;
             if (len < 0) { // should not happen, as bridge URL is never empty
                 builder.append(path);
@@ -127,13 +171,11 @@ public class BridgeDriverExtension implements DriverExtension {
             }
             WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, builder.toString());
         } else { // fall back to the default bridge server
-            WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, OPTION_URL.getValue(bridgeCtx));
+            WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, url);
         }
 
         StringBuilder builder = new StringBuilder(WebExecutor.HEADER_USER_AGENT).append('=')
-                .append(Utils.escape(
-                        bridgeCtx == null ? Constants.PRODUCT_NAME
-                                : bridgeCtx.getProperty(DriverExtension.PROPERTY_PRODUCT, Constants.PRODUCT_NAME),
+                .append(Utils.escape(bridgeCtx.getProperty(DriverExtension.PROPERTY_PRODUCT, Constants.PRODUCT_NAME),
                         ','));
 
         // access token
@@ -146,7 +188,7 @@ public class BridgeDriverExtension implements DriverExtension {
         }
 
         // query user
-        value = bridgeCtx == null ? null : bridgeCtx.getProperty(DriverExtension.PROPERTY_USER);
+        value = bridgeCtx.getProperty(DriverExtension.PROPERTY_USER);
         if (!Checker.isNullOrEmpty(value)) {
             builder.append(',').append(RequestParameter.USER.header()).append('=').append(Utils.escape(value, ','));
         }

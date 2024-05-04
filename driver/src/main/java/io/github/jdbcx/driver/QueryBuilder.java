@@ -64,8 +64,7 @@ public final class QueryBuilder {
         for (int i = 0, len = blocks.length; i < len; i++) {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
-                Properties props = new Properties();
-                props.putAll(manager.getBridgeContext());
+                Properties props = manager.getBridgeContext();
                 if (ExecutableBlock.KEYWORD_VALUES.equals(block.getExtensionName())) {
                     StringBuilder builder = new StringBuilder(QueryMode.DIRECT.path()).append('/')
                             .append(UUID.randomUUID().toString()).append(Format.VALUES.fileExtension(true));

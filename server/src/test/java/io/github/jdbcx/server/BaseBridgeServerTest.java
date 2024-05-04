@@ -55,6 +55,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 { "{{ db.my-duckdb: %s }}" }, // direct query, no need to add 'select * from '
                 { "select * from {{ table.db: %s }}" }, // default db connection is duckdb
                 { "select * from {{ table.db.my-duckdb: %s }}" },
+                { "select * from {{ bridge.local-parquet: %s }}" },
                 { "select * from {{ bridge(path=async): %s }}" },
                 { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
                 { "select * from {{ bridge(path=async?f=bson): {{ db.my-duckdb: %s \\}} }}" },
@@ -72,11 +73,12 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                         ".csv.zstd): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() + ".avro): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
-                        ".avro?codec=gzip): %s }}" },
+                        ".avro?codec=deflate): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
-                        ".avro?codec=lz4): %s }}" },
-                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
-                        ".avro?codec=zstd): %s }}" },
+                        ".avro?codec=snappy): %s }}" },
+                // https://github.com/ClickHouse/ClickHouse/pull/58805
+                // { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                // ".avro?codec=zstd): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
                         ".parquet): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
@@ -107,6 +109,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 { "{{ db.my-duckdb: %s }}" }, // direct query, no need to add 'select * from '
                 { "select * from {{ table.db: %s }}" }, // default db connection is duckdb
                 { "select * from {{ table.db.my-duckdb: %s }}" },
+                { "select * from {{ bridge.local-parquet: %s }}" },
                 { "select * from {{ bridge(path=async): %s }}" },
                 { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
                 { "select * from {{ bridge(path=async?f=parquet&codec=zstd&level=9): %s }}" },
@@ -128,7 +131,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
                         + ".parquet?codec=gzip): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
-                        + ".parquet?codec=lz4): %s }}" },
+                        + ".parquet?codec=lz4_raw): %s }}" }, // DuckDB does not support LZ4Hadoop
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()
                         + ".parquet?codec=snappy): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString()

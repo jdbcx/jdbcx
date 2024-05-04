@@ -23,6 +23,7 @@ postgresql:
 
 # https://hub.docker.com/r/clickhouse/clickhouse-server/
 clickhouse:
+  # 24.3 has problem working behind the proxy
   image: clickhouse/clickhouse-server:23.8
   links:
     - mysql

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * This class represents a shared query context used for query executions
@@ -179,6 +180,17 @@ public final class QueryContext implements AutoCloseable, Serializable {
 
     public String getScope() {
         return scope;
+    }
+
+    /**
+     * Gets variable tag.
+     *
+     * @return non-null variable tag
+     */
+    @SuppressWarnings("unchecked")
+    public VariableTag getVariableTag() {
+        Supplier<VariableTag> supplier = (Supplier<VariableTag>) get(QueryContext.KEY_TAG);
+        return supplier != null ? supplier.get() : VariableTag.BRACE;
     }
 
     public boolean hasVariable() {
