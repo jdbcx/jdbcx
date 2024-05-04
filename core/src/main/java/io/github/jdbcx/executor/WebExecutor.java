@@ -105,7 +105,8 @@ public class WebExecutor extends AbstractExecutor {
             }
             userInfo = new StringBuilder(user).append(':').append(passwd).toString();
             conn.setRequestProperty(HEADER_AUTHORIZATION,
-                    "Basic ".concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
+                    AUTH_SCHEME_BASIC
+                            .concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
         }
     }
 

@@ -23,6 +23,8 @@ import io.github.jdbcx.ResultMapper;
 public class DefaultMapper implements ResultMapper {
     private static final Logger log = LoggerFactory.getLogger(DefaultMapper.class);
 
+    static final String TYPE_VARCHAR = "VARCHAR";
+
     @Override
     public String toColumnType(Field f) {
         StringBuilder type = new StringBuilder();
@@ -44,7 +46,7 @@ public class DefaultMapper implements ResultMapper {
             case CHAR:
             case NCHAR:
                 if (f.precision() < 1) {
-                    type.append("VARCHAR");
+                    type.append(TYPE_VARCHAR);
                 } else {
                     type.append("CHAR(").append(f.precision()).append(')');
                 }
@@ -88,14 +90,14 @@ public class DefaultMapper implements ResultMapper {
             case NVARCHAR:
             case LONGVARCHAR:
             case LONGNVARCHAR:
-                type.append("VARCHAR");
+                type.append(TYPE_VARCHAR);
                 if (f.precision() > 0) {
                     type.append('(').append(f.precision()).append(')');
                 }
                 break;
             default:
                 log.warn("Not sure how to map JDBC type [%s], use VARCHAR instead", f.type());
-                type.append("VARCHAR");
+                type.append(TYPE_VARCHAR);
                 break;
         }
         if (f.isNullable()) {

@@ -27,6 +27,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.util.Locale;
 import java.util.TimeZone;
 
@@ -35,7 +38,7 @@ import java.util.TimeZone;
  */
 public final class Constants {
     public static final String PRODUCT_NAME = "JDBCX";
-    
+
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
     public static final Object[][] EMPTY_OBJECT_ARRAY2 = new Object[0][];
     public static final boolean[] EMPTY_BOOL_ARRAY = new boolean[0];
@@ -90,6 +93,16 @@ public final class Constants {
 
     public static final int DEFAULT_BUFFER_SIZE = 2048;
     public static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+
+    public static final DateTimeFormatter DEFAULT_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public static final DateTimeFormatter DEFAULT_TIME_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("HH:mm:ss").optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+            .optionalEnd().toFormatter();
+    public static final DateTimeFormatter DEFAULT_TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd HH:mm:ss").optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+            .optionalEnd().toFormatter();
 
     public static final int MIN_CORE_THREADS = 4;
 

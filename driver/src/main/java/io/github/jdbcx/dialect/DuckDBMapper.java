@@ -52,7 +52,7 @@ public class DuckDBMapper implements ResultMapper {
     static final String TYPE_BIT = "BIT"; // string of 1s and 0s
     static final String TYPE_BLOB = "BLOB"; // variable-length binary data
     static final String TYPE_UUID = "UUID"; // UUID data type
-    static final String TYPE_VARCHAR = "VARCHAR"; // variable-length character string
+    static final String TYPE_VARCHAR = DefaultMapper.TYPE_VARCHAR; // variable-length character string
 
     static final String SUFFIX_SEC = "_S";
     static final String SUFFIX_MS = "_MS";
