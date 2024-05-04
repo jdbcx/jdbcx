@@ -39,6 +39,6 @@ public class ClickHouseDialect implements JdbcDialect {
 
     @Override
     public boolean supports(Format format) {
-        return format != null && format != Format.AVRO_BINARY && format != Format.AVRO_JSON && format != Format.NDJSON;
+        return format != null && format != Format.AVRO_BINARY && format != Format.AVRO_JSON;
     }
 }

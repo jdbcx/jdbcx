@@ -42,6 +42,7 @@ public class ClickHouseMapper implements ResultMapper {
     static final String FORMAT_ARROW = "Arrow";
     static final String FORMAT_ARROW_STREAM = "ArrowStream";
     static final String FORMAT_AVRO = "Avro";
+    static final String FORMAT_BSONEACHROW = "BSONEachRow";
     static final String FORMAT_CSV = "CSVWithNames";
     static final String FORMAT_TSV = "TSVWithNames";
     static final String FORMAT_JSONEACHROW = "JSONEachRow";
@@ -85,7 +86,11 @@ public class ClickHouseMapper implements ResultMapper {
             case AVRO:
                 format = FORMAT_AVRO;
                 break;
+            case BSON:
+                format = FORMAT_BSONEACHROW;
+                break;
             case JSONL:
+            case NDJSON:
                 format = FORMAT_JSONEACHROW;
                 break;
             case PARQUET:

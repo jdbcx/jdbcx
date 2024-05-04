@@ -63,6 +63,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>bson</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>io.burt</groupId>
             <artifactId>jmespath-gson</artifactId>
             <scope>provided</scope>
