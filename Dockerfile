@@ -67,15 +67,16 @@ RUN chmod +x /*.sh \
         https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
     && wget -nv -P ./drivers/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
-        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.3.0/mysql-connector-j-8.3.0.jar \
-        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.0/duckdb_jdbc-0.10.0.jar \
-        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.2/postgresql-42.7.2.jar \
-        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.1.0/sqlite-jdbc-3.45.1.0.jar \
+        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar \
+        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.2/duckdb_jdbc-0.10.2.jar \
+        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar \
+        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.3.0/sqlite-jdbc-3.45.3.0.jar \
     && rm -fv ./*.tar.gz /tmp/*
 
 USER jdbcx
 
-RUN for ext in httpfs parquet; do ./openjdk/bin/java -Dverbose=true -DnoProperties=true -jar jdbcx.jar 'jdbcx:duckdb:' "INSTALL $ext" || true; done
+RUN for ext in arrow aws azure fts httpfs json mysql parquet postgres sqlite vss; \
+    do ./openjdk/bin/java -Dverbose=true -DnoProperties=true -jar jdbcx.jar 'jdbcx:duckdb:' "INSTALL $ext" || true; done
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 

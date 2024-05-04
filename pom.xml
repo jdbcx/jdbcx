@@ -80,75 +80,76 @@
 
         <ccc.src.dir>${project.build.directory}/generated-sources/ccc</ccc.src.dir>
 
-        <arrow.version>15.0.0</arrow.version>
+        <arrow.version>16.0.0</arrow.version>
         <avro.version>1.11.3</avro.version>
         <brotli.version>0.1.2</brotli.version>
         <brotli4j.version>1.16.0</brotli4j.version>
         <bson.version>5.1.0</bson.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <codec.version>1.16.1</codec.version>
-        <compress.version>1.26.0</compress.version>
+        <codec.version>1.17.0</codec.version>
+        <compress.version>1.26.1</compress.version>
         <!--
             wget https://parsers.org/download/congocc.jar
             mvn install:install-file -Dfile=congocc.jar -DgroupId=org.parsers -DartifactId=congocc -Dversion=0.0.1 -Dpackaging=jar
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.5.3</dnsjava.version>
-        <duckdb.version>0.10.0</duckdb.version>
-        <graphql.version>21.3</graphql.version>
-        <groovy.version>4.0.18</groovy.version>
+        <duckdb.version>0.10.2</duckdb.version>
+        <graphql.version>22.0</graphql.version>
+        <groovy.version>4.0.21</groovy.version>
         <gson.version>2.10.1</gson.version>
-        <hadoop.version>3.3.6</hadoop.version>
+        <hadoop.version>3.4.0</hadoop.version>
         <hikaricp.version>5.1.0</hikaricp.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jackson.version>2.17.0</jackson.version>
+        <janino.version>3.1.12</janino.version>
         <jctools.version>4.0.3</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
         <mariadb.version>3.3.3</mariadb.version>
-        <micrometer.version>1.12.3</micrometer.version>
+        <micrometer.version>1.12.5</micrometer.version>
         <msgpack.version>0.9.8</msgpack.version>
-        <mysql.version>8.3.0</mysql.version>
+        <mysql.version>8.4.0</mysql.version>
         <parquet.version>1.13.1</parquet.version>
-        <postgresql.version>42.7.2</postgresql.version>
-        <sqlite.version>3.45.1.0</sqlite.version>
+        <postgresql.version>42.7.3</postgresql.version>
+        <sqlite.version>3.45.3.0</sqlite.version>
         <rhino.version>1.7.14</rhino.version>
-        <roaring-bitmap.version>1.0.1</roaring-bitmap.version>
-        <slf4j.version>2.0.12</slf4j.version>
+        <roaring-bitmap.version>1.0.6</roaring-bitmap.version>
+        <slf4j.version>2.0.13</slf4j.version>
         <snappy.version>1.1.10.5</snappy.version>
         <xz.version>1.9</xz.version>
-        <zstd-jni.version>1.5.5-11</zstd-jni.version>
-        <testcontainers.version>1.19.5</testcontainers.version>
-        <testng.version>7.9.0</testng.version>
+        <zstd-jni.version>1.5.6-3</zstd-jni.version>
+        <testcontainers.version>1.19.7</testcontainers.version>
+        <testng.version>7.10.2</testng.version>
 
         <shade.base>${project.groupId}.internal</shade.base>
 
         <antrun-plugin.version>3.1.0</antrun-plugin.version>
-        <assembly-plugin.version>3.6.0</assembly-plugin.version>
+        <assembly-plugin.version>3.7.1</assembly-plugin.version>
         <clean-plugin.version>3.3.2</clean-plugin.version>
-        <compiler-plugin.version>3.12.1</compiler-plugin.version>
+        <compiler-plugin.version>3.13.0</compiler-plugin.version>
         <dependency-plugin.version>3.6.1</dependency-plugin.version>
-        <deploy-plugin.version>3.1.1</deploy-plugin.version>
+        <deploy-plugin.version>3.1.2</deploy-plugin.version>
         <enforcer-plugin.version>3.4.1</enforcer-plugin.version>
-        <exec-plugin.version>3.1.1</exec-plugin.version>
+        <exec-plugin.version>3.2.0</exec-plugin.version>
         <failsafe-plugin.version>3.2.5</failsafe-plugin.version>
         <flatten-plugin.version>1.6.0</flatten-plugin.version>
-        <git-plugin.version>7.0.0</git-plugin.version>
-        <gpg-plugin.version>3.1.0</gpg-plugin.version>
+        <git-plugin.version>8.0.2</git-plugin.version>
+        <gpg-plugin.version>3.2.4</gpg-plugin.version>
         <helper-plugin.version>3.5.0</helper-plugin.version>
-        <jacoco-plugin.version>0.8.11</jacoco-plugin.version>
-        <jar-plugin.version>3.3.0</jar-plugin.version>
+        <jacoco-plugin.version>0.8.12</jacoco-plugin.version>
+        <jar-plugin.version>3.4.1</jar-plugin.version>
         <javadoc-plugin.version>3.6.3</javadoc-plugin.version>
         <license-plugin.version>4.3</license-plugin.version>
-        <native-plugin.version>0.9.28</native-plugin.version>
+        <native-plugin.version>0.10.1</native-plugin.version>
         <notice-plugin.version>2.0.0</notice-plugin.version>
         <os-plugin.version>1.7.1</os-plugin.version>
         <resources-plugin.version>3.3.1</resources-plugin.version>
-        <shade-plugin.version>3.5.1</shade-plugin.version>
-        <source-plugin.version>3.3.0</source-plugin.version>
+        <shade-plugin.version>3.5.3</shade-plugin.version>
+        <source-plugin.version>3.3.1</source-plugin.version>
         <staging-plugin.version>1.6.13</staging-plugin.version>
         <surefire-plugin.version>3.2.5</surefire-plugin.version>
-        <toolchains-plugin.version>3.1.0</toolchains-plugin.version>
+        <toolchains-plugin.version>3.2.0</toolchains-plugin.version>
         <versions-plugin.version>2.16.2</versions-plugin.version>
 
         <minJdk>8</minJdk>
@@ -510,6 +511,11 @@
                 <groupId>org.brotli</groupId>
                 <artifactId>dec</artifactId>
                 <version>${brotli.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.codehaus.janino</groupId>
+                <artifactId>janino</artifactId>
+                <version>${janino.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.duckdb</groupId>
