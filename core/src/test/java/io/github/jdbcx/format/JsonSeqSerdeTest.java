@@ -28,7 +28,7 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Serialization;
 
-public class NdJsonSerdeTest {
+public class JsonSeqSerdeTest {
     @Test(groups = { "unit" })
     public void testSerialize() throws IOException {
         final Result<?> result = Result.of(Arrays.asList(Field.of("a\tb"), Field.of("\\c")), new Object[][] {
@@ -38,24 +38,24 @@ public class NdJsonSerdeTest {
         final String expectedVals = "\u001e[null,null]\n\u001e[\"1\\t2\\n3\",\"\\t\"]\n";
 
         Properties config = new Properties();
-        Serialization serde = new NdJsonSerde(config);
-        Charset charset = ((NdJsonSerde) serde).charset;
+        Serialization serde = new JsonSeqSerde(config);
+        Charset charset = ((JsonSeqSerde) serde).charset;
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(result, out);
             Assert.assertEquals(new String(out.toByteArray(), charset), expectedNvs);
         }
 
-        NdJsonSerde.OPTION_HEADER.setValue(config, "false");
-        serde = new NdJsonSerde(config);
+        JsonSeqSerde.OPTION_HEADER.setValue(config, "false");
+        serde = new JsonSeqSerde(config);
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(result, out);
             Assert.assertEquals(new String(out.toByteArray(), charset), expectedVals);
         }
 
         config = new Properties();
-        NdJsonSerde.OPTION_NULL_VALUE.setValue(config, "123");
-        serde = new NdJsonSerde(config);
-        charset = ((NdJsonSerde) serde).charset;
+        JsonSeqSerde.OPTION_NULL_VALUE.setValue(config, "123");
+        serde = new JsonSeqSerde(config);
+        charset = ((JsonSeqSerde) serde).charset;
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(result, out);
             Assert.assertEquals(new String(out.toByteArray(), charset), expectedNvs);

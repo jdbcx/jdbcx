@@ -42,9 +42,10 @@ import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 import io.github.jdbcx.format.ArrowSerde;
 import io.github.jdbcx.format.AvroSerde;
+import io.github.jdbcx.format.BsonSerde;
 import io.github.jdbcx.format.CsvSerde;
 import io.github.jdbcx.format.JsonlSerde;
-import io.github.jdbcx.format.NdJsonSerde;
+import io.github.jdbcx.format.JsonSeqSerde;
 import io.github.jdbcx.format.ParquetSerde;
 import io.github.jdbcx.format.TsvSerde;
 import io.github.jdbcx.format.ValuesSerde;
@@ -195,6 +196,9 @@ public final class Result<T> implements AutoCloseable {
                 serde = new AvroSerde(props);
                 break;
             }
+            case BSON:
+                serde = new BsonSerde(config);
+                break;
             case CSV:
                 serde = new CsvSerde(config);
                 break;
@@ -202,10 +206,11 @@ public final class Result<T> implements AutoCloseable {
                 serde = new TsvSerde(config);
                 break;
             case JSONL:
+            case NDJSON:
                 serde = new JsonlSerde(config);
                 break;
-            case NDJSON:
-                serde = new NdJsonSerde(config);
+            case JSON_SEQ:
+                serde = new JsonSeqSerde(config);
                 break;
             case PARQUET:
                 serde = new ParquetSerde(config);

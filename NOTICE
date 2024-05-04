@@ -41,6 +41,7 @@ This project includes:
   Arrow Memory - Unsafe under Apache License, Version 2.0
   Arrow Vectors under Apache License, Version 2.0
   brotli4j under Apache License 2.0
+  BSON under The Apache License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
@@ -105,3 +106,4 @@ This project includes:
   Woodstox under The Apache License, Version 2.0
   XZ for Java under Public Domain
   zstd-jni under BSD 2-Clause License
+

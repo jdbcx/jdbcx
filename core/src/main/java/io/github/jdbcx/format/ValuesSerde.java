@@ -72,8 +72,9 @@ public class ValuesSerde extends TextSerde {
             builder.setLength(0);
         }
 
+        int len = 0;
         for (Row r : result.rows()) {
-            if (builder.length() > 0) {
+            if (len > 0) {
                 builder.setLength(0);
                 builder.append(LINE_SUFFIX);
             }
@@ -81,7 +82,8 @@ public class ValuesSerde extends TextSerde {
             for (int i = 0; i < size; i++) {
                 builder.append(r.value(i).toSqlExpression()).append(',');
             }
-            builder.setCharAt(builder.length() - 1, ')');
+            len = builder.length();
+            builder.setCharAt(len - 1, ')');
             writer.write(builder.toString());
         }
     }

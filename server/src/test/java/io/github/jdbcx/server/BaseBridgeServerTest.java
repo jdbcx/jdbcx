@@ -57,8 +57,10 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 { "select * from {{ table.db.my-duckdb: %s }}" },
                 { "select * from {{ bridge(path=async): %s }}" },
                 { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
-                { "select * from {{ bridge(path=async?format=parquet&codec=zstd&level=9): %s }}" },
+                { "select * from {{ bridge(path=async?f=bson): {{ db.my-duckdb: %s \\}} }}" },
+                { "select * from {{ bridge(path=async?f=parquet&codec=zstd&level=9): %s }}" },
                 { "select * from {{ bridge(mode=a): %s }}" },
+                { "select * from {{ bridge(mode=a, format=NdJSON): %s }}" },
                 { "select * from {{ bridge(mode=a, compression=br, format=csv): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
                         ".csv): %s }}" },
@@ -107,8 +109,9 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 { "select * from {{ table.db.my-duckdb: %s }}" },
                 { "select * from {{ bridge(path=async): %s }}" },
                 { "select * from {{ bridge(path=async): {{ db.my-duckdb: %s \\}} }}" },
-                { "select * from {{ bridge(path=async?format=parquet&codec=zstd&level=9): %s }}" },
+                { "select * from {{ bridge(path=async?f=parquet&codec=zstd&level=9): %s }}" },
                 { "select * from {{ bridge(mode=a): %s }}" },
+                { "select * from {{ bridge(mode=a, format=NdJSON): %s }}" },
                 { "select * from {{ bridge(mode=a, compression=zstd, format=csv): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
                         ".csv): %s }}" },

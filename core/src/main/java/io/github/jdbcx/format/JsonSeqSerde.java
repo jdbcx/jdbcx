@@ -27,14 +27,14 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 
-public class NdJsonSerde extends TextSerde {
+public class JsonSeqSerde extends TextSerde {
     static final Properties update(Properties config) {
         Properties props = new Properties(config);
         OPTION_CHARSET.setValue(props, StandardCharsets.UTF_8.name());
         return props;
     }
 
-    public NdJsonSerde(Properties config) {
+    public JsonSeqSerde(Properties config) {
         super(update(config));
     }
 

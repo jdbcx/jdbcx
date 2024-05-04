@@ -84,6 +84,7 @@
         <avro.version>1.11.3</avro.version>
         <brotli.version>0.1.2</brotli.version>
         <brotli4j.version>1.16.0</brotli4j.version>
+        <bson.version>5.1.0</bson.version>
         <caffeine.version>3.1.8</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
         <codec.version>1.16.1</codec.version>
@@ -216,6 +217,11 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>bson</artifactId>
+                <version>${bson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.zaxxer</groupId>
@@ -504,11 +510,6 @@
                 <groupId>org.brotli</groupId>
                 <artifactId>dec</artifactId>
                 <version>${brotli.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.codehaus.janino</groupId>
-                <artifactId>janino</artifactId>
-                <version>${janino.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.duckdb</groupId>

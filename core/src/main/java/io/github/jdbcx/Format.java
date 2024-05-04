@@ -38,7 +38,8 @@ public enum Format {
     AVRO_JSON(false, false, false, "application/vnd.apache.avro+json", "avroj"),
     BSON(false, false, false, "application/bson", "bson"),
     JSONL(false, false, false, "application/jsonl", "jsonl"), // or application/json-lines?
-    NDJSON(false, false, false, "application/x-ndjson", "ndjson"), // or application/json-seq?
+    JSON_SEQ(false, false, false, "application/json-seq", "jsons"), // mainly for streaming, seldom used
+    NDJSON(false, false, false, "application/x-ndjson", "ndjson"), // same as JSONL
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET(true, true, true, "application/vnd.apache.parquet", "parquet"),
     VALUES(false, false, false, "application/x-values", "values");
