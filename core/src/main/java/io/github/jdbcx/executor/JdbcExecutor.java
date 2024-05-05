@@ -64,6 +64,12 @@ public class JdbcExecutor extends AbstractExecutor {
     static final String TYPE_QUERY = "query";
     static final String TYPE_UPDATE = "update";
 
+    static final void closeResultSet(ResultSet rs) throws SQLException {
+        if (rs != null) {
+            rs.close();
+        }
+    }
+
     static final long getUpdateCount(Statement stmt) throws SQLException {
         return getUpdateCount(stmt, false);
     }
@@ -123,9 +129,7 @@ public class JdbcExecutor extends AbstractExecutor {
 
         while (true) {
             if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
-                if (rs != null) {
-                    rs.close();
-                }
+                closeResultSet(rs);
                 rs = stmt.getResultSet();
                 count = 0L;
             } else {
@@ -133,9 +137,7 @@ public class JdbcExecutor extends AbstractExecutor {
                 if (value == -1L) {
                     break;
                 }
-                if (rs != null) {
-                    rs.close();
-                }
+                closeResultSet(rs);
                 rs = null;
                 count = value;
             }

@@ -86,6 +86,7 @@ public class WrappedStatement implements Statement {
         return newStmt;
     }
 
+    @SuppressWarnings("resource")
     protected boolean execute(String query, ExecuteCallback callback) throws SQLException {
         queryResult.reset();
 
@@ -116,8 +117,8 @@ public class WrappedStatement implements Statement {
             } else {
                 final ResultSet[] keys = new ResultSet[size];
                 final ResultSet[] results = new ResultSet[size];
-                final CombinedResultSet keyRs = new CombinedResultSet(keys);
-                final CombinedResultSet resRs = new CombinedResultSet(results);
+                final CombinedResultSet keyRs = new CombinedResultSet(keys); // NOSONAR
+                final CombinedResultSet resRs = new CombinedResultSet(results); // NOSONAR
                 for (int i = 0; i < size; i++) {
                     String q = queries.get(i);
                     log.debug("Executing %d of %d: [%s]", i + 1, size, q);
