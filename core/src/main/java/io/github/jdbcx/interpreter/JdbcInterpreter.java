@@ -50,8 +50,9 @@ public class JdbcInterpreter extends AbstractInterpreter {
     public static final Option OPTION_URL = Option.of(new String[] { "url", "JDBC connection URL" });
     public static final Option OPTION_DIALECT = Option.of(new String[] { "dialect", "Dialect class name" });
     public static final Option OPTION_DRIVER = Option.of(new String[] { "driver", "JDBC driver class name" });
-    public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
-            ConfigManager.OPTION_MANAGED, Option.EXEC_TIMEOUT.update().defaultValue("30000").build()));
+    public static final List<Option> OPTIONS = Collections
+            .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, JdbcExecutor.OPTION_RESULT, ConfigManager.OPTION_MANAGED,
+                    Option.EXEC_TIMEOUT.update().defaultValue("30000").build()));
 
     private final String defaultConnectionUrl;
     private final String defaultConnectionProps;

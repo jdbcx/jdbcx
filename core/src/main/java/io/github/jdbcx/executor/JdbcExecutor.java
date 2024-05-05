@@ -16,9 +16,12 @@
 package io.github.jdbcx.executor;
 
 import java.sql.Connection;
+import java.sql.JDBCType;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -26,18 +29,253 @@ import java.util.Properties;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
+import io.github.jdbcx.value.LongValue;
+import io.github.jdbcx.value.StringValue;
 
 public class JdbcExecutor extends AbstractExecutor {
     private static final List<Field> dryRunFields = Collections
             .unmodifiableList(Arrays.asList(Field.of("connection"), FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
+    public static final String RESULT_FIRST = "first";
+    public static final String RESULT_FIRST_QUERY = "firstQuery";
+    public static final String RESULT_FIRST_UPDATE = "firstUpdate";
+    public static final String RESULT_LAST = "last";
+    public static final String RESULT_LAST_QUERY = "lastQuery";
+    public static final String RESULT_LAST_UPDATE = "lastUpdate";
+    public static final String RESULT_MERGED_QUERIES = "mergedQueries";
+    public static final String RESULT_MERGED_UPDATES = "mergedUpdates";
+    public static final String RESULT_SUMMARY = "summary";
+
+    public static final Option OPTION_RESULT = Option
+            .of(new String[] { "result", "Only the preferred one will be returned when there are multiple results.",
+                    RESULT_FIRST, RESULT_FIRST_QUERY, RESULT_FIRST_UPDATE, RESULT_LAST, RESULT_LAST_QUERY,
+                    RESULT_LAST_UPDATE, RESULT_MERGED_QUERIES, RESULT_MERGED_UPDATES, RESULT_SUMMARY });
+
+    static final List<Field> SUMMARY_FIELDS = Collections
+            .unmodifiableList(Arrays.asList(Field.of("seq", JDBCType.INTEGER, false),
+                    Field.of("type", JDBCType.VARCHAR, false), Field.of("rows", JDBCType.BIGINT, false)));
+    static final String TYPE_QUERY = "query";
+    static final String TYPE_UPDATE = "update";
+
+    static final long getUpdateCount(Statement stmt) throws SQLException {
+        return getUpdateCount(stmt, false);
+    }
+
+    static final long getUpdateCount(Statement stmt, boolean closeStatement) throws SQLException {
+        try {
+            return stmt.getLargeUpdateCount();
+        } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
+            return stmt.getUpdateCount();
+        } finally {
+            if (closeStatement) {
+                stmt.close();
+            }
+        }
+    }
+
+    protected Object getFirstResult(Statement stmt, String query) throws SQLException {
+        if (stmt.execute(query)) {
+            return stmt.getResultSet();
+        } else {
+            try {
+                return getUpdateCount(stmt);
+            } finally {
+                stmt.close();
+            }
+        }
+    }
+
+    protected ResultSet getFirstQueryResult(Statement stmt, String query) throws SQLException {
+        if (stmt.execute(query)) {
+            return stmt.getResultSet();
+        } else {
+            while (true) {
+                if (stmt.getMoreResults()) {
+                    return stmt.getResultSet();
+                } else if (stmt.getUpdateCount() == -1) {
+                    stmt.close();
+                    return new CombinedResultSet();
+                }
+            }
+        }
+    }
+
+    protected long getFirstUpdateCount(Statement stmt, String query) throws SQLException {
+        if (stmt.execute(query)) {
+            while (stmt.getMoreResults()) {
+                // do nothing
+            }
+        }
+        long count = getUpdateCount(stmt, true);
+        return count < 0L ? 0L : count;
+    }
+
+    protected Object getLastResult(Statement stmt, String query) throws SQLException {
+        ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
+        long count = rs == null ? getUpdateCount(stmt) : 0L;
+
+        while (true) {
+            if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                if (rs != null) {
+                    rs.close();
+                }
+                rs = stmt.getResultSet();
+                count = 0L;
+            } else {
+                long value = getUpdateCount(stmt);
+                if (value == -1L) {
+                    break;
+                }
+                if (rs != null) {
+                    rs.close();
+                }
+                rs = null;
+                count = value;
+            }
+        }
+
+        if (rs != null) {
+            return rs;
+        } else {
+            stmt.close();
+            return count;
+        }
+    }
+
+    protected ResultSet getLastQueryResult(Statement stmt, String query) throws SQLException {
+        ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
+        while (true) {
+            if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                if (rs != null) {
+                    rs.close();
+                }
+                rs = stmt.getResultSet();
+            } else if (stmt.getUpdateCount() == -1) {
+                break;
+            }
+        }
+
+        if (rs == null) {
+            stmt.close();
+            rs = new CombinedResultSet();
+        }
+        return rs;
+    }
+
+    protected long getLastUpdateCount(Statement stmt, String query) throws SQLException {
+        long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
+
+        while (true) {
+            if (!stmt.getMoreResults()) {
+                long value = getUpdateCount(stmt);
+                if (value == -1L) {
+                    break;
+                }
+                count = value;
+            }
+        }
+
+        stmt.close();
+        return count;
+    }
+
+    protected ResultSet getMergedQueryResult(Statement stmt, String query) throws SQLException {
+        List<ResultSet> results = new ArrayList<>();
+        if (stmt.execute(query)) {
+            results.add(stmt.getResultSet());
+        }
+        while (true) {
+            if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                results.add(stmt.getResultSet());
+            } else if (stmt.getUpdateCount() == -1) {
+                break;
+            }
+        }
+
+        return new CombinedResultSet(results);
+    }
+
+    protected long getMergedUpdateCount(Statement stmt, String query) throws SQLException {
+        long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
+
+        while (true) {
+            if (!stmt.getMoreResults()) {
+                long value = getUpdateCount(stmt);
+                if (value == -1L) {
+                    break;
+                }
+                count += value;
+            }
+        }
+
+        stmt.close();
+        return count;
+    }
+
+    protected ResultSet getResultSummary(Statement stmt, String query) throws SQLException {
+        final List<Row> rows = new ArrayList<>();
+        final ValueFactory factory = ValueFactory.getInstance();
+
+        int seq = 1;
+        if (stmt.execute(query)) {
+            try (ResultSet rs = stmt.getResultSet()) {
+                long count = 0L;
+                while (rs.next()) {
+                    count++;
+                }
+                rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
+                        StringValue.of(factory, false, 0, TYPE_QUERY),
+                        LongValue.of(factory, false, true, count)));
+            }
+        } else {
+            rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
+                    StringValue.of(factory, false, 0, TYPE_UPDATE),
+                    LongValue.of(factory, false, true, getUpdateCount(stmt))));
+        }
+
+        while (true) {
+            if (stmt.getMoreResults()) {
+                try (ResultSet rs = stmt.getResultSet()) {
+                    long count = 0L;
+                    while (rs.next()) {
+                        count++;
+                    }
+                    rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
+                            StringValue.of(factory, false, 0, TYPE_QUERY),
+                            LongValue.of(factory, false, true, count)));
+                }
+            } else {
+                long value = getUpdateCount(stmt);
+                if (value == -1L) {
+                    break;
+                }
+                rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
+                        StringValue.of(factory, false, 0, TYPE_UPDATE),
+                        LongValue.of(factory, false, true, getUpdateCount(stmt))));
+            }
+        }
+
+        stmt.close();
+        return new ReadOnlyResultSet(stmt, Result.of(SUMMARY_FIELDS, rows));
+    }
+
+    public String getResultType(Properties props) {
+        return props != null ? props.getProperty(OPTION_RESULT.getName(), defaultResultType) : defaultResultType;
+    }
+
+    protected final String defaultResultType;
+
     public JdbcExecutor(VariableTag tag, Properties props) {
         super(tag, props);
+
+        this.defaultResultType = OPTION_RESULT.getValue(props);
     }
 
     public Object execute(String query, Connection conn, Properties props) throws SQLException {
@@ -54,16 +292,40 @@ public class JdbcExecutor extends AbstractExecutor {
         if (timeoutSec > 0) {
             stmt.setQueryTimeout(timeoutSec);
         }
-        if (stmt.execute(query)) {
-            return stmt.getResultSet();
-        } else {
-            try {
-                return stmt.getLargeUpdateCount();
-            } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
-                return (long) stmt.getUpdateCount();
-            } finally {
-                stmt.close();
-            }
+
+        final String type = getResultType(props);
+        final Object result;
+        switch (type) {
+            case RESULT_FIRST:
+                result = getFirstResult(stmt, query);
+                break;
+            case RESULT_FIRST_QUERY:
+                result = getFirstQueryResult(stmt, query);
+                break;
+            case RESULT_FIRST_UPDATE:
+                result = getFirstUpdateCount(stmt, query);
+                break;
+            case RESULT_LAST:
+                result = getLastResult(stmt, query);
+                break;
+            case RESULT_LAST_QUERY:
+                result = getLastQueryResult(stmt, query);
+                break;
+            case RESULT_LAST_UPDATE:
+                result = getLastUpdateCount(stmt, query);
+                break;
+            case RESULT_MERGED_QUERIES:
+                result = getMergedQueryResult(stmt, query);
+                break;
+            case RESULT_MERGED_UPDATES:
+                result = getMergedUpdateCount(stmt, query);
+                break;
+            case RESULT_SUMMARY:
+                result = getResultSummary(stmt, query);
+                break;
+            default:
+                throw new SQLException("Unsupported parameter result=" + type);
         }
+        return result;
     }
 }

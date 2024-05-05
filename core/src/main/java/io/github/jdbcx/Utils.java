@@ -450,11 +450,7 @@ public final class Utils {
         }
 
         try {
-            ClassLoader loader = Thread.currentThread().getContextClassLoader();
-            if (loader == null) {
-                loader = clazz.getClassLoader();
-            }
-            Class<?> c = loader.loadClass(className);
+            Class<?> c = Class.forName(className);
             Constructor<?> constructor = null;
             try { // NOSONAR
                 constructor = c.getConstructor(argClasses);
