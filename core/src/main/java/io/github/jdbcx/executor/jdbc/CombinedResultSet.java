@@ -143,6 +143,22 @@ public class CombinedResultSet extends AbstractResultSet {
         }
     }
 
+    /**
+     * Checks if the combined result set only contains null {@link ResultSet} or
+     * empty {@link CombinedResultSet}.
+     *
+     * @return true if it's empty; false otherwise
+     */
+    public boolean isEmpty() {
+        for (int i = 0, len = results.length; i < len; i++) {
+            ResultSet rs = results[i];
+            if (rs != null && (!(rs instanceof CombinedResultSet) || !((CombinedResultSet) rs).isEmpty())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public boolean next() throws SQLException {
         if (hasNext()) {

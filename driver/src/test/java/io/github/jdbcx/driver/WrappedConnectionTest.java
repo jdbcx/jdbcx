@@ -71,6 +71,107 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
         };
     }
 
+    @Test(groups = { "integration" })
+    public void testMultipleSelectQueries() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String mysqlUrl = "mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true";
+        final String query = "select 1; select 2; select 3";
+        try (Connection conn = d.connect("jdbcx:" + mysqlUrl, props); Statement stmt = conn.createStatement()) {
+            Assert.assertTrue(stmt.execute(query));
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+            Object ref = null;
+            try (ResultSet rs = stmt.getResultSet()) {
+                ref = rs;
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next());
+            }
+
+            Assert.assertTrue(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+            try (ResultSet rs = stmt.getResultSet()) {
+                Assert.assertFalse(ref == rs, "Should be a different ResultSet instance");
+                ref = rs;
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 2);
+                Assert.assertFalse(rs.next());
+            }
+
+            Assert.assertTrue(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+            try (ResultSet rs = stmt.getResultSet()) {
+                Assert.assertFalse(ref == rs, "Should be a different ResultSet instance");
+                ref = rs;
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 3);
+                Assert.assertFalse(rs.next());
+            }
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testMultipleNonSelectQueries() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String mysqlUrl = "mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true";
+        final String query = "create table if not exists test_multiple_nonselect_queries(i INTEGER, s VARCHAR(10));"
+                + " insert into test_multiple_nonselect_queries values(1, 'a'); insert into test_multiple_nonselect_queries values(2, 'b'), (3, 'c')";
+        try (Connection conn = d.connect("jdbcx:" + mysqlUrl, props); Statement stmt = conn.createStatement()) {
+            Assert.assertFalse(stmt.execute(query));
+
+            Assert.assertNull(stmt.getResultSet(), "DDL should never return ResultSet");
+            Assert.assertEquals(stmt.getUpdateCount(), 0);
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertNull(stmt.getResultSet(), "INSERT should never return ResultSet");
+            Assert.assertEquals(stmt.getUpdateCount(), 1);
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertNull(stmt.getResultSet(), "INSERT should never return ResultSet");
+            Assert.assertEquals(stmt.getUpdateCount(), 2);
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testMultipleMixedQueries() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String mysqlUrl = "mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true";
+        final String query = "create table if not exists test_multiple_mixed_queries(i INTEGER, s VARCHAR(10));"
+                + " select 1; insert into test_multiple_mixed_queries values(1, 'a')";
+        try (Connection conn = d.connect("jdbcx:" + mysqlUrl, props); Statement stmt = conn.createStatement()) {
+            Assert.assertFalse(stmt.execute(query));
+
+            Assert.assertNull(stmt.getResultSet(), "DDL should never return ResultSet");
+            Assert.assertEquals(stmt.getUpdateCount(), 0);
+
+            Assert.assertTrue(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+            try (ResultSet rs = stmt.getResultSet()) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next());
+            }
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertNull(stmt.getResultSet(), "INSERT should never return ResultSet");
+            Assert.assertEquals(stmt.getUpdateCount(), 1);
+
+            Assert.assertFalse(stmt.getMoreResults());
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+        }
+    }
+
     @Test(groups = { "unit" })
     public void testOrphanStatement() throws SQLException {
         Properties props = new Properties();

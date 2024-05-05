@@ -385,6 +385,28 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testMultipleResults() throws SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        final String query = "{{db(url='jdbc:mysql://root@" + getMySqlServer()
+                + "?allowMultiQueries=true', result=mergedQueries): select 1; select 2}}";
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement()) {
+            Assert.assertTrue(stmt.execute(query));
+
+            Assert.assertEquals(stmt.getUpdateCount(), -1);
+
+            try (ResultSet rs = stmt.getResultSet()) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 2);
+                Assert.assertFalse(rs.next());
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testExecTimeout() throws SQLException {
         Properties props = new Properties();
         WrappedDriver d = new WrappedDriver();

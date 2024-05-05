@@ -20,6 +20,9 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -48,6 +51,37 @@ public class CombinedResultSetTest extends BaseIntegrationTest {
                 { "jdbc:sqlite::memory:", "select 0 union select 1 union select 2 order by 1",
                         "select 3 union select 4 order by 1" },
         };
+    }
+
+    @Test(groups = { "unit" })
+    public void testIsEmpty() throws SQLException {
+        Assert.assertTrue(new CombinedResultSet().isEmpty());
+        Assert.assertTrue(new CombinedResultSet(new CombinedResultSet()).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(new CombinedResultSet(new CombinedResultSet())).isEmpty());
+
+        Assert.assertTrue(new CombinedResultSet((ResultSet) null).isEmpty());
+        Assert.assertTrue(new CombinedResultSet((ResultSet) null, null).isEmpty());
+
+        Assert.assertTrue(new CombinedResultSet((ResultSet[]) null).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(new ResultSet[0]).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(new ResultSet[1]).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(new ResultSet[2], null).isEmpty());
+
+        Assert.assertTrue(new CombinedResultSet((Collection<ResultSet>) null).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(Collections.emptyList()).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(Collections.singletonList((ResultSet) null)).isEmpty());
+        Assert.assertTrue(new CombinedResultSet(Arrays.asList((ResultSet) null, null)).isEmpty(), null);
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:");
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select 5")) {
+            Assert.assertFalse(new CombinedResultSet(rs).isEmpty());
+            Assert.assertFalse(new CombinedResultSet(null, rs).isEmpty());
+            Assert.assertFalse(new CombinedResultSet(rs, null).isEmpty());
+            Assert.assertFalse(new CombinedResultSet(null, rs, null).isEmpty());
+            Assert.assertFalse(
+                    new CombinedResultSet(null, new CombinedResultSet(Collections.singleton(rs)), null).isEmpty());
+        }
     }
 
     @Test(dataProvider = "numberQueries", groups = { "integration" })

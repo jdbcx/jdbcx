@@ -60,7 +60,7 @@ public class WrappedStatement implements Statement {
         ResultSet rs = null;
         try {
             rs = stmt.getGeneratedKeys();
-        } catch (SQLFeatureNotSupportedException e) {
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
             log.debug("Failed to get generated keys due to lack of support from the driver");
         }
         return rs;
@@ -86,6 +86,7 @@ public class WrappedStatement implements Statement {
         return newStmt;
     }
 
+    @SuppressWarnings("resource")
     protected boolean execute(String query, ExecuteCallback callback) throws SQLException {
         queryResult.reset();
 
@@ -96,26 +97,28 @@ public class WrappedStatement implements Statement {
 
         boolean result = false;
         int affectedRows = 0;
-        ResultSet[] rs = null;
+        final ResultSet[] rs = new ResultSet[2];
         try {
             int size = queries.size();
             if (size == 1) {
-                rs = new ResultSet[2];
                 String newQuery = queries.get(0);
                 log.debug("Executing [%s]: [%s]", this, newQuery);
                 if (result = stmt.execute(newQuery)) {
                     rs[1] = stmt.getResultSet();
+                    affectedRows = -1;
                 } else {
                     try { // NOSONAR
                         rs[0] = stmt.getGeneratedKeys();
-                    } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
+                    } catch (SQLException | UnsupportedOperationException e) {
                         // ignore
                     }
+                    affectedRows = stmt.getUpdateCount();
                 }
             } else {
-                ResultSet[] keys = new ResultSet[size];
-                ResultSet[] results = new ResultSet[size];
-                rs = new ResultSet[] { new CombinedResultSet(keys), new CombinedResultSet(results) }; // NOSONAR
+                final ResultSet[] keys = new ResultSet[size];
+                final ResultSet[] results = new ResultSet[size];
+                final CombinedResultSet keyRs = new CombinedResultSet(keys); // NOSONAR
+                final CombinedResultSet resRs = new CombinedResultSet(results); // NOSONAR
                 for (int i = 0; i < size; i++) {
                     String q = queries.get(i);
                     log.debug("Executing %d of %d: [%s]", i + 1, size, q);
@@ -124,6 +127,15 @@ public class WrappedStatement implements Statement {
                     } else {
                         affectedRows += callback.getUpdateCount();
                         keys[i] = callback.getGeneratedKeys();
+                    }
+                }
+                if (!keyRs.isEmpty()) {
+                    rs[0] = keyRs;
+                }
+                if (!resRs.isEmpty()) {
+                    rs[1] = resRs;
+                    if (affectedRows == 0) {
+                        affectedRows = -1;
                     }
                 }
             }
@@ -323,19 +335,24 @@ public class WrappedStatement implements Statement {
 
     @Override
     public ResultSet getResultSet() throws SQLException {
-        ResultSet rs = queryResult.getResultSet();
-        return rs != null ? rs : new WrappedResultSet(this, stmt.getResultSet());
+        return queryResult.getResultSet();
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
         Integer i = queryResult.getUpdateCount();
-        return i != null ? i.intValue() : stmt.getUpdateCount();
+        return i != null ? i.intValue() : -1;
     }
 
     @Override
     public boolean getMoreResults() throws SQLException {
-        return stmt.getMoreResults();
+        // this might not work in all drivers: getMoreResults(CLOSE_CURRENT_RESULT)
+        final boolean hasMore = stmt.getMoreResults();
+        queryResult.reset();
+        // no need to update generated keys
+        queryResult.updateAll(null, hasMore ? new WrappedResultSet(this, stmt.getResultSet()) : null,
+                stmt.getUpdateCount());
+        return hasMore;
     }
 
     @Override
@@ -398,7 +415,12 @@ public class WrappedStatement implements Statement {
 
     @Override
     public boolean getMoreResults(int current) throws SQLException {
-        return stmt.getMoreResults(current);
+        final boolean hasMore = stmt.getMoreResults(current);
+        queryResult.reset();
+        // no need to update generated keys
+        queryResult.updateAll(null, hasMore ? new WrappedResultSet(this, stmt.getResultSet()) : null,
+                stmt.getUpdateCount());
+        return hasMore;
     }
 
     @Override

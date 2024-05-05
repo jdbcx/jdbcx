@@ -25,9 +25,10 @@ This project includes:
   Apache Commons IO under Apache-2.0
   Apache Commons Lang under Apache-2.0
   Apache Groovy under The Apache Software License, Version 2.0
-  Apache Hadoop Common under Apache License, Version 2.0
-  Apache Hadoop MapReduce Core under Apache License, Version 2.0
+  Apache Hadoop Common under Apache-2.0
+  Apache Hadoop MapReduce Core under Apache-2.0
   Apache Hadoop shaded Guava under Apache License, Version 2.0
+  Apache Hadoop shaded Protobuf under Apache License, Version 2.0
   Apache Parquet Avro under The Apache Software License, Version 2.0
   Apache Parquet Column under The Apache Software License, Version 2.0
   Apache Parquet Common under The Apache Software License, Version 2.0
@@ -40,19 +41,19 @@ This project includes:
   Arrow Memory - Core under Apache License, Version 2.0
   Arrow Memory - Unsafe under Apache License, Version 2.0
   Arrow Vectors under Apache License, Version 2.0
+  Bouncy Castle Provider under Bouncy Castle Licence
   brotli4j under Apache License 2.0
   BSON under The Apache License, Version 2.0
+  Byte Buddy (without dependencies) under Apache License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
-  Commons Logging under The Apache Software License, Version 2.0
+  commons-compiler under BSD-3-Clause
   docker-java-api under The Apache Software License, Version 2.0
   docker-java-transport under The Apache Software License, Version 2.0
   docker-java-transport-zerodep under The Apache Software License, Version 2.0
   DuckDB JDBC Driver under MIT License
   Duct Tape under MIT
-  Eclipse Collections API under Eclipse Public License - v 1.0 or Eclipse Distribution License - v 1.0
-  Eclipse Collections Main Library under Eclipse Public License - v 1.0 or Eclipse Distribution License - v 1.0
   FlatBuffers Java API under Apache License V2.0
   Gson under Apache-2.0
   Hamcrest Core under New BSD License
@@ -62,6 +63,7 @@ This project includes:
   Jackson-annotations under The Apache Software License, Version 2.0
   Jackson-core under The Apache Software License, Version 2.0
   jackson-databind under The Apache Software License, Version 2.0
+  janino under BSD-3-Clause
   Java Native Access under LGPL-2.1-or-later or Apache-2.0
   Java Native Access Platform under LGPL-2.1-or-later or Apache-2.0
   JCL 1.2 implemented over SLF4J under Apache License, Version 2.0
@@ -71,6 +73,7 @@ This project includes:
   jdbcx-driver under The Apache Software License, Version 2.0
   jdbcx-server under The Apache Software License, Version 2.0
   JetBrains Java Annotations under The Apache Software License, Version 2.0
+  Jettison under Apache License, Version 2.0
   JMESPath Core under BSD 3-Clause
   JMESPath GSON under BSD 3-Clause
   jquery under MIT License
@@ -106,4 +109,3 @@ This project includes:
   Woodstox under The Apache License, Version 2.0
   XZ for Java under Public Domain
   zstd-jni under BSD 2-Clause License
-
