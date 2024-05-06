@@ -154,7 +154,7 @@ public final class Utils {
                 dir = getPath(pathOrPattern.substring(0, index), true);
                 pattern = dir.resolve(pathOrPattern.substring(index + 1)).toString();
             } else {
-                dir = Path.of(Constants.CURRENT_DIR);
+                dir = Paths.get(Constants.CURRENT_DIR);
                 pattern = dir.resolve(pathOrPattern).toString();
             }
 
