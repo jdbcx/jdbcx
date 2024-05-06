@@ -146,10 +146,14 @@ public final class Utils {
         if (starPos != -1 || qmarkPos != -1) { // glob
             int len = pathOrPattern.length();
             int endIndex = Math.min(starPos != -1 ? starPos : len, qmarkPos != -1 ? qmarkPos : len);
-            int index = pathOrPattern.substring(0, endIndex).lastIndexOf(File.separatorChar);
+            String str = pathOrPattern.substring(0, endIndex);
+            int index = str.lastIndexOf(File.separatorChar);
+            if (File.separatorChar != '/') {
+                index = Math.max(index, str.lastIndexOf('/'));
+            }
 
             final Path dir;
-            final String pattern;
+            String pattern;
             if (index != -1) {
                 dir = getPath(pathOrPattern.substring(0, index), true);
                 pattern = new StringBuilder(dir.toString()).append(File.separatorChar)
@@ -158,10 +162,11 @@ public final class Utils {
                 dir = Paths.get(Constants.CURRENT_DIR);
                 pattern = new StringBuilder(dir.toString()).append(File.separatorChar).append(pathOrPattern).toString();
             }
+            if (!pattern.startsWith(PATTERN_GLOB) && !pattern.startsWith(PATTERN_REGEX)) {
+                pattern = PATTERN_GLOB + pattern.replace("\\", "\\\\");
+            }
 
-            PathMatcher matcher = FileSystems.getDefault().getPathMatcher(
-                    pattern.startsWith(PATTERN_GLOB) || pattern.startsWith(PATTERN_REGEX) ? pattern
-                            : PATTERN_GLOB + pattern);
+            final PathMatcher matcher = FileSystems.getDefault().getPathMatcher(pattern);
             try (Stream<Path> s = Files.list(dir)) {
                 list.addAll(s.filter(p -> matcher.matches(p) && Files.isRegularFile(p)).sorted()
                         .collect(Collectors.toList()));
