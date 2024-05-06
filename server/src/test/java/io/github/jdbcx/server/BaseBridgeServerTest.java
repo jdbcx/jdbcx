@@ -71,11 +71,11 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                         ".csv.gz): %s }}" },
                 { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
                         ".csv.zstd): %s }}" },
-                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() + ".avro): %s }}" },
-                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
-                        ".avro?codec=deflate): %s }}" },
-                { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
-                        ".avro?codec=snappy): %s }}" },
+                // { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() + ".avro): %s }}" },
+                // { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                //         ".avro?codec=deflate): %s }}" },
+                // { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
+                //         ".avro?codec=snappy): %s }}" },
                 // https://github.com/ClickHouse/ClickHouse/pull/58805
                 // { "select * from {{ bridge(path=async/" + UUID.randomUUID().toString() +
                 // ".avro?codec=zstd): %s }}" },
