@@ -45,7 +45,7 @@ import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.server.impl.JdkHttpServer;
 
 public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
-    protected static final String DUCKDB_TEST_QUERY = "SELECT generate_series::INT n, date_add(today(), n) d, d::VARCHAR s FROM generate_series(1, %d)";
+    protected static final String DUCKDB_TEST_QUERY = "SELECT generate_series::INT n, date_add(today(), n) d, d::VARCHAR s FROM generate_series(1, %d) order by 1";
 
     protected JdkHttpServer server;
 
