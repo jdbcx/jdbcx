@@ -152,10 +152,11 @@ public final class Utils {
             final String pattern;
             if (index != -1) {
                 dir = getPath(pathOrPattern.substring(0, index), true);
-                pattern = dir.resolve(pathOrPattern.substring(index + 1)).toString();
+                pattern = new StringBuilder(dir.toString()).append(File.separatorChar)
+                        .append(pathOrPattern.substring(index + 1)).toString();
             } else {
                 dir = Paths.get(Constants.CURRENT_DIR);
-                pattern = dir.resolve(pathOrPattern).toString();
+                pattern = new StringBuilder(dir.toString()).append(File.separatorChar).append(pathOrPattern).toString();
             }
 
             PathMatcher matcher = FileSystems.getDefault().getPathMatcher(
