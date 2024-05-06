@@ -29,20 +29,16 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -58,12 +54,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class is a utility class that provides a collection of useful static
  * methods.
  */
 public final class Utils {
+    static final String PATTERN_GLOB = "glob:";
+    static final String PATTERN_REGEX = "regex:";
+
     private static <T> T findFirstService(Class<? extends T> serviceInterface, boolean preferCustomImpl) {
         Checker.nonNull(serviceInterface, Class.class);
 
@@ -130,6 +131,56 @@ public final class Utils {
             }
         }
         return path;
+    }
+
+    public static List<Path> findFiles(String pathOrPattern, String fileExt) throws IOException {
+        if (Checker.isNullOrEmpty(pathOrPattern)) {
+            return Collections.emptyList();
+        }
+
+        final String normalizedFileExt = fileExt != null ? fileExt.trim() : Constants.EMPTY_STRING;
+
+        final int starPos = pathOrPattern.indexOf('*');
+        final int qmarkPos = pathOrPattern.indexOf('?');
+        List<Path> list = new LinkedList<>();
+        if (starPos != -1 || qmarkPos != -1) { // glob
+            int len = pathOrPattern.length();
+            int endIndex = Math.min(starPos != -1 ? starPos : len, qmarkPos != -1 ? qmarkPos : len);
+            int index = pathOrPattern.substring(0, endIndex).lastIndexOf(File.separatorChar);
+
+            final Path dir;
+            final String pattern;
+            if (index != -1) {
+                dir = getPath(pathOrPattern.substring(0, index), true);
+                pattern = dir.resolve(pathOrPattern.substring(index + 1)).toString();
+            } else {
+                dir = Path.of(Constants.CURRENT_DIR);
+                pattern = dir.resolve(pathOrPattern).toString();
+            }
+
+            PathMatcher matcher = FileSystems.getDefault().getPathMatcher(
+                    pattern.startsWith(PATTERN_GLOB) || pattern.startsWith(PATTERN_REGEX) ? pattern
+                            : PATTERN_GLOB + pattern);
+            try (Stream<Path> s = Files.list(dir)) {
+                list.addAll(s.filter(p -> matcher.matches(p) && Files.isRegularFile(p)).sorted()
+                        .collect(Collectors.toList()));
+            }
+        } else {
+            Path path = getPath(pathOrPattern, true);
+            if (Files.exists(path)) {
+                if (Files.isDirectory(path)) {
+                    try (Stream<Path> s = Files.list(path)) {
+                        list.addAll(s.filter(p -> Files.isRegularFile(p)
+                                && (normalizedFileExt.isEmpty() || p.endsWith(normalizedFileExt))).sorted()
+                                .collect(Collectors.toList()));
+                    }
+                } else {
+                    list.add(path);
+                }
+            }
+        }
+
+        return list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(list));
     }
 
     public static String applyVariables(String template, VariableTag tag, UnaryOperator<String> applyFunc) {
@@ -614,63 +665,6 @@ public final class Utils {
             host = defaultHost;
         }
         return host;
-    }
-
-    /**
-     * Finds files according to the given pattern and path.
-     *
-     * @param pattern non-empty pattern may or may have syntax prefix as in
-     *                {@link java.nio.file.FileSystem#getPathMatcher(String)},
-     *                defaults to {@code glob} syntax
-     * @param paths   path to search, defaults to current work directory
-     * @return non-null list of normalized absolute paths matching the pattern
-     * @throws IOException when failed to find files
-     */
-    public static List<Path> findFiles(String pattern, String... paths) throws IOException {
-        if (pattern == null || pattern.isEmpty()) {
-            throw new IllegalArgumentException("Non-empty pattern is required");
-        } else if (pattern.startsWith("~/")) {
-            return Collections.singletonList(Paths.get(Constants.HOME_DIR, pattern.substring(2)).normalize());
-        }
-
-        if (!pattern.startsWith("glob:") && !pattern.startsWith("regex:")) {
-            Path path = Paths.get(pattern);
-            if (path.isAbsolute()) {
-                return Collections.singletonList(path);
-            } else {
-                pattern = "glob:" + pattern;
-            }
-        }
-
-        final Path searchPath;
-        if (paths == null || paths.length == 0) {
-            searchPath = Paths.get("");
-        } else {
-            String root = paths[0];
-            Path rootPath = getPath(root, true);
-            searchPath = paths.length < 2 ? rootPath
-                    : Paths.get(rootPath.toFile().getAbsolutePath(), Arrays.copyOfRange(paths, 1, paths.length))
-                            .normalize();
-        }
-
-        final List<Path> files = new ArrayList<>();
-        final PathMatcher matcher = FileSystems.getDefault().getPathMatcher(pattern);
-        Files.walkFileTree(searchPath, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-                if (matcher.matches(path)) {
-                    files.add(path.normalize());
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc)
-                    throws IOException {
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        return files;
     }
 
     public static boolean containsJdbcWildcard(CharSequence chars) {

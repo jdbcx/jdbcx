@@ -26,6 +26,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -68,7 +73,19 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
             throw new IllegalArgumentException(Utils.format("Failed to initialize server(%s)", baseUrl), e);
         }
         server.createContext(context, this);
-        server.setExecutor(null); // Use the default executor
+
+        final Executor pool;
+        if (threads <= 0) {
+            pool = Executors.newCachedThreadPool();
+        } else {
+            int max = 2 * Runtime.getRuntime().availableProcessors() + 1;
+            if (max < threads) {
+                max = threads;
+            }
+            pool = new ThreadPoolExecutor(threads, max, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        }
+        server.setExecutor(pool);
+        log.info("HttpServer instantiated - backlog: %d, threadPool: %s", backlog, pool);
     }
 
     private HttpExchange check(Object implementation) throws IOException {

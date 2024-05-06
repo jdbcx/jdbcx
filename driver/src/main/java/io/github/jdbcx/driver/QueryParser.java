@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx.driver;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -36,6 +38,8 @@ import io.github.jdbcx.VariableTag;
  */
 public final class QueryParser {
     private static final Logger log = LoggerFactory.getLogger(QueryParser.class);
+
+    static final String QUERY_DELIMITER = ";; ";
 
     public static final class Part {
         public final int endPosition;
@@ -404,6 +408,68 @@ public final class QueryParser {
             blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars));
             parts.add(Constants.EMPTY_STRING); // placeholder of post-query
         }
+    }
+
+    /**
+     * Splits the query into zero or more groups separated by
+     * {@code ^;; <comments>$}.
+     *
+     * @param query the original query
+     * @return non-null list of query groups
+     */
+    public static List<String[]> split(String query) {
+        if (Checker.isNullOrEmpty(query)) {
+            return Collections.emptyList();
+        }
+
+        final int dlen = QUERY_DELIMITER.length();
+        final int len = query.length();
+        final String prefix = "Query #";
+        final List<String[]> list = new ArrayList<>();
+
+        int lastIndex = 0;
+        String comment = Constants.EMPTY_STRING;
+        for (int i = 0; i < len; i++) {
+            int index = query.indexOf(QUERY_DELIMITER, i);
+            if (index == -1) { // last group
+                String subQuery = query.substring(i).trim();
+                if (!subQuery.isEmpty()) {
+                    list.add(new String[] { comment.isEmpty() ? prefix + (list.size() + 1) : comment, subQuery });
+                }
+                lastIndex = -1;
+            } else if (index == lastIndex || query.charAt(index - 1) == '\n') { // new group
+                if (index > lastIndex) { // might be a valid query
+                    String subQuery = query.substring(lastIndex, index - 1).trim();
+                    if (!subQuery.isEmpty()) {
+                        list.add(new String[] { comment.isEmpty() ? prefix + (list.size() + 1) : comment, subQuery });
+                    }
+                }
+                index += dlen;
+                // now update comment
+                int idx = query.indexOf('\n', index);
+                if (idx != -1) {
+                    comment = query.substring(index, idx).trim();
+                    i = idx; // NOSONAR
+                    lastIndex = idx + 1;
+                } else {
+                    comment = query.substring(index).trim();
+                    lastIndex = -1;
+                }
+            }
+
+            if (lastIndex == -1) {
+                break;
+            }
+        }
+
+        if (lastIndex > 0) {
+            String subQuery = query.substring(lastIndex).trim();
+            if (!subQuery.isEmpty()) {
+                list.add(new String[] { comment.isEmpty() ? prefix + (list.size() + 1) : comment, subQuery });
+            }
+        }
+
+        return Collections.unmodifiableList(new ArrayList<>(list));
     }
 
     /**

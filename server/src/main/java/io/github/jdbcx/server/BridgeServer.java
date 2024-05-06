@@ -103,10 +103,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
     public static final Option OPTION_ACL = Option.of("server.acl",
-            "Server access control list, defaults to acl.properties in current directory", "acl.properties");
-    public static final Option OPTION_SECRET = Option
-            .of(new String[] { "server.secret",
-                    "Server secret for ACL encryption, only used when authentication & authorization are enabled" });
+            "Server access control list, defaults to acl.properties in current directory.", "acl.properties");
+    public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
+            String.valueOf(Constants.MIN_CORE_THREADS));
 
     protected static final Properties extractConfig(Map<String, String> params) {
         Properties config = new Properties();
@@ -162,7 +161,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     protected final String baseUrl;
     protected final String context;
     protected final int backlog;
-    // protected final int threads;
+    protected final int threads;
 
     protected final String tag;
 
@@ -254,6 +253,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         CaffeineCacheMetrics.monitor(promRegistry, queries, "query");
 
         backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
+        threads = Integer.parseInt(OPTION_THREADS.getJdbcxValue(props));
 
         tag = Option.TAG.getJdbcxValue(props);
 

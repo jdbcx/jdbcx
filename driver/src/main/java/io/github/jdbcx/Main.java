@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -26,10 +27,19 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.Stream;
 
 public final class Main {
@@ -75,6 +85,8 @@ public final class Main {
         println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
         println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
         println("  outputFormat\tOutput data format(TSV or TSVWithHeaders), defaults to TSV");
+        println("  tasks\tMaximum number of tasks permitted to execute concurrently, defaults to 1");
+        println("  taskCheckInterval\tDuration in seconds to check task completion status, defaults to 30");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -166,7 +178,7 @@ public final class Main {
 
             if (verbose) {
                 long elapsedNanos = System.nanoTime() - startTime;
-                println("\n%s %,d rows in %,.2f ms (%,.2f rows/s)", operation, rows, elapsedNanos / 1_000_000D,
+                println("* %s %,d rows in %,.2f ms (%,.2f rows/s)", operation, rows, elapsedNanos / 1_000_000D,
                         rows * 1_000_000_000D / elapsedNanos);
             }
             return rows;
@@ -183,20 +195,109 @@ public final class Main {
         final long loopInterval = Long.getLong("loopInterval", 0L);
         final boolean noProperties = Boolean.parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
         final String outputFormat = System.getProperty("outputFormat", OUTPUT_FORMAT_TSV);
+        final int tasks = Integer.getInteger("tasks", 1);
+        final int taskCheckInterval = Integer.getInteger("taskCheckInterval", 30);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
 
+        final List<String[]> queries;
+        if (fileOrQuery == null || fileOrQuery.isEmpty()) {
+            queries = Collections.emptyList();
+        } else if (fileOrQuery.charAt(0) == '@') {
+            List<Path> list = Utils.findFiles(fileOrQuery.substring(1), ".sql");
+            List<String[]> merged = new LinkedList<>();
+            for (Path p : list) {
+                String content = Stream.readAllAsString(new FileInputStream(p.toFile()));
+                StringBuilder builder = new StringBuilder(p.toFile().getName()).append('-');
+                int offset = builder.length();
+                int i = 1;
+                for (String[] pair : QueryParser.split(content)) {
+                    pair[0] = builder.append(i++).append(": ").append(pair[0]).toString();
+                    merged.add(pair);
+                    builder.setLength(offset);
+                }
+            }
+            queries = Collections.unmodifiableList(new ArrayList<>(merged));
+        } else {
+            queries = QueryParser.split(fileOrQuery);
+        }
+
+        if (queries.isEmpty()) {
+            System.exit(1);
+        }
+
         long count = 0L;
         boolean failed = false;
         do {
-            final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), fileOrQuery,
-                    outputFormat, verbose);
-            failed = failed || rows < 1L;
+            if (tasks <= 1) {
+                for (String[] pair : queries) {
+                    if (verbose) {
+                        println("* Executing [%s]...", pair[0]);
+                    }
+
+                    final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), pair[1],
+                            outputFormat, verbose);
+                    failed = failed || rows < 1L;
+                }
+            } else {
+                final ExecutorService pool = Executors.newFixedThreadPool(tasks);
+                final AtomicBoolean failedRef = new AtomicBoolean(failed);
+                for (String[] pair : queries) {
+                    pool.submit(() -> {
+                        if (failedRef.get()) {
+                            return; // fail fast
+                        } else {
+                            if (verbose) {
+                                println("* Executing [%s]...", pair[0]);
+                            }
+                        }
+
+                        try {
+                            final long rows = execute(url, noProperties ? new Properties() : System.getProperties(),
+                                    pair[1], outputFormat, verbose);
+                            failedRef.compareAndSet(false, rows < 1L);
+                        } catch (IOException | SQLException e) {
+                            failedRef.set(true);
+                            if (verbose) {
+                                println("x Failed to execute query due to %s", e.getMessage());
+                            }
+                        }
+                    });
+                }
+
+                pool.shutdown();
+
+                while (true) {
+                    try {
+                        // Wait for all tasks to complete
+                        boolean terminated = pool.awaitTermination(taskCheckInterval, TimeUnit.SECONDS);
+                        if (terminated) {
+                            if (verbose) {
+                                println("* All %d queries completed.", queries.size());
+                            }
+                            break;
+                        } else {
+                            if (verbose) {
+                                println("* Some queries have not completed within %d seconds. Continuing to wait...",
+                                        taskCheckInterval);
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        pool.shutdownNow();
+                        if (Thread.interrupted()) {
+                            throw new InterruptedException();
+                        }
+                    }
+                }
+
+                failed = failed || failedRef.get();
+            }
+
             count++;
             if (loopInterval > 0L) {
                 if (verbose) {
-                    println("Sleep for %,d ms...", loopInterval);
+                    println("* Sleep for %,d ms...", loopInterval);
                 }
                 Thread.sleep(loopInterval);
             }
