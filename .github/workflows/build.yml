@@ -127,7 +127,7 @@ jobs:
             <toolchain>
               <type>jdk</type>
               <provides>
-                <version>21</version>
+                <version>17</version>
               </provides>
               <configuration>
                 <jdkHome>${{ env.JAVA_HOME }}</jdkHome>
@@ -182,7 +182,7 @@ jobs:
             <toolchain>
               <type>jdk</type>
               <provides>
-                <version>21</version>
+                <version>17</version>
               </provides>
               <configuration>
                 <jdkHome>${{ env.JAVA_HOME }}</jdkHome>
