@@ -68,6 +68,14 @@ public class Request {
         return info.getResult() != null;
     }
 
+    public int getResultState() {
+        final Result<?> result = info.getResult();
+        if (result != null) {
+            return result.isActive() ? -1 : 1;
+        }
+        return 0;
+    }
+
     public boolean isTransactional() {
         return !info.txid.isEmpty();
     }

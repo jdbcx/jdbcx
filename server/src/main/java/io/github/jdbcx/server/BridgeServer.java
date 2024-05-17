@@ -553,7 +553,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                         respond(request, HttpURLConnection.HTTP_FORBIDDEN);
                     } else {
                         setResponseHeaders(request);
-                        if (request.hasResult()) {
+                        final int state = request.getResultState();
+                        if (state == 1) { // result ready for reading
                             log.debug("Reusing cached query [%s]...", request.getQueryId());
                             try (QueryInfo info = request.getQueryInfo();
                                     Result<?> result = info.getResult();
@@ -562,8 +563,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                                 Result.writeTo(result, info.format, config, out);
                                 log.debug("Query [%s] finished successfully", info.qid);
                             }
-                        } else {
+                        } else if (state == 0) { // no result
                             query(request, config);
+                        } else { // active result
+                            respond(request, HttpURLConnection.HTTP_ACCEPTED);
                         }
                     }
                     break;

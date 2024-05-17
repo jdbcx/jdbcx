@@ -134,11 +134,11 @@ public class WebExecutorTest extends BaseIntegrationTest {
                         .get(new URL("http://default@" + address + "/?query=select+7"), props, null)),
                 "7\n");
 
-        // Option.PROXY.setValue(props, getProxyServer());
-        // Assert.assertEquals(
-        //         Stream.readAllAsString(new WebExecutor(null, null).get(
-        //                 new URL("http://" + getDeclaredClickHouseServer() + "/?query=select+1"), props, null)),
-        //         "1\n");
+        Option.PROXY.setValue(props, getProxyServer());
+        Assert.assertEquals(
+                Stream.readAllAsString(new WebExecutor(null, null).get(
+                        new URL("http://" + getDeclaredClickHouseServer() + "/?query=select+1"), props, null)),
+                "1\n");
     }
 
     @Test(groups = "integration")
