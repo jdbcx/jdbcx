@@ -251,8 +251,7 @@ public class ClickHouseMapper implements ResultMapper {
         builder.append(',').append(toClickHouseDataFormat(format));
         final boolean hasFormat = format != null;
         final Field[] fields;
-        if ((!hasFormat || !format.supportsSchema()) && result != null
-                && (fields = result.fields().toArray(new Field[0])).length > 0) {
+        if (result != null && (fields = result.fields().toArray(new Field[0])).length > 0) {
             builder.append(EXPR_PART).append(Utils.escape(toColumnDefinition(fields), '\'', '\\')).append('\'');
         }
         List<String> parts = new ArrayList<>(2);
