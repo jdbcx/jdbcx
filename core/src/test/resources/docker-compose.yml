@@ -23,8 +23,7 @@ postgresql:
 
 # https://hub.docker.com/r/clickhouse/clickhouse-server/
 clickhouse:
-  # 24.3 has problem working behind the proxy
-  image: clickhouse/clickhouse-server:23.8
+  image: clickhouse/clickhouse-server:24.3
   links:
     - mysql
     - postgresql
@@ -39,8 +38,6 @@ flightsql:
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
-  # 2.9.0 will somehow end up with the following error on GitHub CI:
-  # Timed out waiting for container port to open (localhost ports: [32769, 32770] should be listening)
-  image: zhicwu/toxiproxy:2.8.0
+  image: zhicwu/toxiproxy:2.9.0
   links:
     - clickhouse

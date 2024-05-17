@@ -234,7 +234,7 @@ public class BridgeDriverExtension implements DriverExtension {
 
     public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
             Option.EXEC_TIMEOUT, OPTION_URL, OPTION_QUERY_MODE, OPTION_COMPRESSION, OPTION_FORMAT, OPTION_TOKEN,
-            WebExecutor.OPTION_CONNECT_TIMEOUT, WebExecutor.OPTION_PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT,
+            WebExecutor.OPTION_CONNECT_TIMEOUT, Option.PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT,
             WebInterpreter.OPTION_REQUEST_HEADERS));
 
     @Override

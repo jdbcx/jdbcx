@@ -77,8 +77,7 @@ public class WebInterpreter extends AbstractInterpreter {
                     Arrays.asList(Option.EXEC_ERROR, OPTION_BASE_URL, OPTION_URL_TEMPLATE, OPTION_REQUEST_HEADERS,
                             OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_TEMPLATE_FILE, OPTION_REQUEST_ESCAPE_CHAR,
                             OPTION_REQUEST_ENCODE, OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT,
-                            WebExecutor.OPTION_FOLLOW_REDIRECT, WebExecutor.OPTION_PROXY,
-                            WebExecutor.OPTION_SOCKET_TIMEOUT));
+                            WebExecutor.OPTION_FOLLOW_REDIRECT, Option.PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT));
 
     private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(
             Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),

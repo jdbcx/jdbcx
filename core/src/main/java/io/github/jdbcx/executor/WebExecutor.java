@@ -68,7 +68,6 @@ public class WebExecutor extends AbstractExecutor {
                     "Connect timeout in milliseconds, a negative number or zero disables timeout", "5000" });
     public static final Option OPTION_FOLLOW_REDIRECT = Option
             .of(new String[] { "follow.redirect", "Whether follow redirect or not", Constants.TRUE_EXPR });
-    public static final Option OPTION_PROXY = Option.of(new String[] { "proxy", "Proxy server address" });
     public static final Option OPTION_SOCKET_TIMEOUT = Option
             .of(new String[] { "socket.timeout",
                     "Socket timeout in milliseconds, a negative number or zero disables timeout", "30000" });
@@ -118,7 +117,7 @@ public class WebExecutor extends AbstractExecutor {
 
     protected Proxy getProxy(Properties config) throws UnknownHostException {
         final Proxy p;
-        String proxy = OPTION_PROXY.getValue(config, defaultProxy);
+        String proxy = Option.PROXY.getValue(config, defaultProxy);
         if (Checker.isNullOrBlank(proxy)) {
             p = Proxy.NO_PROXY;
         } else {
@@ -172,7 +171,7 @@ public class WebExecutor extends AbstractExecutor {
         this.defaultConnectTimeout = OPTION_CONNECT_TIMEOUT.getValue(props);
         this.defaultFollowRedirect = OPTION_FOLLOW_REDIRECT.getValue(props);
         this.defaultSocketTimeout = OPTION_SOCKET_TIMEOUT.getValue(props, String.valueOf(defaultTimeout));
-        this.defaultProxy = OPTION_PROXY.getValue(props);
+        this.defaultProxy = Option.PROXY.getValue(props);
     }
 
     public HttpURLConnection openConnection(URL url, Properties config, Map<?, ?> headers) throws IOException {

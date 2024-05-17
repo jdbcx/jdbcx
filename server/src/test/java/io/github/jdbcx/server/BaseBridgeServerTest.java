@@ -534,9 +534,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt
-                        .executeQuery(
-                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+                ResultSet rs = stmt.executeQuery(
+                        Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n settings http_make_head_request=0"))) {
             for (int i = 1; i <= count; i++) {
                 Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
                 Assert.assertEquals(rs.getInt(1), i, query);
@@ -555,9 +554,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
         try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt
-                        .executeQuery(
-                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+                ResultSet rs = stmt.executeQuery(
+                        Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
             for (int i = 1; i <= count; i++) {
                 Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
                 Assert.assertEquals(rs.getInt(1), i, query);
