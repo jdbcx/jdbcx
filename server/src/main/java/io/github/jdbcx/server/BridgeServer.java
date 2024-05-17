@@ -566,7 +566,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                         } else if (state == 0) { // no result
                             query(request, config);
                         } else { // active result
-                            respond(request, HttpURLConnection.HTTP_ACCEPTED);
+                            respond(request, HttpURLConnection.HTTP_NO_CONTENT);
                         }
                     }
                     break;

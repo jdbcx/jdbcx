@@ -90,5 +90,9 @@ public class ClickHouseMapperTest extends ResultMapperTest {
 
         Assert.assertEquals(mapper.toRemoteTable("", Format.AVRO, Compression.NONE, result),
                 "url('',Avro,'`a\\\\`b` Nullable(Boolean),`c` Decimal(18,3)',headers('accept'='avro/binary'))");
+        Assert.assertEquals(mapper.toRemoteTable("", Format.ARROW, Compression.NONE, result),
+                "url('',Arrow,'`a\\\\`b` Nullable(Boolean),`c` Decimal(18,3)',headers('accept'='application/vnd.apache.arrow.file'))");
+        Assert.assertEquals(mapper.toRemoteTable("", Format.ARROW_STREAM, Compression.NONE, result),
+                "url('',ArrowStream,'`a\\\\`b` Nullable(Boolean),`c` Decimal(18,3)',headers('accept'='application/vnd.apache.arrow.stream'))");
     }
 }
