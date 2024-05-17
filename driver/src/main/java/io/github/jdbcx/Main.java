@@ -241,53 +241,60 @@ public final class Main {
                     failed = failed || rows < 1L;
                 }
             } else {
-                final ExecutorService pool = Executors.newFixedThreadPool(tasks);
                 final AtomicBoolean failedRef = new AtomicBoolean(failed);
-                for (String[] pair : queries) {
-                    pool.submit(() -> {
-                        if (failedRef.get()) {
-                            return; // fail fast
-                        } else {
-                            if (verbose) {
-                                println("* Executing [%s]...", pair[0]);
-                            }
-                        }
+                final ExecutorService pool = Executors.newFixedThreadPool(tasks);
 
+                try {
+                    for (String[] pair : queries) {
+                        pool.submit(() -> {
+                            if (failedRef.get()) {
+                                return; // fail fast
+                            } else {
+                                if (verbose) {
+                                    println("* Executing [%s]...", pair[0]);
+                                }
+                            }
+
+                            try {
+                                final long rows = execute(url, noProperties ? new Properties() : System.getProperties(),
+                                        pair[1], outputFormat, verbose);
+                                failedRef.compareAndSet(false, rows < 1L);
+                            } catch (IOException | SQLException e) {
+                                failedRef.set(true);
+                                if (verbose) {
+                                    println("x Failed to execute query due to %s", e.getMessage());
+                                }
+                            }
+                        });
+                    }
+
+                    pool.shutdown();
+
+                    while (true) {
                         try {
-                            final long rows = execute(url, noProperties ? new Properties() : System.getProperties(),
-                                    pair[1], outputFormat, verbose);
-                            failedRef.compareAndSet(false, rows < 1L);
-                        } catch (IOException | SQLException e) {
-                            failedRef.set(true);
-                            if (verbose) {
-                                println("x Failed to execute query due to %s", e.getMessage());
+                            // Wait for all tasks to complete
+                            boolean terminated = pool.awaitTermination(taskCheckInterval, TimeUnit.SECONDS);
+                            if (terminated) {
+                                if (verbose) {
+                                    println("* All %d queries completed.", queries.size());
+                                }
+                                break;
+                            } else {
+                                if (verbose) {
+                                    println("* Some queries have not completed within %d seconds. Continuing to wait...",
+                                            taskCheckInterval);
+                                }
+                            }
+                        } catch (InterruptedException e) {
+                            pool.shutdownNow();
+                            if (Thread.interrupted()) {
+                                throw new InterruptedException();
                             }
                         }
-                    });
-                }
-
-                pool.shutdown();
-
-                while (true) {
-                    try {
-                        // Wait for all tasks to complete
-                        boolean terminated = pool.awaitTermination(taskCheckInterval, TimeUnit.SECONDS);
-                        if (terminated) {
-                            if (verbose) {
-                                println("* All %d queries completed.", queries.size());
-                            }
-                            break;
-                        } else {
-                            if (verbose) {
-                                println("* Some queries have not completed within %d seconds. Continuing to wait...",
-                                        taskCheckInterval);
-                            }
-                        }
-                    } catch (InterruptedException e) {
+                    }
+                } finally {
+                    if (!pool.isShutdown()) {
                         pool.shutdownNow();
-                        if (Thread.interrupted()) {
-                            throw new InterruptedException();
-                        }
                     }
                 }
 
