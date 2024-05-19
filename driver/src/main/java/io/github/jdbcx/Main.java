@@ -244,6 +244,16 @@ public final class Main {
                 final AtomicBoolean failedRef = new AtomicBoolean(failed);
                 final ExecutorService pool = Executors.newFixedThreadPool(tasks);
 
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    pool.shutdownNow();
+                    try {
+                        if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                            println("* Failed to shutdown thread pool in %d seconds", 5);
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }));
                 try {
                     for (String[] pair : queries) {
                         pool.submit(() -> {
@@ -267,7 +277,7 @@ public final class Main {
                             }
                         });
                     }
-
+                } finally {
                     pool.shutdown();
 
                     while (true) {
@@ -287,14 +297,8 @@ public final class Main {
                             }
                         } catch (InterruptedException e) {
                             pool.shutdownNow();
-                            if (Thread.interrupted()) {
-                                throw new InterruptedException();
-                            }
+                            Thread.currentThread().interrupt();
                         }
-                    }
-                } finally {
-                    if (!pool.isShutdown()) {
-                        pool.shutdownNow();
                     }
                 }
 
