@@ -242,19 +242,22 @@ public final class Main {
                 }
             } else {
                 final AtomicBoolean failedRef = new AtomicBoolean(failed);
-                final ExecutorService pool = Executors.newFixedThreadPool(tasks);
-
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    pool.shutdownNow();
-                    try {
-                        if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
-                            println("* Failed to shutdown thread pool in %d seconds", 5);
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }));
+                ExecutorService executor = null;
                 try {
+                    final ExecutorService pool = Executors.newFixedThreadPool(tasks);
+
+                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                        pool.shutdownNow();
+                        try {
+                            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                                println("* Failed to shutdown thread pool in %d seconds", 5);
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }));
+
+                    executor = pool;
                     for (String[] pair : queries) {
                         pool.submit(() -> {
                             if (failedRef.get()) {
@@ -277,7 +280,7 @@ public final class Main {
                             }
                         });
                     }
-                } finally {
+
                     pool.shutdown();
 
                     while (true) {
@@ -300,6 +303,20 @@ public final class Main {
                             Thread.currentThread().interrupt();
                         }
                     }
+
+                    executor = null;
+                } finally {
+                    if (executor != null && !executor.isShutdown()) {
+                        executor.shutdownNow();
+                        try {
+                            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                                println("* Failed to shutdown thread pool in %d seconds", 5);
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    executor = null;
                 }
 
                 failed = failed || failedRef.get();
