@@ -89,7 +89,7 @@ jobs:
           docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
           && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{prql:3}}'
 
-  test-jdk17-linux:
+  test-jdk21-linux:
     needs: compile
     strategy:
       matrix:
@@ -100,7 +100,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
-    name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
+    name: ${{ matrix.dist }} JDK 21 on ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -111,11 +111,11 @@ jobs:
           git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
             origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
         if: github.event.inputs.pr != ''
-      - name: Install JDK 17 and Maven
+      - name: Install JDK 21 and Maven
         uses: actions/setup-java@v3
         with:
           distribution: ${{ matrix.dist }}
-          java-version: 17
+          java-version: 21
           cache: "maven"
       - name: Setup Toolchain
         shell: bash
@@ -127,7 +127,7 @@ jobs:
             <toolchain>
               <type>jdk</type>
               <provides>
-                <version>17</version>
+                <version>21</version>
               </provides>
               <configuration>
                 <jdkHome>${{ env.JAVA_HOME }}</jdkHome>
@@ -146,7 +146,7 @@ jobs:
             **/target/failsafe-reports
             **/target/surefire-reports
 
-  test-jdk17-osx-win:
+  test-jdk21-osx-win:
     needs: compile
     strategy:
       matrix:
@@ -155,7 +155,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
-    name: ${{ matrix.dist }} JDK 17 on ${{ matrix.os }}
+    name: ${{ matrix.dist }} JDK 21 on ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -166,11 +166,11 @@ jobs:
           git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
             origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
         if: github.event.inputs.pr != ''
-      - name: Install JDK 17 and Maven
+      - name: Install JDK 21 and Maven
         uses: actions/setup-java@v3
         with:
           distribution: ${{ matrix.dist }}
-          java-version: 17
+          java-version: 21
           cache: "maven"
       - name: Setup Toolchain
         shell: bash
@@ -182,7 +182,7 @@ jobs:
             <toolchain>
               <type>jdk</type>
               <provides>
-                <version>17</version>
+                <version>21</version>
               </provides>
               <configuration>
                 <jdkHome>${{ env.JAVA_HOME }}</jdkHome>

@@ -138,6 +138,23 @@ public class UtilsTest {
         Assert.assertEquals(Utils.createInstance(List.class, "java.util.LinkedList", new ArrayList<>()).getClass(),
                 LinkedList.class);
     }
+    
+    @Test(groups = "unit")
+    public void testFindFiles() throws IOException {
+        Assert.assertEquals(Utils.findFiles(null, null), Collections.emptyList());
+        Assert.assertEquals(Utils.findFiles("", ""), Collections.emptyList());
+        Assert.assertEquals(Utils.findFiles("nothing", null), Collections.emptyList());
+        Assert.assertEquals(Utils.findFiles("*nothing", null), Collections.emptyList());
+        Assert.assertEquals(Utils.findFiles("n?thing", null), Collections.emptyList());
+        Assert.assertEquals(Utils.findFiles("target/classes/META-INF", ".x"), Collections.emptyList());
+
+        Assert.assertEquals(Utils.findFiles("pom*", null), Collections.singletonList(Utils.getPath("pom.xml", true)));
+        Assert.assertEquals(Utils.findFiles("target/test-classes/docker-*", ".yml"),
+                Collections.singletonList(Utils.getPath("target/test-classes/docker-compose.yml", true)));
+        Assert.assertEquals(Utils.findFiles("target/classes/META-INF", ""),
+                Arrays.asList(Utils.getPath("target/classes/META-INF/LICENSE", true),
+                        Utils.getPath("target/classes/META-INF/NOTICE", true)));
+    }
 
     @Test(groups = "unit")
     public void testToPrimitiveType() {

@@ -66,8 +66,8 @@ import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.executor.WebExecutor;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
 public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
@@ -103,10 +103,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
     public static final Option OPTION_ACL = Option.of("server.acl",
-            "Server access control list, defaults to acl.properties in current directory", "acl.properties");
-    public static final Option OPTION_SECRET = Option
-            .of(new String[] { "server.secret",
-                    "Server secret for ACL encryption, only used when authentication & authorization are enabled" });
+            "Server access control list, defaults to acl.properties in current directory.", "acl.properties");
+    public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
+            String.valueOf(Constants.MIN_CORE_THREADS));
 
     protected static final Properties extractConfig(Map<String, String> params) {
         Properties config = new Properties();
@@ -162,7 +161,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     protected final String baseUrl;
     protected final String context;
     protected final int backlog;
-    // protected final int threads;
+    protected final int threads;
 
     protected final String tag;
 
@@ -254,6 +253,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         CaffeineCacheMetrics.monitor(promRegistry, queries, "query");
 
         backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
+        threads = Integer.parseInt(OPTION_THREADS.getJdbcxValue(props));
 
         tag = Option.TAG.getJdbcxValue(props);
 
@@ -310,10 +310,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     }
 
     protected final void writeMetrics(OutputStream out) throws IOException {
-        try (Writer writer = new BufferedWriter(new OutputStreamWriter(out, Constants.DEFAULT_CHARSET),
-                Constants.DEFAULT_BUFFER_SIZE)) {
-            promRegistry.scrape(writer);
-        }
+        promRegistry.scrape(out);
     }
 
     protected void query(Request request, Properties config) throws IOException {
@@ -452,6 +449,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 defaultMode = m;
                 if (index > 0) {
                     path = path.substring(index + 1);
+                } else {
+                    path = Constants.EMPTY_STRING;
                 }
             } else {
                 defaultMode = null;
@@ -553,7 +552,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                         respond(request, HttpURLConnection.HTTP_FORBIDDEN);
                     } else {
                         setResponseHeaders(request);
-                        if (request.hasResult()) {
+                        final int state = request.getResultState();
+                        if (state == 1) { // result ready for reading
                             log.debug("Reusing cached query [%s]...", request.getQueryId());
                             try (QueryInfo info = request.getQueryInfo();
                                     Result<?> result = info.getResult();
@@ -562,8 +562,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                                 Result.writeTo(result, info.format, config, out);
                                 log.debug("Query [%s] finished successfully", info.qid);
                             }
-                        } else {
+                        } else if (state == 0) { // no result
                             query(request, config);
+                        } else { // active result
+                            respond(request, HttpURLConnection.HTTP_NO_CONTENT);
                         }
                     }
                     break;

@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -26,10 +27,20 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.Stream;
 
 public final class Main {
@@ -75,6 +86,10 @@ public final class Main {
         println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
         println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
         println("  outputFormat\tOutput data format(TSV or TSVWithHeaders), defaults to TSV");
+        println("  tasks\tMaximum number of tasks permitted to execute concurrently, defaults to 1");
+        println("  taskCheckInterval\tInterval in milliseconds to check task completion status, defaults to 10");
+        println("  validationQuery\tValidation query, defaults to empty string");
+        println("  validationTimeout\tTimeout in seconds for connection validation, defaults to 3");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -92,17 +107,66 @@ public final class Main {
         return label;
     }
 
-    static long execute(String url, Properties props, String fileOrQuery, String outputFormat, boolean verbose)
+    static void closeQuietly(AutoCloseable resource) {
+        if (resource != null) {
+            try {
+                resource.close();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+    }
+
+    static Connection getOrCreateConnection(String url, Properties props, Connection conn, int validationTimeout,
+            String validationQuery, boolean verbose) throws SQLException {
+        if (conn != null) {
+            boolean valid = false;
+            try {
+                if (Checker.isNullOrEmpty(validationQuery)) {
+                    try {
+                        valid = conn.isValid(validationTimeout);
+                    } catch (Exception e) {
+                        if (conn.isClosed()) {
+                            conn = null;
+                        }
+                    }
+                } else if (!conn.isClosed()) {
+                    try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(validationQuery)) {
+                        valid = rs.next();
+                    }
+                }
+            } finally {
+                if (!valid) {
+                    if (verbose) {
+                        println("* Closing [%s]...", conn);
+                    }
+
+                    closeQuietly(conn);
+                    conn = null;
+                }
+            }
+        }
+
+        if (conn == null && !Checker.isNullOrEmpty(url)) {
+            if (verbose) {
+                println("* Creating new connection to [%s]...", url);
+            }
+            conn = DriverManager.getConnection(url, props);
+        }
+        return conn;
+    }
+
+    static long execute(Connection conn, String fileOrQuery, String outputFormat, boolean verbose)
             throws IOException, SQLException {
         final long startTime = verbose ? System.nanoTime() : 0L;
 
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
-            return 0L;
+            return -1L;
         } else if (fileOrQuery.charAt(0) == '@') {
             fileOrQuery = Stream.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
+        try (Statement stmt = conn.createStatement()) {
             long rows = 0L;
             String operation = null;
             final char tab = '\t';
@@ -166,11 +230,60 @@ public final class Main {
 
             if (verbose) {
                 long elapsedNanos = System.nanoTime() - startTime;
-                println("\n%s %,d rows in %,.2f ms (%,.2f rows/s)", operation, rows, elapsedNanos / 1_000_000D,
+                println("* %s %,d rows in %,.2f ms (%,.2f rows/s)", operation, rows, elapsedNanos / 1_000_000D,
                         rows * 1_000_000_000D / elapsedNanos);
             }
             return rows;
         }
+    }
+
+    static boolean executeQueries(String url, boolean noProperties, int validationTimeout, String validationQuery,
+            List<String[]> queries, String outputFormat, AtomicBoolean failedRef, boolean verbose)
+            throws IOException, SQLException {
+        if (queries == null || queries.isEmpty()) {
+            return false;
+        }
+
+        Connection conn = null;
+        try {
+            for (String[] pair : queries) {
+                if (failedRef != null && failedRef.get()) {
+                    return false; // fail fast
+                } else {
+                    if (verbose) {
+                        println("* Executing [%s]...", pair[0]);
+                    }
+                }
+
+                conn = getOrCreateConnection(url, noProperties ? new Properties() : System.getProperties(),
+                        conn, validationTimeout, validationQuery, verbose);
+                final long rows = execute(conn, pair[1], outputFormat, verbose);
+                if (rows < 0L) {
+                    if (failedRef != null) {
+                        failedRef.compareAndSet(false, true);
+                    }
+                    return false;
+                }
+            }
+        } finally {
+            closeQuietly(conn);
+        }
+        return true;
+    }
+
+    static List<List<String[]>> splitTasks(List<String[]> queries, int tasks) {
+        final List<List<String[]>> splittedTasks = new ArrayList<>(tasks);
+        final int len = queries.size() / tasks;
+        for (int i = 0; i < tasks; i++) {
+            splittedTasks.add(new ArrayList<>(len));
+        }
+
+        int i = 0;
+        for (String[] pair : queries) {
+            splittedTasks.get(i % tasks).add(pair);
+            i++;
+        }
+        return Collections.unmodifiableList(splittedTasks);
     }
 
     public static void main(String[] args) throws Exception {
@@ -183,20 +296,97 @@ public final class Main {
         final long loopInterval = Long.getLong("loopInterval", 0L);
         final boolean noProperties = Boolean.parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
         final String outputFormat = System.getProperty("outputFormat", OUTPUT_FORMAT_TSV);
+        final int tasks = Integer.getInteger("tasks", 1);
+        final long taskCheckInterval = Long.getLong("taskCheckInterval", 10);
+        final String validationQuery = System.getProperty("validationQuery", Constants.EMPTY_STRING);
+        final int validationTimeout = Integer.getInteger("validationTimeout", 3);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
 
+        final List<String[]> queries;
+        if (fileOrQuery == null || fileOrQuery.isEmpty()) {
+            queries = Collections.emptyList();
+        } else if (fileOrQuery.charAt(0) == '@') {
+            List<Path> list = Utils.findFiles(fileOrQuery.substring(1), ".sql");
+            List<String[]> merged = new LinkedList<>();
+            for (Path p : list) {
+                String content = Stream.readAllAsString(new FileInputStream(p.toFile()));
+                StringBuilder builder = new StringBuilder(p.toFile().getName()).append('-');
+                int offset = builder.length();
+                int i = 1;
+                for (String[] pair : QueryParser.split(content)) {
+                    pair[0] = builder.append(i++).append(": ").append(pair[0]).toString();
+                    merged.add(pair);
+                    builder.setLength(offset);
+                }
+            }
+            queries = Collections.unmodifiableList(new ArrayList<>(merged));
+        } else {
+            queries = QueryParser.split(fileOrQuery);
+        }
+
+        if (queries.isEmpty()) {
+            if (verbose) {
+                println("* No query to execute.");
+            }
+            System.exit(1);
+        }
+
         long count = 0L;
         boolean failed = false;
         do {
-            final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), fileOrQuery,
-                    outputFormat, verbose);
-            failed = failed || rows < 1L;
+            if (tasks <= 1) {
+                failed = !executeQueries(url, noProperties, validationTimeout, validationQuery, queries, outputFormat,
+                        null, verbose);
+            } else {
+                final AtomicBoolean failedRef = new AtomicBoolean(failed);
+                final List<List<String[]>> splittedTasks = splitTasks(queries, tasks);
+                final List<CompletableFuture<Void>> futures = new ArrayList<>(splittedTasks.size());
+                for (List<String[]> list : splittedTasks) {
+                    futures.add(CompletableFuture.runAsync(() -> {
+                        try {
+                            executeQueries(url, noProperties, validationTimeout, validationQuery, list,
+                                    outputFormat, failedRef, verbose);
+                        } catch (Exception e) {
+                            throw new IllegalStateException(e);
+                        }
+                    }));
+                }
+
+                while (!futures.isEmpty()) {
+                    boolean cancel = false;
+                    for (Iterator<CompletableFuture<Void>> it = futures.iterator(); it.hasNext();) {
+                        CompletableFuture<Void> future = it.next();
+                        if (cancel) {
+                            future.cancel(true);
+                            it.remove();
+                        } else if (future.isDone()) {
+                            it.remove();
+                            try {
+                                future.get();
+                            } catch (InterruptedException e) {
+                                cancel = true;
+                                Thread.currentThread().interrupt();
+                            } catch (CancellationException | ExecutionException e) {
+                                cancel = true;
+                                e.printStackTrace(); // NOSONAR
+                            }
+                        }
+                    }
+                    Thread.sleep(taskCheckInterval);
+                }
+
+                if (verbose) {
+                    println("* All %d queries completed with %d tasks.", queries.size(), tasks);
+                }
+                failed = failedRef.get();
+            }
+
             count++;
             if (loopInterval > 0L) {
                 if (verbose) {
-                    println("Sleep for %,d ms...", loopInterval);
+                    println("* Sleep for %,d ms...", loopInterval);
                 }
                 Thread.sleep(loopInterval);
             }

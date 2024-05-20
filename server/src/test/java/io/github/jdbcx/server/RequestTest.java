@@ -21,6 +21,7 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.QueryMode;
+import io.github.jdbcx.Result;
 
 public class RequestTest {
     @Test(groups = { "unit" })
@@ -53,6 +54,24 @@ public class RequestTest {
         Assert.assertEquals(request.getCompression(), Compression.SNAPPY);
         Assert.assertEquals(request.getFormat(), Format.AVRO_JSON);
         Assert.assertNotNull(request.getImplementation(Request.class));
+    }
+
+    @Test(groups = { "unit" })
+    public void testResult() {
+        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null);
+        Assert.assertFalse(request.hasResult(), "Should not have result");
+        Assert.assertNull(request.getQueryInfo().getResult(), "Should not have result");
+        Assert.assertEquals(request.getResultState(), 0);
+
+        request.getQueryInfo().setResult(Result.of(1L));
+        Assert.assertTrue(request.hasResult(), "Should have result");
+        Assert.assertNotNull(request.getQueryInfo().getResult(), "Should have result");
+        Assert.assertEquals(request.getResultState(), 1);
+
+        request.getQueryInfo().getResult().rows();
+        Assert.assertTrue(request.hasResult(), "Should still have result");
+        Assert.assertNotNull(request.getQueryInfo().getResult(), "Should still have result");
+        Assert.assertEquals(request.getResultState(), -1);
     }
 
     @Test(groups = { "unit" })

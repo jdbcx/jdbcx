@@ -242,6 +242,34 @@ public class QueryParserTest {
     }
 
     @Test(groups = { "unit" })
+    public void testSplit() {
+        Assert.assertEquals(QueryParser.split(null), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(""), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(";; "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(";; \n;; "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(";; \n;; \n;; "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(";; \n;; \n;; \n;; "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(" \r\n\t  "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(" \r\n;; \t  "), Collections.emptyList());
+        Assert.assertEquals(QueryParser.split(";; \n;; ...\r\n \r\n;; \t  "), Collections.emptyList());
+
+        String[][] expected = new String[][] { { "Query #1", "select 1" } };
+        Assert.assertEquals(QueryParser.split("select 1").toArray(expected), expected);
+        Assert.assertEquals(QueryParser.split(";; the first query\nselect 1").toArray(expected),
+                expected = new String[][] { { "the first query", "select 1" } });
+        Assert.assertEquals(
+                QueryParser.split(
+                        "\n;; q1\n;; q2\n\n;; q3 \n\n\n;; the first query\n;; my query\n;; \nselect 1\n;; test query")
+                        .toArray(expected),
+                expected = new String[][] { { "Query #1", "select 1" } });
+        Assert.assertEquals(QueryParser.split(" select 1 \n;; \t  \r\n\tselect 2\r\n\n").toArray(expected),
+                expected = new String[][] { { "Query #1", "select 1" }, { "Query #2", "select 2" } });
+        Assert.assertEquals(
+                QueryParser.split(";; q1\n select 1 \n;; q3 \n;;  q2\t  \r\n\tselect 2\r\n;; ").toArray(expected),
+                expected = new String[][] { { "q1", "select 1" }, { "q2", "select 2" } });
+    }
+
+    @Test(groups = { "unit" })
     public void testParse() {
         Properties props = new Properties();
         String str;
@@ -484,5 +512,12 @@ public class QueryParserTest {
                 Arrays.asList("", ""), Collections.singletonList(new ExecutableBlock(1, "script", props, "", false))));
         Assert.assertEquals(QueryParser.parse("[%script%]", VariableTag.SQUARE_BRACKET, props), new ParsedQuery(
                 Arrays.asList("", ""), Collections.singletonList(new ExecutableBlock(1, "script", props, "", false))));
+    }
+
+    @Test(groups = { "unit" })
+    public void testStatements() {
+        ParsedQuery query = QueryParser.parse("select 1\n  -- {%context: a=1,b=2%}\n ; select 2", VariableTag.BRACE,
+                null);
+        Assert.assertNotNull(query);
     }
 }

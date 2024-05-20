@@ -44,7 +44,6 @@ This project includes:
   Bouncy Castle Provider under Bouncy Castle Licence
   brotli4j under Apache License 2.0
   BSON under The Apache License, Version 2.0
-  Byte Buddy (without dependencies) under Apache License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
   ClickHouse JDBC Driver under The Apache Software License, Version 2.0
@@ -88,11 +87,11 @@ This project includes:
   MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
   org.brotli:dec under MIT License
   PostgreSQL JDBC Driver under BSD-2-Clause
-  Prometheus Java Simpleclient under The Apache Software License, Version 2.0
-  Prometheus Java Simpleclient Common under The Apache Software License, Version 2.0
-  Prometheus Java Span Context Supplier - Common under The Apache Software License, Version 2.0
-  Prometheus Java Span Context Supplier - OpenTelemetry under The Apache Software License, Version 2.0
-  Prometheus Java Span Context Supplier - OpenTelemetry Agent under The Apache Software License, Version 2.0
+  Prometheus Metrics Config under The Apache Software License, Version 2.0
+  Prometheus Metrics Core under The Apache Software License, Version 2.0
+  Prometheus Metrics Exposition Formats under The Apache Software License, Version 2.0
+  Prometheus Metrics Model under The Apache Software License, Version 2.0
+  Prometheus Metrics Tracer Common under The Apache Software License, Version 2.0
   Protocol Buffers [Core] under BSD-3-Clause
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0

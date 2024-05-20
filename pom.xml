@@ -80,7 +80,7 @@
 
         <ccc.src.dir>${project.build.directory}/generated-sources/ccc</ccc.src.dir>
 
-        <arrow.version>16.0.0</arrow.version>
+        <arrow.version>16.1.0</arrow.version>
         <avro.version>1.11.3</avro.version>
         <brotli.version>0.1.2</brotli.version>
         <brotli4j.version>1.16.0</brotli4j.version>
@@ -98,28 +98,28 @@
         <duckdb.version>0.10.2</duckdb.version>
         <graphql.version>22.0</graphql.version>
         <groovy.version>4.0.21</groovy.version>
-        <gson.version>2.10.1</gson.version>
+        <gson.version>2.11.0</gson.version>
         <hadoop.version>3.4.0</hadoop.version>
         <hikaricp.version>5.1.0</hikaricp.version>
-        <jackson.version>2.17.0</jackson.version>
+        <jackson.version>2.17.1</jackson.version>
         <janino.version>3.1.12</janino.version>
         <jctools.version>4.0.3</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <lz4.version>1.8.0</lz4.version>
-        <mariadb.version>3.3.3</mariadb.version>
-        <micrometer.version>1.12.5</micrometer.version>
+        <mariadb.version>3.4.0</mariadb.version>
+        <micrometer.version>1.13.0</micrometer.version>
         <msgpack.version>0.9.8</msgpack.version>
         <mysql.version>8.4.0</mysql.version>
-        <parquet.version>1.13.1</parquet.version>
+        <parquet.version>1.14.0</parquet.version>
         <postgresql.version>42.7.3</postgresql.version>
         <sqlite.version>3.45.3.0</sqlite.version>
-        <rhino.version>1.7.14</rhino.version>
+        <rhino.version>1.7.15</rhino.version>
         <roaring-bitmap.version>1.0.6</roaring-bitmap.version>
         <slf4j.version>2.0.13</slf4j.version>
         <snappy.version>1.1.10.5</snappy.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <testcontainers.version>1.19.7</testcontainers.version>
+        <testcontainers.version>1.19.8</testcontainers.version>
         <testng.version>7.10.2</testng.version>
 
         <shade.base>${project.groupId}.internal</shade.base>
@@ -238,6 +238,12 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.errorprone</groupId>
+                        <artifactId>error_prone_annotations</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>com.github.ben-manes.caffeine</groupId>
@@ -496,6 +502,10 @@
                     <exclusion>
                         <groupId>com.github.luben</groupId>
                         <artifactId>zstd-jni</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.annotation</groupId>
+                        <artifactId>javax.annotation-api</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>org.apache.avro</groupId>
@@ -867,18 +877,18 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>java17</id>
+                        <id>java21</id>
                         <phase>none</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                         <configuration>
-                            <release>17</release>
+                            <release>21</release>
                             <jdkToolchain>
-                                <version>17</version>
+                                <version>21</version>
                             </jdkToolchain>
                             <compileSourceRoots>
-                                <compileSourceRoot>${project.basedir}/src/main/java17</compileSourceRoot>
+                                <compileSourceRoot>${project.basedir}/src/main/java21</compileSourceRoot>
                             </compileSourceRoots>
                             <multiReleaseOutput>true</multiReleaseOutput>
                         </configuration>
@@ -1103,6 +1113,7 @@
                 </property>
             </activation>
             <properties>
+                <arrow.version>15.0.2</arrow.version>
                 <caffeine.version>2.9.2</caffeine.version>
                 <hikaricp.version>4.0.3</hikaricp.version>
                 <testng.version>7.5.1</testng.version>
@@ -1134,9 +1145,9 @@
             </build>
         </profile>
         <profile>
-            <id>compile-java17</id>
+            <id>compile-java21</id>
             <activation>
-                <jdk>[17,)</jdk>
+                <jdk>[21,)</jdk>
                 <property>
                     <name>!j8</name>
                 </property>
@@ -1147,7 +1158,7 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>java17</id>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>
@@ -1177,7 +1188,7 @@
                                     <version>11</version>
                                 </jdk>
                                 <jdk>
-                                    <version>17</version>
+                                    <version>21</version>
                                 </jdk>
                             </toolchains>
                         </configuration>
@@ -1190,7 +1201,7 @@
                                 <phase>compile</phase>
                             </execution>
                             <execution>
-                                <id>java17</id>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>
@@ -1382,7 +1393,7 @@
                                     <version>11</version>
                                 </jdk>
                                 <jdk>
-                                    <version>17</version>
+                                    <version>21</version>
                                 </jdk>
                             </toolchains>
                         </configuration>
@@ -1395,7 +1406,7 @@
                                 <phase>compile</phase>
                             </execution>
                             <execution>
-                                <id>java17</id>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>

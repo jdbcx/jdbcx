@@ -45,7 +45,7 @@ import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.server.impl.JdkHttpServer;
 
 public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
-    protected static final String DUCKDB_TEST_QUERY = "SELECT generate_series::INT n, date_add(today(), n) d, d::VARCHAR s FROM generate_series(1, %d)";
+    protected static final String DUCKDB_TEST_QUERY = "SELECT generate_series::INT n, date_add(today(), n) d, d::VARCHAR s FROM generate_series(1, %d) order by 1";
 
     protected JdkHttpServer server;
 
@@ -534,9 +534,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt
-                        .executeQuery(
-                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+                ResultSet rs = stmt.executeQuery(
+                        Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
             for (int i = 1; i <= count; i++) {
                 Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
                 Assert.assertEquals(rs.getInt(1), i, query);
@@ -555,9 +554,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
         try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt
-                        .executeQuery(
-                                Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
+                ResultSet rs = stmt.executeQuery(
+                        Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
             for (int i = 1; i <= count; i++) {
                 Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
                 Assert.assertEquals(rs.getInt(1), i, query);

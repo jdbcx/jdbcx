@@ -34,6 +34,10 @@ public class QueryModeTest {
     @Test(groups = { "unit" })
     public void testFromPath() {
         Assert.assertNull(QueryMode.fromPath("?", null));
+        Assert.assertNull(QueryMode.fromPath("mycsv", null));
+        Assert.assertNull(QueryMode.fromPath("my.csv", null));
+
+        Assert.assertEquals(QueryMode.fromPath("async", null), QueryMode.ASYNC);
         Assert.assertEquals(QueryMode.fromPath("async", QueryMode.DIRECT), QueryMode.ASYNC);
 
         Assert.assertEquals(QueryMode.fromPath("?"), QueryMode.SUBMIT);
