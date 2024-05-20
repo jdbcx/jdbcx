@@ -38,7 +38,7 @@ public class MainTest {
         return result.toArray(new String[0][2]);
     }
 
-    @Test(groups = { "unit" })
+    @Test(groups = { "private" })
     public void testCloseConnection() throws SQLException {
         Main.closeQuietly(null);
         Main.closeQuietly(new ByteArrayInputStream(new byte[1]));
@@ -50,7 +50,7 @@ public class MainTest {
         }
     }
 
-    @Test(groups = { "unit" })
+    @Test(groups = { "private" })
     public void testGetOrCreateConnection() throws SQLException {
         Assert.assertNull(Main.getOrCreateConnection(null, null, null, -1, null, false));
         Assert.assertNull(Main.getOrCreateConnection(null, null, null, 0, null, true));
@@ -120,7 +120,7 @@ public class MainTest {
                 new String[][] { { "n1", "q1" }, { "n3", "q3" }, { "n2", "q2" } });
     }
 
-    @Test(groups = { "unit" })
+    @Test(groups = { "private" })
     public void testExecuteQueries() throws IOException, SQLException {
         final String url = "jdbcx:sqlite::memory:";
         Assert.assertFalse(Main.executeQueries(url, false, 1000, null, null, null, null,
