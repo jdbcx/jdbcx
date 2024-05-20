@@ -66,8 +66,8 @@ import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.executor.WebExecutor;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
 public abstract class BridgeServer implements RemovalListener<String, QueryInfo> {
     private static final Logger log = LoggerFactory.getLogger(BridgeServer.class);
@@ -310,10 +310,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     }
 
     protected final void writeMetrics(OutputStream out) throws IOException {
-        try (Writer writer = new BufferedWriter(new OutputStreamWriter(out, Constants.DEFAULT_CHARSET),
-                Constants.DEFAULT_BUFFER_SIZE)) {
-            promRegistry.scrape(writer);
-        }
+        promRegistry.scrape(out);
     }
 
     protected void query(Request request, Properties config) throws IOException {
