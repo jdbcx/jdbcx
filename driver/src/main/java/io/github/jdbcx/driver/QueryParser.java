@@ -543,7 +543,7 @@ public final class QueryParser {
                     } else {
                         builder.append(ch).append(nextChar);
                         log.debug("Executable block starts with \"%s\" at %d but missing \"%s\"", tag.functionLeft(),
-                                tag.functionRight(), i - 1);
+                                i - 1, tag.functionRight());
                     }
                 } else if (nextChar == procChar && !escaped) { // executable block: {% ... %}
                     int index = indexOf(query, i + 1, tag.procedureRight(), escapeChar);
@@ -566,7 +566,7 @@ public final class QueryParser {
                     } else {
                         builder.append(ch);
                         log.debug("Executable block starts with \"%s\" at %d but missing \"%s\"", tag.procedureLeft(),
-                                tag.procedureRight(), i - 1);
+                                i - 1, tag.procedureRight());
                     }
                 } else {
                     builder.append(ch).append(nextChar);

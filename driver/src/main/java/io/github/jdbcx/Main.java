@@ -29,14 +29,15 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.github.jdbcx.driver.QueryParser;
@@ -86,7 +87,9 @@ public final class Main {
         println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
         println("  outputFormat\tOutput data format(TSV or TSVWithHeaders), defaults to TSV");
         println("  tasks\tMaximum number of tasks permitted to execute concurrently, defaults to 1");
-        println("  taskCheckInterval\tDuration in seconds to check task completion status, defaults to 30");
+        println("  taskCheckInterval\tInterval in milliseconds to check task completion status, defaults to 10");
+        println("  validationQuery\tValidation query, defaults to empty string");
+        println("  validationTimeout\tTimeout in seconds for connection validation, defaults to 3");
         println("  verbose\tWhether to show logs, defaults to false");
         println();
         println("Examples:");
@@ -104,17 +107,66 @@ public final class Main {
         return label;
     }
 
-    static long execute(String url, Properties props, String fileOrQuery, String outputFormat, boolean verbose)
+    static void closeQuietly(AutoCloseable resource) {
+        if (resource != null) {
+            try {
+                resource.close();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+    }
+
+    static Connection getOrCreateConnection(String url, Properties props, Connection conn, int validationTimeout,
+            String validationQuery, boolean verbose) throws SQLException {
+        if (conn != null) {
+            boolean valid = false;
+            try {
+                if (Checker.isNullOrEmpty(validationQuery)) {
+                    try {
+                        valid = conn.isValid(validationTimeout);
+                    } catch (Exception e) {
+                        if (conn.isClosed()) {
+                            conn = null;
+                        }
+                    }
+                } else if (!conn.isClosed()) {
+                    try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(validationQuery)) {
+                        valid = rs.next();
+                    }
+                }
+            } finally {
+                if (!valid) {
+                    if (verbose) {
+                        println("* Closing [%s]...", conn);
+                    }
+
+                    closeQuietly(conn);
+                    conn = null;
+                }
+            }
+        }
+
+        if (conn == null && !Checker.isNullOrEmpty(url)) {
+            if (verbose) {
+                println("* Creating new connection to [%s]...", url);
+            }
+            conn = DriverManager.getConnection(url, props);
+        }
+        return conn;
+    }
+
+    static long execute(Connection conn, String fileOrQuery, String outputFormat, boolean verbose)
             throws IOException, SQLException {
         final long startTime = verbose ? System.nanoTime() : 0L;
 
         if (fileOrQuery == null || fileOrQuery.isEmpty()) {
-            return 0L;
+            return -1L;
         } else if (fileOrQuery.charAt(0) == '@') {
             fileOrQuery = Stream.readAllAsString(new FileInputStream(Utils.normalizePath(fileOrQuery.substring(1))));
         }
 
-        try (Connection conn = DriverManager.getConnection(url, props); Statement stmt = conn.createStatement()) {
+        try (Statement stmt = conn.createStatement()) {
             long rows = 0L;
             String operation = null;
             final char tab = '\t';
@@ -185,6 +237,55 @@ public final class Main {
         }
     }
 
+    static boolean executeQueries(String url, boolean noProperties, int validationTimeout, String validationQuery,
+            List<String[]> queries, String outputFormat, AtomicBoolean failedRef, boolean verbose)
+            throws IOException, SQLException {
+        if (queries == null || queries.isEmpty()) {
+            return false;
+        }
+
+        Connection conn = null;
+        try {
+            for (String[] pair : queries) {
+                if (failedRef != null && failedRef.get()) {
+                    return false; // fail fast
+                } else {
+                    if (verbose) {
+                        println("* Executing [%s]...", pair[0]);
+                    }
+                }
+
+                conn = getOrCreateConnection(url, noProperties ? new Properties() : System.getProperties(),
+                        conn, validationTimeout, validationQuery, verbose);
+                final long rows = execute(conn, pair[1], outputFormat, verbose);
+                if (rows < 0L) {
+                    if (failedRef != null) {
+                        failedRef.compareAndSet(false, true);
+                    }
+                    return false;
+                }
+            }
+        } finally {
+            closeQuietly(conn);
+        }
+        return true;
+    }
+
+    static List<List<String[]>> splitTasks(List<String[]> queries, int tasks) {
+        final List<List<String[]>> splittedTasks = new ArrayList<>(tasks);
+        final int len = queries.size() / tasks;
+        for (int i = 0; i < tasks; i++) {
+            splittedTasks.add(new ArrayList<>(len));
+        }
+
+        int i = 0;
+        for (String[] pair : queries) {
+            splittedTasks.get(i % tasks).add(pair);
+            i++;
+        }
+        return Collections.unmodifiableList(splittedTasks);
+    }
+
     public static void main(String[] args) throws Exception {
         if ((args == null || args.length < 1) || args.length > 2) {
             printUsage();
@@ -196,7 +297,9 @@ public final class Main {
         final boolean noProperties = Boolean.parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
         final String outputFormat = System.getProperty("outputFormat", OUTPUT_FORMAT_TSV);
         final int tasks = Integer.getInteger("tasks", 1);
-        final int taskCheckInterval = Integer.getInteger("taskCheckInterval", 30);
+        final long taskCheckInterval = Long.getLong("taskCheckInterval", 10);
+        final String validationQuery = System.getProperty("validationQuery", Constants.EMPTY_STRING);
+        final int validationTimeout = Integer.getInteger("validationTimeout", 3);
         final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
         final String url = args[0];
         final String fileOrQuery = args[1];
@@ -224,6 +327,9 @@ public final class Main {
         }
 
         if (queries.isEmpty()) {
+            if (verbose) {
+                println("* No query to execute.");
+            }
             System.exit(1);
         }
 
@@ -231,95 +337,50 @@ public final class Main {
         boolean failed = false;
         do {
             if (tasks <= 1) {
-                for (String[] pair : queries) {
-                    if (verbose) {
-                        println("* Executing [%s]...", pair[0]);
-                    }
-
-                    final long rows = execute(url, noProperties ? new Properties() : System.getProperties(), pair[1],
-                            outputFormat, verbose);
-                    failed = failed || rows < 1L;
-                }
+                failed = executeQueries(url, noProperties, validationTimeout, validationQuery, queries, outputFormat,
+                        null, verbose);
             } else {
                 final AtomicBoolean failedRef = new AtomicBoolean(failed);
-                ExecutorService executor = null;
-                try {
-                    final ExecutorService pool = Executors.newFixedThreadPool(tasks);
-
-                    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                        pool.shutdownNow();
+                final List<List<String[]>> splittedTasks = splitTasks(queries, tasks);
+                final List<CompletableFuture<Void>> futures = new ArrayList<>(splittedTasks.size());
+                for (List<String[]> list : splittedTasks) {
+                    futures.add(CompletableFuture.runAsync(() -> {
                         try {
-                            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
-                                println("* Failed to shutdown thread pool in %d seconds", 5);
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
+                            executeQueries(url, noProperties, validationTimeout, validationQuery, list,
+                                    outputFormat, failedRef, verbose);
+                        } catch (Exception e) {
+                            throw new IllegalStateException(e);
                         }
                     }));
-
-                    executor = pool;
-                    for (String[] pair : queries) {
-                        pool.submit(() -> {
-                            if (failedRef.get()) {
-                                return; // fail fast
-                            } else {
-                                if (verbose) {
-                                    println("* Executing [%s]...", pair[0]);
-                                }
-                            }
-
-                            try {
-                                final long rows = execute(url, noProperties ? new Properties() : System.getProperties(),
-                                        pair[1], outputFormat, verbose);
-                                failedRef.compareAndSet(false, rows < 1L);
-                            } catch (IOException | SQLException e) {
-                                failedRef.set(true);
-                                if (verbose) {
-                                    println("x Failed to execute query due to %s", e.getMessage());
-                                }
-                            }
-                        });
-                    }
-
-                    pool.shutdown();
-
-                    while (true) {
-                        try {
-                            // Wait for all tasks to complete
-                            boolean terminated = pool.awaitTermination(taskCheckInterval, TimeUnit.SECONDS);
-                            if (terminated) {
-                                if (verbose) {
-                                    println("* All %d queries completed.", queries.size());
-                                }
-                                break;
-                            } else {
-                                if (verbose) {
-                                    println("* Some queries have not completed within %d seconds. Continuing to wait...",
-                                            taskCheckInterval);
-                                }
-                            }
-                        } catch (InterruptedException e) {
-                            pool.shutdownNow();
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-
-                    executor = null;
-                } finally {
-                    if (executor != null && !executor.isShutdown()) {
-                        executor.shutdownNow();
-                        try {
-                            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                                println("* Failed to shutdown thread pool in %d seconds", 5);
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                    executor = null;
                 }
 
-                failed = failed || failedRef.get();
+                while (!futures.isEmpty()) {
+                    boolean cancel = false;
+                    for (Iterator<CompletableFuture<Void>> it = futures.iterator(); it.hasNext();) {
+                        CompletableFuture<Void> future = it.next();
+                        if (cancel) {
+                            future.cancel(true);
+                            it.remove();
+                        } else if (future.isDone()) {
+                            it.remove();
+                            try {
+                                future.get();
+                            } catch (InterruptedException e) {
+                                cancel = true;
+                                Thread.currentThread().interrupt();
+                            } catch (CancellationException | ExecutionException e) {
+                                cancel = true;
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    Thread.sleep(taskCheckInterval);
+                }
+
+                if (verbose) {
+                    println("* All %d queries completed with %d tasks.", queries.size(), tasks);
+                }
+                failed = failedRef.get();
             }
 
             count++;

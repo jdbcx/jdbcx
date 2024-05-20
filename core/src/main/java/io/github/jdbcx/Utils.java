@@ -177,7 +177,7 @@ public final class Utils {
                 if (Files.isDirectory(path)) {
                     try (Stream<Path> s = Files.list(path)) {
                         list.addAll(s.filter(p -> Files.isRegularFile(p)
-                                && (normalizedFileExt.isEmpty() || p.endsWith(normalizedFileExt))).sorted()
+                                && (normalizedFileExt.isEmpty() || p.toString().endsWith(normalizedFileExt))).sorted()
                                 .collect(Collectors.toList()));
                     }
                 } else {

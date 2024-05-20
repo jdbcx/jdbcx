@@ -452,6 +452,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 defaultMode = m;
                 if (index > 0) {
                     path = path.substring(index + 1);
+                } else {
+                    path = Constants.EMPTY_STRING;
                 }
             } else {
                 defaultMode = null;
