@@ -87,8 +87,8 @@ wget https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.1.0/sqlite-jdbc-
     https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/2.0.12/slf4j-simple-2.0.12.jar
 
 # Download JavaScript engine
-wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.14/rhino-1.7.14.jar \
-    https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.14/rhino-engine-1.7.14.jar
+wget https://repo1.maven.org/maven2/org/mozilla/rhino/1.7.15/rhino-1.7.15.jar \
+    https://repo1.maven.org/maven2/org/mozilla/rhino-engine/1.7.15/rhino-engine-1.7.15.jar
 
 # SQL
 java -Djdbcx.custom.classpath=. -jar jdbcx.jar 'jdbcx:sqlite::memory:' 'select 1'

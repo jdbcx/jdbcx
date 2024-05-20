@@ -370,7 +370,7 @@ public final class Main {
                                 Thread.currentThread().interrupt();
                             } catch (CancellationException | ExecutionException e) {
                                 cancel = true;
-                                e.printStackTrace();
+                                e.printStackTrace(); // NOSONAR
                             }
                         }
                     }
