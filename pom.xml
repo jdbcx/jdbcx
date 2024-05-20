@@ -1113,6 +1113,7 @@
                 </property>
             </activation>
             <properties>
+                <arrow.version>15.0.2</arrow.version>
                 <caffeine.version>2.9.2</caffeine.version>
                 <hikaricp.version>4.0.3</hikaricp.version>
                 <testng.version>7.5.1</testng.version>
