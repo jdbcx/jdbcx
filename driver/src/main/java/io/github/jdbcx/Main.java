@@ -337,7 +337,7 @@ public final class Main {
         boolean failed = false;
         do {
             if (tasks <= 1) {
-                failed = executeQueries(url, noProperties, validationTimeout, validationQuery, queries, outputFormat,
+                failed = !executeQueries(url, noProperties, validationTimeout, validationQuery, queries, outputFormat,
                         null, verbose);
             } else {
                 final AtomicBoolean failedRef = new AtomicBoolean(failed);

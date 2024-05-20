@@ -76,7 +76,7 @@ RUN chmod +x /*.sh \
 USER jdbcx
 
 RUN for ext in arrow aws azure fts httpfs json mysql parquet postgres sqlite vss; \
-    do ./openjdk/bin/java -Dverbose=true -DnoProperties=true -jar jdbcx.jar 'jdbcx:duckdb:' "INSTALL $ext" || true; done
+    do ./openjdk/bin/java -Dverbose=true -DnoProperties=true -cp jdbcx.jar io.github.jdbcx.Main 'jdbcx:duckdb:' "INSTALL $ext" || true; done
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
