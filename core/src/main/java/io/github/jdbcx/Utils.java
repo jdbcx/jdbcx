@@ -190,6 +190,11 @@ public final class Utils {
     }
 
     public static String applyVariables(String template, VariableTag tag, UnaryOperator<String> applyFunc) {
+        return applyVariables(template, tag, applyFunc, false);
+    }
+
+    static String applyVariables(String template, VariableTag tag, UnaryOperator<String> applyFunc,
+            boolean applyDefaultValue) {
         if (template == null || template.isEmpty()) {
             return Constants.EMPTY_STRING;
         } else if (tag == null) {
@@ -208,6 +213,7 @@ public final class Utils {
         StringBuilder builder = new StringBuilder(len);
         StringBuilder sb = new StringBuilder();
         boolean escaped = false;
+        int colonIndex = -1;
         int startIndex = -1;
         for (int i = 0; i < len; i++) {
             char ch = template.charAt(i);
@@ -229,13 +235,24 @@ public final class Utils {
                     escaped = false;
                 } else if (ch == escapeChar) {
                     escaped = true;
+                } else if (applyDefaultValue && ch == ':') { // key:defaultValue
+                    colonIndex = sb.length();
                 } else if (ch == rightChar) {
-                    String key = sb.toString();
+                    final String key;
+                    final String defaultValue;
+                    if (colonIndex >= 0) {
+                        key = sb.substring(0, colonIndex);
+                        defaultValue = sb.substring(colonIndex);
+                        colonIndex = -1;
+                    } else {
+                        key = sb.toString();
+                        defaultValue = template.substring(startIndex, i + 1);
+                    }
                     sb.setLength(0);
 
                     String value = applyFunc.apply(key);
                     if (value == null) {
-                        builder.append(template.substring(startIndex, i + 1));
+                        builder.append(defaultValue);
                     } else {
                         builder.append(value); // recursive? not going to make escaping tedious
                     }
@@ -272,7 +289,11 @@ public final class Utils {
     }
 
     public static String applyVariables(String template, VariableTag tag, Properties variables) {
-        return applyVariables(template, tag, variables == null ? null : variables::getProperty);
+        return applyVariables(template, tag, variables == null ? null : variables::getProperty, false);
+    }
+
+    public static String applyVariablesWithDefault(String template, VariableTag tag, Properties variables) {
+        return applyVariables(template, tag, variables == null ? null : variables::getProperty, true);
     }
 
     public static int getMapInitialCapacity(int capacity) {

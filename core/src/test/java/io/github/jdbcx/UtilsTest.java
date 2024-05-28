@@ -115,6 +115,19 @@ public class UtilsTest {
         Assert.assertEquals(Utils.applyVariables("$<>", VariableTag.ANGLE_BRACKET, map), "everything");
         Assert.assertEquals(Utils.applyVariables("$[]", null, props), "$[]");
         Assert.assertEquals(Utils.applyVariables("$[]", VariableTag.SQUARE_BRACKET, props), "nothing");
+
+        // try default values
+        props.setProperty("s", "1");
+        Assert.assertEquals(Utils.applyVariables("${:}", null, props), "${:}");
+        Assert.assertEquals(Utils.applyVariablesWithDefault("${:}", null, props), "nothing");
+        Assert.assertEquals(Utils.applyVariables("${a:}", null, props), "${a:}");
+        Assert.assertEquals(Utils.applyVariablesWithDefault("${a:}", null, props), "");
+        Assert.assertEquals(Utils.applyVariables("${s:}", null, props), "${s:}");
+        Assert.assertEquals(Utils.applyVariablesWithDefault("${s:}", null, props), "1");
+        Assert.assertEquals(Utils.applyVariables("${s} ${s:2}", null, props), "1 ${s:2}");
+        Assert.assertEquals(Utils.applyVariablesWithDefault("${s} ${s:2}", null, props), "1 1");
+        Assert.assertEquals(Utils.applyVariables("${a:a\\:b}", null, props), "${a:a\\:b}");
+        Assert.assertEquals(Utils.applyVariablesWithDefault("${a:a\\:b}", null, props), "a:b");
     }
 
     @Test(groups = "unit")
@@ -138,7 +151,7 @@ public class UtilsTest {
         Assert.assertEquals(Utils.createInstance(List.class, "java.util.LinkedList", new ArrayList<>()).getClass(),
                 LinkedList.class);
     }
-    
+
     @Test(groups = "unit")
     public void testFindFiles() throws IOException {
         Assert.assertEquals(Utils.findFiles(null, null), Collections.emptyList());

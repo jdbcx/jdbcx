@@ -42,6 +42,15 @@ public final class JsonHelper {
 
     private static final Cache<String, Expression<JsonElement>> cache = Cache.create(100, 0L, jmesPath::compile);
 
+    static JsonElement parse(Reader reader, String path) {
+        final Expression<JsonElement> compiledPath = cache.get(path);
+        return compiledPath.search(gson.fromJson(reader, JsonElement.class));
+    }
+
+    static String toJsonString(JsonElement e) {
+        return gson.toJson(e);
+    }
+
     public static List<Row> extract(InputStream input, Charset charset, String path, String delimiter, boolean trim)
             throws IOException {
         return extract(new InputStreamReader(input, charset != null ? charset : Constants.DEFAULT_CHARSET), path,

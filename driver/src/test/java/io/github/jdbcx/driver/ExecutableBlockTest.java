@@ -20,6 +20,8 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Option;
+
 public class ExecutableBlockTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
@@ -68,5 +70,17 @@ public class ExecutableBlockTest {
         props.setProperty("a", "b");
         Assert.assertTrue(block.sameAs(new ExecutableBlock(1, "b1", new Properties(), "...", true)),
                 "Should be true because properties do not matter");
+
+        Properties newProps = new Properties();
+        Option.ID.setValue(props, "bb");
+        block = new ExecutableBlock(1, "b1", props, "...", true);
+        Assert.assertFalse(block.sameAs(new ExecutableBlock(2, "b1", newProps, "...", true)),
+                "Should be true because index does not matter");
+        Option.ID.setValue(newProps, "bb");
+        Assert.assertTrue(block.sameAs(new ExecutableBlock(2, "b1", newProps, "...", true)),
+                "Should be true because index does not matter");
+        Option.ID.setValue(newProps, "aa");
+        Assert.assertFalse(block.sameAs(new ExecutableBlock(2, "b1", newProps, "...", true)),
+                "Should be true because index does not matter");
     }
 }

@@ -540,8 +540,12 @@ public final class Option implements Serializable {
     }
 
     public void setDefaultValueIfNotPresent(Properties props) {
+        setValueIfNotPresent(props, null);
+    }
+
+    public void setValueIfNotPresent(Properties props, String value) {
         if (props != null && props.getProperty(name) == null) {
-            props.setProperty(name, defaultValue);
+            props.setProperty(name, value != null ? value : defaultValue);
         }
     }
 
