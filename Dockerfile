@@ -68,9 +68,9 @@ RUN chmod +x /*.sh \
     && wget -nv -P ./drivers/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
         https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar \
-        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.2/duckdb_jdbc-0.10.2.jar \
+        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.3/duckdb_jdbc-0.10.3.jar \
         https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar \
-        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.45.3.0/sqlite-jdbc-3.45.3.0.jar \
+        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.46.0.0/sqlite-jdbc-3.46.0.0.jar \
     && rm -fv ./*.tar.gz /tmp/*
 
 USER jdbcx
