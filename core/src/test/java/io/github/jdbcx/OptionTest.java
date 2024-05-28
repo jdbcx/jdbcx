@@ -182,6 +182,32 @@ public class OptionTest {
     }
 
     @Test(groups = { "unit" })
+    public void testSetValueIfNoPresent() {
+        final String key = "key";
+        final Option o = Option.of(key, null, "default");
+        Properties props = null;
+        o.setValueIfNotPresent(props, null);
+        o.setDefaultValueIfNotPresent(props);
+
+        props = new Properties();
+        o.setValueIfNotPresent(props, null);
+        Assert.assertEquals(props.getProperty(key), "default");
+        props.clear();
+        o.setDefaultValueIfNotPresent(props);
+        Assert.assertEquals(props.getProperty(key), "default");
+
+        o.setValueIfNotPresent(props, "v1");
+        Assert.assertEquals(props.getProperty(key), "default");
+        props.clear();
+        o.setValueIfNotPresent(props, "v1");
+        Assert.assertEquals(props.getProperty(key), "v1");
+
+        props.clear();
+        o.setDefaultValueIfNotPresent(props);
+        Assert.assertEquals(props.getProperty(key), "default");
+    }
+
+    @Test(groups = { "unit" })
     public void testSetValueWithPreferredDefault() {
         Assert.assertEquals(Option.of("key", null, "default").setValue(null, null), null);
         Assert.assertEquals(Option.of("key", null, "default").setValue(new Properties(), null), null);

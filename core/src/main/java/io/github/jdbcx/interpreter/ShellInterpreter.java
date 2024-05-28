@@ -43,6 +43,7 @@ public class ShellInterpreter extends AbstractInterpreter {
         super(context);
 
         OPTION_TIMEOUT.setDefaultValueIfNotPresent(config);
+        Option.RESULT_STRING_SPLIT.setValueIfNotPresent(config, Constants.TRUE_EXPR);
 
         this.executor = new CommandLineExecutor(OPTION_PATH.getValue(config), false, getVariableTag(), config);
     }
@@ -57,8 +58,7 @@ public class ShellInterpreter extends AbstractInterpreter {
                 return executor.getDryRunResult(Collections.emptyList(), query, props);
             }
             input = executor.execute(props, null, query);
-            return Result.of(input,
-                    Option.RESULT_STRING_SPLIT_CHAR.getValue(props).getBytes(Option.OUTPUT_CHARSET.getValue(props)));
+            return process(query, input, props);
         } catch (Exception e) {
             return handleError(e, query, props, input);
         }

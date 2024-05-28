@@ -192,7 +192,7 @@ public class WebExecutor extends AbstractExecutor {
                     if (!hasUserAgent && HEADER_USER_AGENT.equalsIgnoreCase(k)) {
                         hasUserAgent = true;
                     }
-                    String str = Utils.applyVariables(val.toString(), defaultTag, config);
+                    String str = Utils.applyVariablesWithDefault(val.toString(), defaultTag, config);
                     conn.setRequestProperty(k, Checker.isNullOrBlank(str) ? Constants.EMPTY_STRING : str);
                 }
             }

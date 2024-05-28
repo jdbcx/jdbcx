@@ -15,9 +15,11 @@
  */
 package io.github.jdbcx.driver;
 
+import java.util.Objects;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.Option;
 
 /**
  * An executable block represents either a function, which returns a value, or a
@@ -75,7 +77,8 @@ public final class ExecutableBlock {
             return false;
         }
 
-        return output == block.output && extension.equals(block.extension) && content.equals(block.content);
+        return output == block.output && extension.equals(block.extension) && content.equals(block.content)
+                && Objects.equals(Option.ID.getValue(props), Option.ID.getValue(block.props));
     }
 
     public boolean hasNoArguments() {

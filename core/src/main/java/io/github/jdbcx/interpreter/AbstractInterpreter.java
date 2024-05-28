@@ -15,12 +15,14 @@
  */
 package io.github.jdbcx.interpreter;
 
-import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.charset.Charset;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.UnaryOperator;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
@@ -31,7 +33,6 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.VariableTag;
-import io.github.jdbcx.executor.Stream;
 
 abstract class AbstractInterpreter implements Interpreter {
     private final QueryContext context;
@@ -58,60 +59,64 @@ abstract class AbstractInterpreter implements Interpreter {
     }
 
     protected Result<?> process(String query, InputStream result, Properties props) {
+        return process(query, new InputStreamReader(result, Constants.DEFAULT_CHARSET), props);
+    }
+
+    protected Result<?> process(String query, Reader result, Properties props) {
         // TODO check data format first, before splitting it into lines
         final String path = Option.RESULT_JSON_PATH.getValue(props);
         final boolean json = !Checker.isNullOrBlank(path);
         final boolean trim = Boolean.parseBoolean(Option.RESULT_STRING_TRIM.getValue(props));
-        final String delimiter = Boolean.parseBoolean(Option.RESULT_STRING_SPLIT.getValue(props))
-                ? Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
-                : Constants.EMPTY_STRING;
-        if (!json && !trim) {
-            return Result.of(result, delimiter.getBytes(Charset.forName(Option.OUTPUT_CHARSET.getValue(props))));
+
+        // TODO customizable order
+        // priority: json -> string(escape, replace, split, trim)
+        final List<UnaryOperator<String[]>> ops = new ArrayList<>(5);
+        String[] content = new String[0];
+        if (json) {
+            ops.add(arr -> StringOperations.extract(result, path));
+        } else {
+            ops.add(arr -> StringOperations.read(result));
+        }
+
+        if (Boolean.parseBoolean(Option.RESULT_STRING_ESCAPE.getValue(props))) {
+            ops.add(arr -> StringOperations.escape(arr, Option.RESULT_STRING_ESCAPE_TARGET.getValue(props).charAt(0),
+                    Option.RESULT_STRING_ESCAPE_CHAR.getValue(props).charAt(0)));
+        }
+        if (Boolean.parseBoolean(Option.RESULT_STRING_REPLACE.getValue(props))) {
+            ops.add(arr -> StringOperations.replace(arr, tag, props, false));
+        }
+        if (Boolean.parseBoolean(Option.RESULT_STRING_SPLIT.getValue(props))) {
+            final String delimiter = Option.RESULT_STRING_SPLIT_CHAR.getValue(props);
+            if (!json && !trim && ops.size() == 1) { // split only
+                return Result.of(result, delimiter);
+            }
+            ops.add(arr -> StringOperations.split(arr, delimiter, trim, true));
+        } else if (trim) {
+            ops.add(arr -> StringOperations.trim(arr, true));
         }
 
         try {
+            // TODO reduce loops
+            for (UnaryOperator<String[]> o : ops) {
+                content = o.apply(content);
+            }
+
             final Result<?> res;
-            if (json) {
-                List<Row> rows = JsonHelper.extract(result, Charset.forName(Option.OUTPUT_CHARSET.getValue(props)),
-                        path, delimiter, trim);
-                res = rows.size() == 1 ? Result.of(rows.get(0)) : Result.of(null, rows);
-            } else if (Checker.isNullOrEmpty(delimiter)) {
-                res = trim ? Result.of(Stream.readAllAsString(result).trim())
-                        : Result.of(null, result, Constants.EMPTY_BYTE_ARRAY);
+            int len = content.length;
+            if (len == 0) {
+                res = Result.of(Constants.EMPTY_STRING);
+            } else if (len == 1) {
+                res = Result.of(content[0]);
             } else {
-                res = Result.of(result, delimiter.getBytes(Charset.forName(Option.OUTPUT_CHARSET.getValue(props))));
+                List<Row> rows = new ArrayList<>(len);
+                for (int i = 0; i < len; i++) {
+                    rows.add(Row.of(content[i]));
+                }
+                res = Result.of(null, rows);
             }
             return res;
-        } catch (IOException e) {
-            return handleError(e, query, props, result);
-        }
-    }
-
-    protected Result<?> process(String query, Reader result, Properties props) {
-        final String path = Option.RESULT_JSON_PATH.getValue(props);
-        final boolean json = !Checker.isNullOrBlank(path);
-        final boolean trim = Boolean.parseBoolean(Option.RESULT_STRING_TRIM.getValue(props));
-        final String delimiter = Boolean.parseBoolean(Option.RESULT_STRING_SPLIT.getValue(props))
-                ? Option.RESULT_STRING_SPLIT_CHAR.getValue(props)
-                : Constants.EMPTY_STRING;
-        if (!json && !trim) {
-            return Result.of(result, delimiter);
-        }
-
-        try {
-            final Result<?> res;
-            if (json) {
-                List<Row> rows = JsonHelper.extract(result, path, delimiter, trim);
-                res = rows.size() == 1 ? Result.of(rows.get(0)) : Result.of(null, rows);
-            } else if (Checker.isNullOrEmpty(delimiter)) {
-                res = trim ? Result.of(Stream.readAllAsString(result).trim())
-                        : Result.of(result, delimiter);
-            } else {
-                res = Result.of(result, delimiter);
-            }
-            return res;
-        } catch (IOException e) {
-            return handleError(e, query, props, result);
+        } catch (UncheckedIOException e) {
+            return handleError(e.getCause(), query, props, result);
         }
     }
 
