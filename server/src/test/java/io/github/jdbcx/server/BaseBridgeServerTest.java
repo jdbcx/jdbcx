@@ -49,6 +49,14 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
     protected JdkHttpServer server;
 
+    protected Connection initDuckDBConnection(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            Assert.assertFalse(stmt.execute("INSTALL httpfs"));
+            Assert.assertFalse(stmt.execute("LOAD httpfs"));
+        }
+        return conn;
+    }
+
     @DataProvider(name = "clickhouseQueries")
     public Object[][] getClickHouseQueries() {
         return new Object[][] {
@@ -470,9 +478,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             }
         }
 
-        try (Connection conn = d.connect("jdbcx:duckdb:", props); Statement stmt = conn.createStatement();) {
-            stmt.execute("install httpfs");
-
+        try (Connection conn = initDuckDBConnection(d.connect("jdbcx:duckdb:", props));
+                Statement stmt = conn.createStatement();) {
             try (ResultSet rs = stmt
                     .executeQuery(Utils.format("select * from {{ table.db(url=%s): select 'x' }}", jdbcUrl))) {
                 Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
@@ -508,7 +515,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             Assert.assertFalse(rs.next());
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+        try (Connection conn = initDuckDBConnection(DriverManager.getConnection("jdbcx:duckdb:", props));
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-sqlite: select 1}}")) {
             Assert.assertTrue(rs.next());
@@ -552,7 +559,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         final int count = 100000;
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
-        try (Connection conn = DriverManager.getConnection("jdbcx:duckdb:", props);
+        try (Connection conn = initDuckDBConnection(DriverManager.getConnection("jdbcx:duckdb:", props));
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(
                         Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
