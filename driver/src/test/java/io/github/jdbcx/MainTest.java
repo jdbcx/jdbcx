@@ -115,7 +115,7 @@ public class MainTest {
         Main.closeQuietly(null);
         Main.closeQuietly(new ByteArrayInputStream(new byte[1]));
 
-        try (Connection conn = DriverManager.getConnection(DEFAULT_CONNECTION_URL, null)) {
+        try (Connection conn = DriverManager.getConnection(DEFAULT_CONNECTION_URL, new Properties())) {
             Assert.assertFalse(conn.isClosed());
             Main.closeQuietly(conn);
             Assert.assertTrue(conn.isClosed());
@@ -135,7 +135,7 @@ public class MainTest {
         Assert.assertNull(Main.getOrCreateConnection(null, null, null, -1, null));
         Assert.assertNull(Main.getOrCreateConnection(null, null, null, 0, null));
 
-        Connection conn = Main.getOrCreateConnection(DEFAULT_CONNECTION_URL, null, null, 1000, "select 2");
+        Connection conn = Main.getOrCreateConnection(DEFAULT_CONNECTION_URL, new Properties(), null, 1000, "select 2");
         Assert.assertNotNull(conn);
         for (int i = 0; i < 3; i++) {
             Assert.assertFalse(conn.isClosed());
@@ -153,7 +153,8 @@ public class MainTest {
             Assert.assertFalse(conn.isClosed());
             conn.close();
             Assert.assertTrue(conn.isClosed());
-            Connection newConn = Main.getOrCreateConnection(DEFAULT_CONNECTION_URL, null, conn, 1000, "select 3");
+            Connection newConn = Main.getOrCreateConnection(DEFAULT_CONNECTION_URL, new Properties(), conn, 1000,
+                    "select 3");
             Assert.assertNotEquals(conn, newConn);
             Assert.assertTrue(conn.isClosed());
             Assert.assertFalse(newConn.isClosed());
