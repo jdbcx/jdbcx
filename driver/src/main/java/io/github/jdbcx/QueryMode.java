@@ -37,7 +37,11 @@ public enum QueryMode {
     /**
      * Executes a mutation immediately and waits for the result.
      */
-    MUTATION("mutate", 'm', 'M');
+    MUTATION("mutate", 'm', 'M'),
+    /**
+     * Executes batch queries.
+     */
+    BATCH("batch", 'b', 'B');
 
     private final char[] codes;
     private final String path;
@@ -94,6 +98,8 @@ public enum QueryMode {
             mode = MUTATION;
         } else if (SUBMIT.path.equals(path)) {
             mode = SUBMIT;
+        } else if (BATCH.path.equals(path)) {
+            mode = BATCH;
         } else {
             mode = defaultMode;
         }

@@ -15,11 +15,8 @@
  */
 package io.github.jdbcx.server;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -27,7 +24,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -63,6 +59,8 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.driver.ConnectionManager;
+import io.github.jdbcx.driver.QueryParser;
+import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.WebExecutor;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
@@ -313,14 +311,62 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         promRegistry.scrape(out);
     }
 
+    protected void batch(Request request, Properties config) throws IOException {
+        final QueryInfo info = request.getQueryInfo();
+        final List<String[]> list = QueryParser.split(info.query);
+        final int len = list.size();
+        log.debug("Executing batch query [%s] (%d queries)...", info.qid, len);
+
+        boolean success = false;
+        int i = 1;
+        String name = null;
+        try (Connection conn = datasource.getConnection(); Statement stmt = conn.createStatement()) {
+            Result<?> lastResult = null;
+            for (String[] q : list) {
+                name = q[0];
+                log.debug("Executing batch query [%s] %d/%d [%s]...", info.qid, i, len, name);
+                // don't use executeBatch as we need mixed queries
+                boolean isResultSet = stmt.execute(q[1]); // NOSONAR
+                final SQLWarning warning = stmt.getWarnings();
+                if (warning != null) {
+                    log.warn("SQLWarning from [%s]", stmt, warning);
+                }
+                if (i < len) {
+                    if (isResultSet) {
+                        stmt.getResultSet().close();
+                    }
+                } else {
+                    lastResult = isResultSet ? Result.of(stmt.getResultSet())
+                            : Result.of(JdbcExecutor.getUpdateCount(stmt));
+                }
+                i++;
+            }
+
+            try (Result<?> result = lastResult;
+                    OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
+                success = true;
+                Result.writeTo(result, info.format, config, out);
+            }
+        } catch (SQLException e) {
+            log.error("Failed to execute batch query [%s] %d/%d [%s].", info.qid, i, len, name, e);
+            throw new IOException(e);
+        } finally {
+            if (!success) {
+                respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR);
+            }
+        }
+        log.debug("Batch query [%s] (%d queries) finished successfully", info.qid, len);
+    }
+
     protected void query(Request request, Properties config) throws IOException {
         final QueryInfo info = request.getQueryInfo();
         log.debug("Executing query [%s]...", info.qid);
         boolean success = false;
         try (Connection conn = datasource.getConnection();
                 Statement stmt = conn.createStatement();
-                Result<?> result = request.isMutation() ? Result.of(stmt.executeLargeUpdate(info.query))
-                        : Result.of(stmt.executeQuery(info.query))) {
+                // request.isMutation()
+                Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
+                        : Result.of(JdbcExecutor.getUpdateCount(stmt))) {
             try (OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
                 success = true; // query was a success and we got the response output stream without any issue
                 final SQLWarning warning = stmt.getWarnings();
@@ -344,7 +390,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         log.debug("Query [%s] finished successfully", info.qid);
     }
 
-    protected void queryAsync(Request request) throws IOException { // NOSONAR
+    protected void queryAsync(Request request, Properties config) throws IOException { // NOSONAR
         final QueryInfo info = request.getQueryInfo();
         log.debug("Executing async query [%s]...", info.qid);
 
@@ -354,18 +400,13 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         try {
             conn = datasource.getConnection();
             stmt = conn.createStatement();
+
             final Result<?> result;
-            if (request.isMutation()) {
-                long count = -1L;
-                try { // NOSONAR
-                    count = stmt.executeLargeUpdate(info.query);
-                } catch (UnsupportedOperationException | SQLFeatureNotSupportedException e) {
-                    log.debug("Fall back to executeUpdate() due to: %s", e.getMessage());
-                    count = stmt.executeUpdate(info.query);
-                }
-                result = Result.of(count);
+            if (stmt.execute(info.query)) {
+                rs = stmt.getResultSet();
+                result = Result.of(rs);
             } else {
-                result = Result.of(rs = stmt.executeQuery(info.query));
+                result = Result.of(JdbcExecutor.getUpdateCount(stmt));
             }
             queries.put(info.qid, info.setResult(result));
             log.debug("Async query [%s] returned successfully", info.qid);
@@ -542,10 +583,18 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                         respond(request, HttpURLConnection.HTTP_FORBIDDEN);
                     } else {
                         setResponseHeaders(request);
-                        queryAsync(request);
+                        queryAsync(request, config);
                     }
                     break;
                 }
+                case BATCH:
+                    if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+                        respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+                    } else {
+                        setResponseHeaders(request);
+                        batch(request, config);
+                    }
+                    break;
                 case DIRECT:
                 case MUTATION: {
                     if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {

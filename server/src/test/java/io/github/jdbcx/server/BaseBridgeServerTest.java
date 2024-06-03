@@ -39,6 +39,7 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.WebExecutor;
@@ -363,6 +364,75 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.JSONL.mimeType());
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
+
+        // multi-query
+        config.clear();
+        headers.clear();
+        headers.put(RequestParameter.FORMAT.header(), "text/csv");
+        web = new WebExecutor(null, config);
+        conn = web.openConnection(new URL(url + "query"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, "{{ db(url=jdbc:mysql://root@" + getMySqlServer()
+                    + "?useSSL=false&allowMultiQueries=true): select 1; select 2}}");
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.CSV.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "1\n1");
+
+        web = new WebExecutor(VariableTag.BRACE, config);
+        conn = web.openConnection(new URL(url + "query"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, "{{ db(url=jdbc:mysql://root@" + getMySqlServer()
+                    + "?useSSL=false&allowMultiQueries=true, result=last): select 1; select 2 }}");
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.CSV.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "2\n2");
+    }
+
+    @Test(groups = { "integration" })
+    public void testBatchQuery() throws IOException {
+        final String url = getServerUrl();
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        headers.put(RequestParameter.FORMAT.header(), "");
+        // use query parameters
+        WebExecutor web = new WebExecutor(null, config);
+        HttpURLConnection conn = web.openConnection(new URL(url + "?f=csv&m=b&q=" + Utils.encode("select 233")),
+                config,
+                headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "233\n233");
+
+        // multi-query
+        headers.put(RequestParameter.FORMAT.header(), "text/csv");
+        web = new WebExecutor(null, config);
+        conn = web.openConnection(new URL(url + "batch"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, "--;; group 1\nselect 1\n--;; group 2\n select 2");
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.CSV.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "2\n2");
+
+        web = new WebExecutor(VariableTag.BRACE, config);
+        conn = web.openConnection(new URL(url + "batch"), config, headers);
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        try (OutputStream out = conn.getOutputStream()) {
+            Stream.writeAll(out, "--;; G1\n{{ db(url=jdbc:mysql://root@" + getMySqlServer()
+                    + "?useSSL=false&allowMultiQueries=true, result=first): select 1; select 2}}\n--;; G2\nselect 3");
+        }
+        Assert.assertEquals(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE), Format.CSV.mimeType());
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "3\n3");
     }
 
     @Test(groups = { "integration" })

@@ -18,7 +18,6 @@ package io.github.jdbcx.driver;
 import java.io.IOException;
 import java.net.URLClassLoader;
 import java.sql.Driver;
-import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -43,6 +42,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 final class DriverInfo {
     private static final Logger log = LoggerFactory.getLogger(DriverInfo.class);
@@ -91,30 +91,13 @@ final class DriverInfo {
      */
     static Driver findSuitableDriver(String url, Properties props, ClassLoader classLoader) {
         Driver d = null;
-        boolean found = false;
-
-        for (Driver newDriver : Utils.load(Driver.class, classLoader)) {
-            try {
-                if (newDriver.acceptsURL(url)) {
-                    d = newDriver;
-                    found = true;
-                    break;
-                }
-            } catch (Throwable t) { // NOSONAR
-                log.debug("Failed to test url [%s] using driver [%s]", url, newDriver, t);
-            }
+        try {
+            d = JdbcInterpreter.getDriverByUrl(url, classLoader);
+        } catch (Throwable t) { // NOSONAR
+            log.debug("No JDBC driver was found for URL [%s].", url, t);
         }
 
-        if (!found) {
-            Driver newDriver = new InvalidDriver(props);
-            try {
-                newDriver = DriverManager.getDriver(url);
-            } catch (SQLException e) {
-                // ignore
-            }
-            d = newDriver;
-        }
-        return d;
+        return d != null ? d : new InvalidDriver(props);
     }
 
     static ClassLoader getCustomClassLoader(String customClassPath) {

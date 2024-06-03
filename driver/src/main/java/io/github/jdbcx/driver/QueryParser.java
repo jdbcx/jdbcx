@@ -39,7 +39,7 @@ import io.github.jdbcx.VariableTag;
 public final class QueryParser {
     private static final Logger log = LoggerFactory.getLogger(QueryParser.class);
 
-    static final String QUERY_DELIMITER = ";; ";
+    static final String QUERY_DELIMITER = "--;; ";
 
     public static final class Part {
         public final int endPosition;
@@ -412,7 +412,7 @@ public final class QueryParser {
 
     /**
      * Splits the query into zero or more groups separated by
-     * {@code ^;; <comments>$}.
+     * {@code ^--;; <comments>$}.
      *
      * @param query the original query
      * @return non-null list of query groups
