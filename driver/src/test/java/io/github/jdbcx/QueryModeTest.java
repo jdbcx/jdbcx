@@ -25,6 +25,7 @@ public class QueryModeTest {
     public void testFromCode() {
         Assert.assertNull(QueryMode.fromCode('?', null));
         Assert.assertEquals(QueryMode.fromCode('a', QueryMode.DIRECT), QueryMode.ASYNC);
+        Assert.assertEquals(QueryMode.fromCode('B'), QueryMode.BATCH);
 
         Assert.assertEquals(QueryMode.fromCode('?'), QueryMode.SUBMIT);
         Assert.assertEquals(QueryMode.fromCode('q'), QueryMode.DIRECT);
@@ -42,6 +43,7 @@ public class QueryModeTest {
 
         Assert.assertEquals(QueryMode.fromPath("?"), QueryMode.SUBMIT);
         Assert.assertEquals(QueryMode.fromPath("query"), QueryMode.DIRECT);
+        Assert.assertEquals(QueryMode.fromPath("batch"), QueryMode.BATCH);
         Assert.assertEquals(QueryMode.fromPath("?", QueryMode.MUTATION), QueryMode.MUTATION);
     }
 

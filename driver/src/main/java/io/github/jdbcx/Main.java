@@ -18,9 +18,9 @@ package io.github.jdbcx;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -42,6 +42,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.jar.Manifest;
 
 import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.Stream;
@@ -163,6 +164,22 @@ public final class Main {
         }
     }
 
+    static final class UnclosableOutputStream extends FilterOutputStream {
+        UnclosableOutputStream(OutputStream out) {
+            super(out);
+        }
+
+        @Override
+        public void close() throws IOException {
+            out.flush();
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            out.write(b, off, len);
+        }
+    }
+
     private static void println() {
         System.out.println(); // NOSONAR
     }
@@ -182,8 +199,17 @@ public final class Main {
                     .toFile();
             if (file.isFile()) {
                 execFile = file.getName();
-                if (!Files.isExecutable(file.toPath())) {
-                    execFile = "java -jar " + execFile;
+                if (execFile.endsWith(".jar")) {
+                    boolean hasMainClass = false;
+                    try {
+                        Manifest manifest = new Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"));
+                        String mainClassName = manifest.getMainAttributes().getValue("Main-Class");
+                        hasMainClass = Main.class.getName().equals(mainClassName);
+                    } catch (IOException e) {
+                        // ignore
+                    }
+                    execFile = hasMainClass ? "java -jar " + execFile
+                            : "java -cp " + execFile + " " + Main.class.getName();
                 }
             } else {
                 execFile = "java -cp " + file.getCanonicalPath() + " " + Main.class.getName();
@@ -193,31 +219,35 @@ public final class Main {
         }
 
         final int index = execFile.indexOf(' ');
-        println("Usage: %s <JDBC URL> [@FILE or QUERY]",
+        println("Usage: %s URL [@FILE or QUERY...]",
                 index > 0 ? (execFile.substring(0, index) + " [PROPERTIES]" + execFile.substring(index))
                         : (execFile + " [PROPERTIES]"));
+        println("Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments.");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
-        println("  loopCount\tNumber of times to repeat the same query, defaults to 1");
-        println("  loopInterval\tInterval in milliseconds between repeated executions, defaults to 0");
-        println("  noProperties\tWhether to pass all system properties to the underlying driver, defaults to false");
-        println("  outputFile\tOutput file name, including its extension, indicates the data format and compression method (e.g. out.csv.gz), defaults to empty string");
-        println("  outputCompression\tOutput compression method, defaults to NONE");
-        println("  compressionLevel\tOutput compression level, defaults to -1");
-        println("  compressionBuffer\tOutput buffer size for compression, defaults to 0");
-        println("  outputFormat\tOutput data format(TSV or TSVWithHeaders), defaults to TSV");
-        println("  outputParams\tAdditional output parameters (e.g. 'codec=zstd&level=9' for parquet), defaults to empty string");
-        println("  tasks\tMaximum number of tasks permitted to execute concurrently, defaults to 1");
-        println("  taskCheckInterval\tInterval in milliseconds to check task completion status, defaults to 10");
-        println("  validationQuery\tValidation query, defaults to empty string");
-        println("  validationTimeout\tTimeout in seconds for connection validation, defaults to 3");
-        println("  verbose\tWhether to show logs, defaults to false");
+        println("  loopCount         Number of times to repeat the same query, defaults to 1");
+        println("  loopInterval      Interval in milliseconds between repeated executions, defaults to 0");
+        println("  noProperties      Whether to pass all system properties to the underlying driver, defaults to false");
+        println("  outputFile        Output file name, including its extension, indicates data format and compression method (e.g. out.csv.gz), defaults to empty string");
+        println("  outputCompression Output compression method, defaults to NONE");
+        println("  compressionLevel  Output compression level, defaults to -1");
+        println("  compressionBuffer Output buffer size for compression, defaults to 0");
+        println("  outputFormat      Output data format(TSV or TSVWithHeaders), defaults to TSV");
+        println("  outputParams      Comma separated output parameters (e.g. 'codec=zstd,level=9' for parquet), defaults to empty string");
+        println("  tasks             Maximum number of tasks permitted to execute concurrently, defaults to 1");
+        println("  taskCheckInterval Interval in milliseconds to check task completion status, defaults to 10");
+        println("  validationQuery   Validation query, defaults to empty string");
+        println("  validationTimeout Timeout in seconds for connection validation, defaults to 3");
+        println("  verbose           Whether to show logs, defaults to false");
         println();
         println("Examples:");
         println("  -  %s 'jdbcx:sqlite::memory:' 'select 1'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
-        println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' @my.js", execFile);
+        println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' '@*.js'", execFile);
+        println("  -  %s 'jdbcx:sqlite::memory:' 'select 1' 'select 2'",
+                index > 0 ? (execFile.substring(0, index) + " -noProperties=true" + execFile.substring(index))
+                        : (execFile + " -noProperties=true"));
     }
 
     static void closeQuietly(AutoCloseable resource) {
@@ -294,20 +324,16 @@ public final class Main {
             int updates = 0;
             while (true) {
                 if (hasResultSet) {
+                    try (ResultSet rs = stmt.getResultSet();
+                            OutputStream out = Compression.getProvider(outputCompression)
+                                    .compress(
+                                            outputFile.isEmpty() ? new UnclosableOutputStream(System.out) // NOSONAR
+                                                    : new FileOutputStream(outputFile),
+                                            compressionLevel, compressionBuffer)) {
+                        Result.writeTo(Result.of(rs), outputFormat, outputParams, out);
+                    }
                     if (outputFile.isEmpty()) {
-                        try (ResultSet rs = stmt.getResultSet()) {
-                            final OutputStream compressedOut = Compression.getProvider(outputCompression)
-                                    .compress(System.out, compressionLevel, compressionBuffer); // NOSONAR
-                            Result.writeTo(Result.of(rs), outputFormat, outputParams, compressedOut);
-                            compressedOut.flush();
-                        }
-                    } else {
-                        try (ResultSet rs = stmt.getResultSet();
-                                OutputStream out = Compression.getProvider(outputCompression)
-                                        .compress(new FileOutputStream(outputFile), compressionLevel,
-                                                compressionBuffer)) {
-                            Result.writeTo(Result.of(rs), outputFormat, outputParams, out);
-                        }
+                        println();
                     }
                     reads++;
                 } else {
@@ -315,7 +341,7 @@ public final class Main {
                 }
 
                 try {
-                    if (!(hasResultSet = stmt.getMoreResults()) && (affectedRows = getAffectedRows(stmt)) == -1) {
+                    if (!(hasResultSet = stmt.getMoreResults()) && (affectedRows = getAffectedRows(stmt)) == -1L) { // NOSONAR
                         break;
                     }
                 } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {

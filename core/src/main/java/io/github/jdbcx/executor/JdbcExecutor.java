@@ -70,10 +70,6 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    static final long getUpdateCount(Statement stmt) throws SQLException {
-        return getUpdateCount(stmt, false);
-    }
-
     static final long getUpdateCount(Statement stmt, boolean closeStatement) throws SQLException {
         try {
             return stmt.getLargeUpdateCount();
@@ -86,7 +82,7 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    protected Object getFirstResult(Statement stmt, String query) throws SQLException {
+    static final Object getFirstResult(Statement stmt, String query) throws SQLException {
         if (stmt.execute(query)) {
             return stmt.getResultSet();
         } else {
@@ -98,7 +94,7 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    protected ResultSet getFirstQueryResult(Statement stmt, String query) throws SQLException {
+    static final ResultSet getFirstQueryResult(Statement stmt, String query) throws SQLException {
         if (stmt.execute(query)) {
             return stmt.getResultSet();
         } else {
@@ -113,7 +109,7 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    protected long getFirstUpdateCount(Statement stmt, String query) throws SQLException {
+    static final long getFirstUpdateCount(Statement stmt, String query) throws SQLException {
         if (stmt.execute(query)) {
             while (stmt.getMoreResults()) {
                 // do nothing
@@ -123,7 +119,7 @@ public class JdbcExecutor extends AbstractExecutor {
         return count < 0L ? 0L : count;
     }
 
-    protected Object getLastResult(Statement stmt, String query) throws SQLException {
+    static final Object getLastResult(Statement stmt, String query) throws SQLException {
         ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
         long count = rs == null ? getUpdateCount(stmt) : 0L;
 
@@ -151,7 +147,7 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    protected ResultSet getLastQueryResult(Statement stmt, String query) throws SQLException {
+    static final ResultSet getLastQueryResult(Statement stmt, String query) throws SQLException {
         ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
         while (true) {
             if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
@@ -171,7 +167,7 @@ public class JdbcExecutor extends AbstractExecutor {
         return rs;
     }
 
-    protected long getLastUpdateCount(Statement stmt, String query) throws SQLException {
+    static final long getLastUpdateCount(Statement stmt, String query) throws SQLException {
         long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
 
         while (true) {
@@ -188,7 +184,7 @@ public class JdbcExecutor extends AbstractExecutor {
         return count;
     }
 
-    protected ResultSet getMergedQueryResult(Statement stmt, String query) throws SQLException {
+    static final ResultSet getMergedQueryResult(Statement stmt, String query) throws SQLException {
         List<ResultSet> results = new ArrayList<>();
         if (stmt.execute(query)) {
             results.add(stmt.getResultSet());
@@ -204,7 +200,7 @@ public class JdbcExecutor extends AbstractExecutor {
         return new CombinedResultSet(results);
     }
 
-    protected long getMergedUpdateCount(Statement stmt, String query) throws SQLException {
+    static final long getMergedUpdateCount(Statement stmt, String query) throws SQLException {
         long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
 
         while (true) {
@@ -221,7 +217,7 @@ public class JdbcExecutor extends AbstractExecutor {
         return count;
     }
 
-    protected ResultSet getResultSummary(Statement stmt, String query) throws SQLException {
+    static final ResultSet getResultSummary(Statement stmt, String query) throws SQLException {
         final List<Row> rows = new ArrayList<>();
         final ValueFactory factory = ValueFactory.getInstance();
 
@@ -268,6 +264,10 @@ public class JdbcExecutor extends AbstractExecutor {
         return new ReadOnlyResultSet(stmt, Result.of(SUMMARY_FIELDS, rows));
     }
 
+    public static final long getUpdateCount(Statement stmt) throws SQLException {
+        return getUpdateCount(stmt, false);
+    }
+
     public String getResultType(Properties props) {
         return props != null ? props.getProperty(OPTION_RESULT.getName(), defaultResultType) : defaultResultType;
     }
@@ -295,9 +295,9 @@ public class JdbcExecutor extends AbstractExecutor {
             stmt.setQueryTimeout(timeoutSec);
         }
 
-        final String type = getResultType(props);
+        final String resultType = getResultType(props);
         final Object result;
-        switch (type) {
+        switch (resultType) {
             case RESULT_FIRST:
                 result = getFirstResult(stmt, query);
                 break;
@@ -326,7 +326,7 @@ public class JdbcExecutor extends AbstractExecutor {
                 result = getResultSummary(stmt, query);
                 break;
             default:
-                throw new SQLException("Unsupported parameter result=" + type);
+                throw new SQLException("Unsupported parameter result=" + resultType);
         }
         return result;
     }

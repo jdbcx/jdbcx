@@ -10,12 +10,14 @@ get_classpath() {
 }
 
 run_cli() {
-    java ${DRIVER_OPTS} -cp $(get_classpath) io.github.jdbcx.Main "$@"
+    java --add-opens=java.base/java.nio=ALL-UNNAMED -cp $(get_classpath) \
+        ${DRIVER_OPTS} io.github.jdbcx.Main "$@"
 }
 
 start_server() {
-    java --add-opens=java.base/java.nio=ALL-UNNAMED \
-        ${SERVER_OPTS} -cp $(get_classpath) io.github.jdbcx.server.BridgeServer
+    [ ! -f simplelogger.properties ] && cp -fv simplelogger.properties.disabled simplelogger.properties
+    java --add-opens=java.base/java.nio=ALL-UNNAMED -cp $(get_classpath) \
+        ${SERVER_OPTS} io.github.jdbcx.server.BridgeServer
 }
 
 # start clickhouse server

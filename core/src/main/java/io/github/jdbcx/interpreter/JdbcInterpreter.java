@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,23 +74,26 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
     }
 
-    static final Driver getDriverByUrl(String url, ClassLoader loader) throws SQLException {
-        if (loader == null) {
-            loader = JdbcInterpreter.class.getClassLoader();
+    public static final Driver getDriverByUrl(String url, ClassLoader classLoader) throws SQLException {
+        if (classLoader == null) {
+            classLoader = JdbcInterpreter.class.getClassLoader();
         }
 
         Driver d = null;
-        for (Driver newDriver : Utils.load(Driver.class, loader)) {
-            if (newDriver.acceptsURL(url)) {
+        for (Iterator<Driver> it = Utils.load(Driver.class, classLoader).iterator(); it.hasNext();) {
+            Driver newDriver = null;
+            try {
+                newDriver = it.next();
+            } catch (Throwable t) { // NOSONAR
+                // ignore
+            }
+            if (newDriver != null && newDriver.acceptsURL(url)) {
                 d = newDriver;
                 break;
             }
         }
 
-        if (d == null) {
-            d = DriverManager.getDriver(url);
-        }
-        return d;
+        return d != null ? d : DriverManager.getDriver(url);
     }
 
     public static final Connection getConnectionByUrl(String url, Properties props, ClassLoader classLoader)
@@ -162,10 +166,9 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         if (Checker.isNullOrEmpty(driver)) {
-            for (Driver d : Utils.load(Driver.class, classLoader)) {
-                if (d.acceptsURL(url)) {
-                    return d.connect(url, filtered);
-                }
+            Driver d = getDriverByUrl(url, classLoader);
+            if (d != null) {
+                return d.connect(url, filtered);
             }
             throw SqlExceptionUtils.clientError(
                     Utils.format("No suitable driver found in classpath [%s]. Please specify \"%s\" and try again.",
