@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -199,11 +198,11 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Map<?, ?> headers = new HashMap<>();
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
 
         // try again using POST
-        conn = web.openConnection(new URL(url), config, headers);
+        conn = web.openConnection(Utils.toURL(url), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -220,11 +219,11 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Map<?, ?> headers = new HashMap<>();
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url + "non-exist-query.id"), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + "non-exist-query.id"), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_NOT_FOUND);
 
         // try again using POST
-        conn = web.openConnection(new URL(url), config, headers);
+        conn = web.openConnection(Utils.toURL(url), config, headers);
         conn.setRequestProperty(RequestParameter.QUERY_ID.header(), "non-exist-query.id");
         conn.setRequestMethod("POST");
         conn.setDoOutput(false);
@@ -239,7 +238,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Map<String, String> headers = new HashMap<>();
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url + BridgeServer.PATH_CONFIG), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + BridgeServer.PATH_CONFIG), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
         try (InputStream input = conn.getInputStream()) {
             config.clear();
@@ -256,7 +255,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Map<String, String> headers = new HashMap<>();
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url + BridgeServer.PATH_METRICS), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + BridgeServer.PATH_METRICS), config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
         try (InputStream input = conn.getInputStream()) {
             String str = Stream.readAllAsString(input);
@@ -277,7 +276,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         headers.put(RequestParameter.COMPRESSION.header(), "xz,lz4,gzip");
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url + "?q=select+1"), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + "?q=select+1"), config, headers);
         Assert.assertNull(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE),
                 "Should not have content type header");
         Assert.assertNull(conn.getHeaderField(BridgeServer.HEADER_CONTENT_ENCODING),
@@ -286,7 +285,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Assert.assertTrue(Stream.readAllAsString(conn.getInputStream()).length() > 0);
 
         // try again using POST
-        conn = web.openConnection(new URL(url), config, headers);
+        conn = web.openConnection(Utils.toURL(url), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -310,7 +309,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         headers.put(RequestParameter.COMPRESSION.header(), "xz,lz4,gzip");
         WebExecutor web = new WebExecutor(null, config);
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-        HttpURLConnection conn = web.openConnection(new URL(url + "?m=r&q=select+1"), config, headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + "?m=r&q=select+1"), config, headers);
         String queryUrl = conn.getHeaderField(BridgeServer.HEADER_LOCATION);
         Assert.assertNull(conn.getHeaderField(BridgeServer.HEADER_CONTENT_TYPE),
                 "Should not have content type header");
@@ -320,7 +319,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), queryUrl);
 
         // try again using POST
-        conn = web.openConnection(new URL(url + "?m=r"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "?m=r"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -346,7 +345,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         headers.put(RequestParameter.FORMAT.header(), "");
         // use query parameters
         WebExecutor web = new WebExecutor(null, config);
-        HttpURLConnection conn = web.openConnection(new URL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + "?f=jsonl&m=d&q=" + Utils.encode(query)), config,
                 headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), expected);
@@ -355,7 +354,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
         headers.put(RequestParameter.FORMAT.header(), "application/jsonl");
         web = new WebExecutor(null, config);
-        conn = web.openConnection(new URL(url + "?m=d"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "?m=d"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -370,7 +369,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         headers.clear();
         headers.put(RequestParameter.FORMAT.header(), "text/csv");
         web = new WebExecutor(null, config);
-        conn = web.openConnection(new URL(url + "query"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "query"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -382,7 +381,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "1\n1");
 
         web = new WebExecutor(VariableTag.BRACE, config);
-        conn = web.openConnection(new URL(url + "query"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "query"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -403,16 +402,15 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         headers.put(RequestParameter.FORMAT.header(), "");
         // use query parameters
         WebExecutor web = new WebExecutor(null, config);
-        HttpURLConnection conn = web.openConnection(new URL(url + "?f=csv&m=b&q=" + Utils.encode("select 233")),
-                config,
-                headers);
+        HttpURLConnection conn = web.openConnection(Utils.toURL(url + "?f=csv&m=b&q=" + Utils.encode("select 233")),
+                config, headers);
         Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "233\n233");
 
         // multi-query
         headers.put(RequestParameter.FORMAT.header(), "text/csv");
         web = new WebExecutor(null, config);
-        conn = web.openConnection(new URL(url + "batch"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "batch"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {
@@ -423,7 +421,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "2\n2");
 
         web = new WebExecutor(VariableTag.BRACE, config);
-        conn = web.openConnection(new URL(url + "batch"), config, headers);
+        conn = web.openConnection(Utils.toURL(url + "batch"), config, headers);
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
         try (OutputStream out = conn.getOutputStream()) {

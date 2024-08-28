@@ -16,7 +16,6 @@
 package io.github.jdbcx;
 
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -40,7 +39,7 @@ public class ExpandedUrlClassLoaderTest {
         Assert.assertThrows(ClassNotFoundException.class, () -> loader.loadClass(classToLoad));
 
         Path localFile = Files.createTempFile("class", ".jar");
-        try (InputStream in = new URL(remoteFile).openStream()) {
+        try (InputStream in = Utils.toURL(remoteFile).openStream()) {
             Files.copy(in, localFile, StandardCopyOption.REPLACE_EXISTING);
         }
         // load class from specific file in local file system

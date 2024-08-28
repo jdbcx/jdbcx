@@ -16,7 +16,6 @@
 package io.github.jdbcx.driver;
 
 import java.io.InputStream;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
@@ -393,7 +392,7 @@ public final class ConnectionManager implements AutoCloseable {
                 WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
                 WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
                 WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-                try (InputStream input = web.get(new URL(url), config,
+                try (InputStream input = web.get(Utils.toURL(url), config,
                         Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
                     bridgeConfig.load(input);
                 }

@@ -125,7 +125,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
             }
             URL url = null;
             try {
-                url = cache.add(s) ? new URL(s) : null;
+                url = cache.add(s) ? Utils.toURL(s) : null;
             } catch (MalformedURLException e) {
                 // might be a local path?
                 try {
@@ -168,13 +168,13 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
                             if (isNegative) {
                                 try {
-                                    negativeSet.add(new URL(file));
+                                    negativeSet.add(Utils.toURL(file));
                                 } catch (Exception e) {
                                     // ignore
                                 }
                             } else if (cache.add(file)) {
                                 try {
-                                    list.add(new URL(file));
+                                    list.add(Utils.toURL(file));
                                 } catch (MalformedURLException e) {
                                     log.warn("Skip invalid file [%s]", file);
                                 }

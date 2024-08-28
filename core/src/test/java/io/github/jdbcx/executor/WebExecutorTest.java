@@ -18,7 +18,6 @@ package io.github.jdbcx.executor;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.net.URL;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -26,10 +25,11 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Utils;
 
 public class WebExecutorTest extends BaseIntegrationTest {
     @Test(groups = "unit")
-    public void testConstructor() throws IOException {
+    public void testConstructor() {
         WebExecutor executor;
         Assert.assertNotNull(executor = new WebExecutor(null, null));
         Assert.assertEquals(executor.getDefaultConnectTimeout(),
@@ -127,17 +127,18 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Properties props = new Properties();
         String address = getClickHouseServer();
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null, null).get(new URL("http://" + address), props, null)),
+                Stream.readAllAsString(
+                        new WebExecutor(null, null).get(Utils.toURL("http://" + address), props, null)),
                 "Ok.\n");
         Assert.assertEquals(
                 Stream.readAllAsString(new WebExecutor(null, null)
-                        .get(new URL("http://default@" + address + "/?query=select+7"), props, null)),
+                        .get(Utils.toURL("http://default@" + address + "/?query=select+7"), props, null)),
                 "7\n");
 
         Option.PROXY.setValue(props, getProxyServer());
         Assert.assertEquals(
-                Stream.readAllAsString(new WebExecutor(null, null).get(
-                        new URL("http://" + getDeclaredClickHouseServer() + "/?query=select+1"), props, null)),
+                Stream.readAllAsString(new WebExecutor(null, null)
+                        .get(Utils.toURL("http://" + getDeclaredClickHouseServer() + "/?query=select+1"), props, null)),
                 "1\n");
     }
 
@@ -146,7 +147,7 @@ public class WebExecutorTest extends BaseIntegrationTest {
         Properties props = new Properties();
         Assert.assertEquals(
                 Stream.readAllAsString(
-                        new WebExecutor(null, null).post(new URL("http://default@" + getClickHouseServer()),
+                        new WebExecutor(null, null).post(Utils.toURL("http://default@" + getClickHouseServer()),
                                 "select 9", props, null)),
                 "9\n");
     }
