@@ -419,30 +419,36 @@ public class UtilsTest {
 
         url = Utils.toURL("123");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "123").toUri().getPath().toString());
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "123").toUri().getPath());
 
         url = Utils.toURL("abc");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath().toString());
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath());
 
         url = Utils.toURL("./abc");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath().toString());
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath());
 
         url = Utils.toURL("/a/b c");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Paths.get("/a/b%20c").toUri().getPath().toString());
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%20c").toUri().getPath());
 
         url = Utils.toURL("/a/b%20c");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Paths.get("/a/b%2520c").toUri().getPath().toString());
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%2520c").toUri().getPath());
 
-        url = Utils.toURL("a:\\b\\c");
-        Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), "/a:/b/c");
+        if (Constants.IS_WINDOWS) {
+            url = Utils.toURL("a:\\b\\c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/a:/b/c");
 
-        url = Utils.toURL("a:/b/c");
-        Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), "/a:/b/c");
+            url = Utils.toURL("a:/b/c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/a:/b/c");
+
+            url = Utils.toURL("C:\\Program Files (x86)\\Steam\\steamapps\\common\\BlackMyth-Wukong");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/C:/Program%20Files%20(x86)/Steam/steamapps/common/BlackMyth-Wukong");
+        }
     }
 }
