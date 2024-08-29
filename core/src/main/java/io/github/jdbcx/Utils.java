@@ -1224,14 +1224,20 @@ public final class Utils {
             throw new MalformedURLException();
         }
 
-        URI uri;
-        try {
-            uri = new URI(url);
-        } catch (URISyntaxException e) {
-            throw new MalformedURLException(e.getMessage());
+        URI uri = null;
+        if (url.indexOf(' ') == -1 && url.indexOf('\\') == -1) {
+            try {
+                uri = new URI(url);
+            } catch (URISyntaxException e) {
+                throw new MalformedURLException(e.getMessage());
+            }
+
+            if (uri.getScheme() == null || (Constants.IS_WINDOWS && uri.getScheme().length() == 1)) {
+                uri = null;
+            }
         }
 
-        if (uri.getScheme() == null) {
+        if (uri == null) {
             try {
                 uri = Paths.get(url).normalize().toUri();
             } catch (InvalidPathException e) {

@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -418,21 +419,29 @@ public class UtilsTest {
 
         url = Utils.toURL("123");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Constants.CURRENT_DIR + "/123");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "123").toUri().getPath().toString());
 
         url = Utils.toURL("abc");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Constants.CURRENT_DIR + "/abc");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath().toString());
 
         url = Utils.toURL("./abc");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), Constants.CURRENT_DIR + "/abc");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath().toString());
 
-        url = Utils.toURL("/a/b.c");
+        url = Utils.toURL("/a/b c");
         Assert.assertEquals(url.getProtocol(), "file");
-        Assert.assertEquals(url.getPath(), "/a/b.c");
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%20c").toUri().getPath().toString());
 
-        url = Utils.toURL("/a:/b/c");
+        url = Utils.toURL("/a/b%20c");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%2520c").toUri().getPath().toString());
+
+        url = Utils.toURL("a:\\b\\c");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), "/a:/b/c");
+
+        url = Utils.toURL("a:/b/c");
         Assert.assertEquals(url.getProtocol(), "file");
         Assert.assertEquals(url.getPath(), "/a:/b/c");
     }
