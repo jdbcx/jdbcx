@@ -83,7 +83,6 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
     static final String CLASS_PATH_DELIMITER = "||";
     static final String PROTOCOL_FILE = "file";
-    static final String FILE_URL_PREFIX = PROTOCOL_FILE + ":///";
     static final String DRIVER_EXTENSION = ".jar";
 
     public static final ClassLoader of(ClassLoader parent, String... urls) {
@@ -163,8 +162,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                     Arrays.sort(files);
                     for (String file : files) {
                         if (file.endsWith(DRIVER_EXTENSION)) {
-                            file = new StringBuilder().append(FILE_URL_PREFIX).append(dir.getPath())
-                                    .append(File.separatorChar).append(file).toString();
+                            file = new StringBuilder(dir.getPath()).append(File.separatorChar).append(file).toString();
 
                             if (isNegative) {
                                 try {
