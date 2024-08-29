@@ -449,6 +449,12 @@ public class UtilsTest {
             url = Utils.toURL("C:\\Program Files (x86)\\Steam\\steamapps\\common\\BlackMyth-Wukong");
             Assert.assertEquals(url.getProtocol(), "file");
             Assert.assertEquals(url.getPath(), "/C:/Program%20Files%20(x86)/Steam/steamapps/common/BlackMyth-Wukong");
+        } else {
+            url = Utils.toURL("a:\\b\\c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "a:%5Cb%5Cc").toUri().getPath());
+
+            Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL("a:/b/c"));
         }
     }
 }
