@@ -365,7 +365,7 @@ public final class ReadOnlyResultSet extends AbstractResultSet {
         ensureOpen();
 
         try {
-            return new URL(getString(columnIndex));
+            return Utils.toURL(getString(columnIndex));
         } catch (MalformedURLException e) {
             throw SqlExceptionUtils.clientError(e);
         }

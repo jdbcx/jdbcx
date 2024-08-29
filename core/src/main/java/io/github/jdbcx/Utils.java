@@ -25,11 +25,16 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
@@ -1205,6 +1210,41 @@ public final class Utils {
         } else {
             return base - nanos;
         }
+    }
+
+    /**
+     * Converts a String representation of a URL to a URL object.
+     * 
+     * @param url the String representation of the URL to be converted
+     * @return A URL object representing the given string.
+     * @throws MalformedURLException If the string cannot be parsed as a URI or URL
+     */
+    public static URL toURL(String url) throws MalformedURLException {
+        if (Checker.isNullOrBlank(url)) {
+            throw new MalformedURLException();
+        }
+
+        URI uri = null;
+        if (url.indexOf(' ') == -1 && url.indexOf('\\') == -1) {
+            try {
+                uri = new URI(url);
+            } catch (URISyntaxException e) {
+                throw new MalformedURLException(e.getMessage());
+            }
+
+            if (uri.getScheme() == null || (Constants.IS_WINDOWS && uri.getScheme().length() == 1)) {
+                uri = null;
+            }
+        }
+
+        if (uri == null) {
+            try {
+                uri = Paths.get(url).normalize().toUri();
+            } catch (InvalidPathException e) {
+                throw new MalformedURLException(e.getMessage());
+            }
+        }
+        return uri.toURL();
     }
 
     /**

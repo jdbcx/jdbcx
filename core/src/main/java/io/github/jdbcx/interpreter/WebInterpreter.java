@@ -157,8 +157,8 @@ public class WebInterpreter extends AbstractInterpreter {
         InputStream input = null;
         try {
             final VariableTag tag = getVariableTag();
-            final URL url = new URL(
-                    Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag, props));
+            final URL url = Utils
+                    .toURL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag, props));
             Map<?, ?> headers = (Map<?, ?>) getContext().get(KEY_HEADERS);
             if (headers == null || headers.isEmpty()) {
                 headers = getHeaders(tag, props);

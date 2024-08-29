@@ -83,7 +83,6 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
 
     static final String CLASS_PATH_DELIMITER = "||";
     static final String PROTOCOL_FILE = "file";
-    static final String FILE_URL_PREFIX = PROTOCOL_FILE + ":///";
     static final String DRIVER_EXTENSION = ".jar";
 
     public static final ClassLoader of(ClassLoader parent, String... urls) {
@@ -125,7 +124,7 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
             }
             URL url = null;
             try {
-                url = cache.add(s) ? new URL(s) : null;
+                url = cache.add(s) ? Utils.toURL(s) : null;
             } catch (MalformedURLException e) {
                 // might be a local path?
                 try {
@@ -163,18 +162,17 @@ public final class ExpandedUrlClassLoader extends URLClassLoader {
                     Arrays.sort(files);
                     for (String file : files) {
                         if (file.endsWith(DRIVER_EXTENSION)) {
-                            file = new StringBuilder().append(FILE_URL_PREFIX).append(dir.getPath())
-                                    .append(File.separatorChar).append(file).toString();
+                            file = new StringBuilder(dir.getPath()).append(File.separatorChar).append(file).toString();
 
                             if (isNegative) {
                                 try {
-                                    negativeSet.add(new URL(file));
+                                    negativeSet.add(Utils.toURL(file));
                                 } catch (Exception e) {
                                     // ignore
                                 }
                             } else if (cache.add(file)) {
                                 try {
-                                    list.add(new URL(file));
+                                    list.add(Utils.toURL(file));
                                 } catch (MalformedURLException e) {
                                     log.warn("Skip invalid file [%s]", file);
                                 }

@@ -190,7 +190,7 @@ public final class ScriptHelper {
             String s = obj.toString();
             URL u = null;
             try {
-                u = new URL(s);
+                u = Utils.toURL(s);
             } catch (MalformedURLException e) {
                 // ignore
             }

@@ -16,7 +16,6 @@
 package io.github.jdbcx.extension;
 
 import java.io.InputStream;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -119,7 +118,7 @@ public class BridgeDriverExtension implements DriverExtension {
             WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
             WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
             WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-            try (InputStream input = web.get(new URL(builder.append("config").toString()), config,
+            try (InputStream input = web.get(Utils.toURL(builder.append("config").toString()), config,
                     Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
                 bridgeConfig.load(input);
             }

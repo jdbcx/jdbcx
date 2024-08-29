@@ -17,6 +17,9 @@ package io.github.jdbcx;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,7 +60,7 @@ public class UtilsTest {
     }
 
     @Test(groups = "unit")
-    public void testApplyVariables() throws IOException {
+    public void testApplyVariables() {
         Assert.assertEquals(Utils.applyVariables(null, null, (Properties) null), "");
         Assert.assertEquals(Utils.applyVariables(null, null, (Map<String, String>) null), "");
         Assert.assertEquals(Utils.applyVariables(null, null, (UnaryOperator<String>) null), "");
@@ -397,5 +400,61 @@ public class UtilsTest {
                 Arrays.asList("1", null));
         Assert.assertEquals(Utils.toImmutableList(String.class, new String[] { "1", null, "1" }, true, true),
                 Collections.singletonList("1"));
+    }
+
+    @Test(groups = { "unit" })
+    public void testToURL() throws MalformedURLException {
+        Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL(null));
+        Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL(""));
+        Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL(" "));
+
+        URL url = Utils.toURL("ftp://me:ok@bing.com:123/a/b/c?x=1&y=2#z");
+        Assert.assertEquals(url.getProtocol(), "ftp");
+        Assert.assertEquals(url.getUserInfo(), "me:ok");
+        Assert.assertEquals(url.getHost(), "bing.com");
+        Assert.assertEquals(url.getPort(), 123);
+        Assert.assertEquals(url.getPath(), "/a/b/c");
+        Assert.assertEquals(url.getQuery(), "x=1&y=2");
+        Assert.assertEquals(url.getRef(), "z");
+
+        url = Utils.toURL("123");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "123").toUri().getPath());
+
+        url = Utils.toURL("abc");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath());
+
+        url = Utils.toURL("./abc");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "abc").toUri().getPath());
+
+        url = Utils.toURL("/a/b c");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%20c").toUri().getPath());
+
+        url = Utils.toURL("/a/b%20c");
+        Assert.assertEquals(url.getProtocol(), "file");
+        Assert.assertEquals(url.getPath(), Paths.get("/a/b%2520c").toUri().getPath());
+
+        if (Constants.IS_WINDOWS) {
+            url = Utils.toURL("a:\\b\\c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/a:/b/c");
+
+            url = Utils.toURL("a:/b/c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/a:/b/c");
+
+            url = Utils.toURL("C:\\Program Files (x86)\\Steam\\steamapps\\common\\BlackMyth-Wukong");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), "/C:/Program%20Files%20(x86)/Steam/steamapps/common/BlackMyth-Wukong");
+        } else {
+            url = Utils.toURL("a:\\b\\c");
+            Assert.assertEquals(url.getProtocol(), "file");
+            Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "a:%5Cb%5Cc").toUri().getPath());
+
+            Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL("a:/b/c"));
+        }
     }
 }
