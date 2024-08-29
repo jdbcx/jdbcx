@@ -15,7 +15,7 @@ FROM ubuntu:jammy
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
 
-ARG PRQLC_VERSION=0.11.4
+ARG PRQLC_VERSION=0.13.0
 ARG JDBCX_VERSION=0.6.0
 
 # Environment variables
@@ -27,8 +27,10 @@ ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
 LABEL os.dist=Ubuntu os.version=22.04 app.name=JDBCX app.version=${JDBCX_VERSION}
 
 # Configure system(charset and timezone) and install ClickHouse
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ca-certificates locales curl wget tzdata \
+RUN apt update \
+    && apt upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y \
+        ca-certificates locales curl ssh-client wget tzdata iputils-ping net-tools \
     && locale-gen en_US.UTF-8 \
     && wget -nv -O /tmp/prqlc.deb \
         https://github.com/PRQL/prql/releases/download/${PRQLC_VERSION}/prqlc_${PRQLC_VERSION}_$(arch | sed -e 's|aarch64|arm64|' -e 's|x86_64|amd64|').deb \
@@ -67,10 +69,11 @@ RUN chmod +x /*.sh \
         https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
     && wget -nv -P ./drivers/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
-        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar \
-        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/0.10.3/duckdb_jdbc-0.10.3.jar \
-        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar \
-        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.46.0.0/sqlite-jdbc-3.46.0.0.jar \
+        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/9.0.0/mysql-connector-j-9.0.0.jar \
+        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/1.0.0/duckdb_jdbc-1.0.0.jar \
+        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar \
+        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.46.1.0/sqlite-jdbc-3.46.1.0.jar \
+        https://repo1.maven.org/maven2/org/opensearch/driver/opensearch-sql-jdbc/1.4.0.1/opensearch-sql-jdbc-1.4.0.1.jar \
     && rm -fv ./*.tar.gz /tmp/*
 
 USER jdbcx
