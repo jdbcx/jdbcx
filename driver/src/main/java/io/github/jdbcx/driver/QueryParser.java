@@ -232,7 +232,7 @@ public final class QueryParser {
     }
 
     static String[] extractBridgeBlock(String block, String extension, int beginIndex, int len) {
-        if (!ExecutableBlock.KEYWORD_TABLE.equals(extension) && !ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
+        if (!ExecutableBlock.isForBridge(extension)) {
             return Constants.EMPTY_STRING_ARRAY;
         }
 
@@ -329,8 +329,7 @@ public final class QueryParser {
 
                     if (j == len) {
                         extension = block.substring(beginIndex, i);
-                        if (ExecutableBlock.KEYWORD_TABLE.equals(extension)
-                                || ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
+                        if (ExecutableBlock.isForBridge(extension)) {
                             return new String[] { extension, Constants.EMPTY_STRING };
                         }
                         script = Constants.EMPTY_STRING;
@@ -363,8 +362,7 @@ public final class QueryParser {
         if (script == null) {
             if (scope == 0) {
                 extension = block.substring(beginIndex);
-                if (ExecutableBlock.KEYWORD_TABLE.equals(extension)
-                        || ExecutableBlock.KEYWORD_VALUES.equals(extension)) {
+                if (ExecutableBlock.isForBridge(extension)) {
                     return new String[] { extension, Constants.EMPTY_STRING };
                 }
                 script = Constants.EMPTY_STRING;
@@ -382,7 +380,7 @@ public final class QueryParser {
             props.putAll(vars);
         }
         String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, tag, vars), tag, props);
-        return new ExecutableBlock(id, parsed[0], props, parsed[1], false);
+        return new ExecutableBlock(id, parsed[0], tag, props, parsed[1], false);
     }
 
     static void addExecutableBlock(StringBuilder builder, String executableBlock, VariableTag tag, Properties vars,
@@ -402,7 +400,7 @@ public final class QueryParser {
             blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, tag, vars));
             parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
         }
-        blocks.add(new ExecutableBlock(parts.size(), parsed[0], props, parsed[1], output));
+        blocks.add(new ExecutableBlock(parts.size(), parsed[0], tag, props, parsed[1], output));
         parts.add(Constants.EMPTY_STRING); // placeholder of current query
         if (!Checker.isNullOrEmpty(postQuery)) {
             blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars));

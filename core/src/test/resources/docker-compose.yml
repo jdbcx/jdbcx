@@ -5,25 +5,26 @@
 
 # https://hub.docker.com/_/mariadb
 mariadb:
-  image: mariadb:11.3
+  image: mariadb:11.5
   environment:
     MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
 
 # https://hub.docker.com/_/mysql
 mysql:
-  image: mysql:8.4
+  image: mysql:9.0
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
 # https://hub.docker.com/_/postgres
 postgresql:
-  image: postgres:16.2
+  image: postgres:16.4
   environment:
     POSTGRES_HOST_AUTH_METHOD: "trust"
 
 # https://hub.docker.com/r/clickhouse/clickhouse-server/
 clickhouse:
-  # 24.3 has problem working behind the proxy
+  # 24.3+ has problem dealing with absolute-form in request
+  # See https://github.com/ClickHouse/ClickHouse/issues/58828
   image: clickhouse/clickhouse-server:23.8
   links:
     - mysql
@@ -31,7 +32,7 @@ clickhouse:
 
 # https://hub.docker.com/r/voltrondata/flight-sql
 flightsql:
-  image: voltrondata/flight-sql:v1.3.4
+  image: voltrondata/flight-sql:v1.4.1
   environment:
     TLS_ENABLED: "0"
     FLIGHT_PASSWORD: "f"

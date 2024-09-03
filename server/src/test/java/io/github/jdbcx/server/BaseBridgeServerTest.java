@@ -577,9 +577,10 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-duckdb: select 1}}")) {
+                ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-duckdb: select 1, '${_}.${_.id}'}}")) {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getInt(1), 1);
+            Assert.assertEquals(rs.getString(2), "db.my-duckdb");
             Assert.assertFalse(rs.next());
         }
 
@@ -593,9 +594,9 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("insert into my_table {{ values.db.my-sqlite: select 1 a }}")) {
+                ResultSet rs = stmt.executeQuery("insert into my_table {{ values.db.my-sqlite: select 1 a, '${_.id}.${_}' B }}")) {
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getString(1), "insert into my_table (\"a\") VALUES\n(1)");
+            Assert.assertEquals(rs.getString(1), "insert into my_table (\"a\",\"B\") VALUES\n(1,'my-sqlite.db')");
             Assert.assertFalse(rs.next());
         }
     }

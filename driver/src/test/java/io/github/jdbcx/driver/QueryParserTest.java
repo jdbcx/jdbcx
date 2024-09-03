@@ -42,7 +42,7 @@ public class QueryParserTest {
                 () -> QueryParser.extractQuotedPart("`123", 1, 4, null, props, '`'));
 
         String str;
-        Assert.assertEquals(QueryParser.extractQuotedPart(str = "'", 0, 1, null, props, '\''),
+        Assert.assertEquals(QueryParser.extractQuotedPart(str = "'", 0, str.length(), null, props, '\''),
                 QueryParser.newPart(1, ""));
         Assert.assertEquals(QueryParser.extractQuotedPart(str = " '' \\''", 1, str.length(), null, props, '\''),
                 QueryParser.newPart(7, "' '"));
@@ -265,7 +265,8 @@ public class QueryParserTest {
         Assert.assertEquals(QueryParser.split(" select 1 \n--;; \t  \r\n\tselect 2\r\n\n").toArray(expected),
                 expected = new String[][] { { "Query #1", "select 1" }, { "Query #2", "select 2" } });
         Assert.assertEquals(
-                QueryParser.split("--;; q1\n select 1 \n--;; q3 \n--;;  q2\t  \r\n\tselect 2\r\n--;; ").toArray(expected),
+                QueryParser.split("--;; q1\n select 1 \n--;; q3 \n--;;  q2\t  \r\n\tselect 2\r\n--;; ")
+                        .toArray(expected),
                 expected = new String[][] { { "q1", "select 1" }, { "q2", "select 2" } });
     }
 
