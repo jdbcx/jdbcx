@@ -42,10 +42,10 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
             }
 
             try (ResultSet rs = stmt
-                    .executeQuery("select '{{ sql(url='jdbc:ch://${ch.server.address}'): select 2}}'")) {
+                    .executeQuery("select '{{ db(url='jdbc:ch://${ch.server.address}'): select ''${_}:${_.url}'', 2}}'")) {
                 Assert.assertNotNull(stmt.getWarnings());
                 Assert.assertTrue(rs.next(), "Should have at least one row");
-                Assert.assertEquals(rs.getString(1), "select 2");
+                Assert.assertEquals(rs.getString(1), "select 'db:jdbc:ch://${ch.server.address}', 2");
                 Assert.assertFalse(rs.next(), "Should have only one row");
             }
         }

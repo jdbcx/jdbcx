@@ -73,7 +73,7 @@ public final class QueryBuilder {
                     props.setProperty(DriverExtension.PROPERTY_PATH, QueryMode.ASYNC.path());
                 }
                 VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
-                this.blocks[i] = new ExecutableBlock(block.getIndex(), QueryContext.KEY_BRIDGE, props,
+                this.blocks[i] = new ExecutableBlock(block.getIndex(), QueryContext.KEY_BRIDGE, tag, props,
                         block.hasOutput() ? tag.function(block.getContent()) : tag.procedure(block.getContent()),
                         block.hasOutput());
             }
