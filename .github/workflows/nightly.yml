@@ -95,5 +95,5 @@ jobs:
           build-args: |
             JDBCX_VERSION=${{ env.JDBCX_VERSION }}-SNAPSHOT
           tags: |
-            ${{ github.event.inputs.owner }}/jdbcx:nightly
-            ${{ github.event.inputs.owner }}/jdbcx:${{ env.JDBCX_VERSION }}-nightly
+            ${{ env.GITHUB_REPOSITORY }}:nightly
+            ${{ env.GITHUB_REPOSITORY }}:${{ env.JDBCX_VERSION }}-nightly
