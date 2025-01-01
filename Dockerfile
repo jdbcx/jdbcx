@@ -34,12 +34,12 @@ RUN apt update \
     && locale-gen en_US.UTF-8 \
     && wget -nv -O /tmp/prqlc.deb \
         https://github.com/PRQL/prql/releases/download/${PRQLC_VERSION}/prqlc_${PRQLC_VERSION}_$(arch | sed -e 's|aarch64|arm64|' -e 's|x86_64|amd64|').deb \
-    && dpkg -i /tmp/prqlc.deb \
     && groupadd -r -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
     && useradd -r -Md /app -s /bin/bash -u ${JDBCX_USER_ID} -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
     && echo 13 > /etc/timezone \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
+    && dpkg -i /tmp/prqlc.deb \
     && apt-get clean \
     && rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
 
