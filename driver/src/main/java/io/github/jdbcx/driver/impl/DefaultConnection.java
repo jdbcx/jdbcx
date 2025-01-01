@@ -407,6 +407,7 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
         try {
             CompletableFuture.runAsync(() -> {
                 for (DefaultResource stmt : children) {
+                    log.warn("Cancelling statement [%s]", stmt);
                     try {
                         ((Statement) stmt).cancel();
                     } catch (SQLException e) {

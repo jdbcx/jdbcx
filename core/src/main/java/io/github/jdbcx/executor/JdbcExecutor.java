@@ -29,6 +29,8 @@ import java.util.Properties;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Field;
+import io.github.jdbcx.Logger;
+import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
@@ -40,6 +42,8 @@ import io.github.jdbcx.value.LongValue;
 import io.github.jdbcx.value.StringValue;
 
 public class JdbcExecutor extends AbstractExecutor {
+    private static final Logger log = LoggerFactory.getLogger(JdbcExecutor.class);
+
     private static final List<Field> dryRunFields = Collections
             .unmodifiableList(Arrays.asList(Field.of("connection"), FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
@@ -293,6 +297,7 @@ public class JdbcExecutor extends AbstractExecutor {
         final Statement stmt = conn.createStatement(); // NOSONAR
         if (timeoutSec > 0) {
             stmt.setQueryTimeout(timeoutSec);
+            log.debug("Set query timeout for [%s] to %d seconds", stmt, timeoutSec);
         }
 
         final String resultType = getResultType(props);

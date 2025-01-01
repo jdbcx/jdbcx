@@ -201,11 +201,17 @@ public class WebExecutor extends AbstractExecutor {
             }
         }
 
+        final int originalConnectTimeout = conn.getConnectTimeout();
+        final int originalReadTimeout = conn.getReadTimeout();
         if (connectTimeout > 0) {
             conn.setConnectTimeout(execTimeout > 0 ? Math.min(connectTimeout, execTimeout) : connectTimeout);
+            log.debug("Changed connect timeout for [%s] from %d to %d milliseconds", conn, originalConnectTimeout,
+                    conn.getConnectTimeout());
         }
         if (socketTimeout > 0) {
             conn.setReadTimeout(execTimeout > 0 ? Math.min(socketTimeout, execTimeout) : socketTimeout);
+            log.debug("Changed read timeout for [%s] from %d to %d milliseconds", conn, originalReadTimeout,
+                    conn.getReadTimeout());
         }
         conn.setAllowUserInteraction(false);
         conn.setInstanceFollowRedirects(followRedirect);

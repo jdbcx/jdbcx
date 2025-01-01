@@ -82,9 +82,11 @@ public class WrappedConnection implements ManagedConnection {
             }
         }
 
+        final int originalQueryTimeout = to.getQueryTimeout();
         value = from.getQueryTimeout();
-        if (to.getQueryTimeout() != value) {
+        if (originalQueryTimeout != value) {
             to.setQueryTimeout(value);
+            log.debug("Changed query timeout for [%s] from %d to %d seconds", to, originalQueryTimeout, value);
         }
     }
 

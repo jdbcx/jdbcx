@@ -94,7 +94,7 @@ final class DriverInfo {
         try {
             d = JdbcInterpreter.getDriverByUrl(url, classLoader);
         } catch (Throwable t) { // NOSONAR
-            log.debug("No JDBC driver was found for URL [%s].", url, t);
+            log.debug("No JDBC driver was found for URL [%s], now fall back to InvalidDriver.", url, t);
         }
 
         return d != null ? d : new InvalidDriver(props);
