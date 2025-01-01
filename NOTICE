@@ -1,4 +1,4 @@
-Copyright 2022-2024, Zhichun Wu.
+Copyright 2022-2025, Zhichun Wu.
 
 This project includes software developed by Zhichun Wu.
 https://github.com/zhicwu
@@ -36,11 +36,11 @@ This project includes:
   Apache Parquet Format Structures under The Apache Software License, Version 2.0
   Apache Parquet Hadoop under The Apache Software License, Version 2.0
   Apache Parquet Jackson under The Apache Software License, Version 2.0
-  Arrow Flight SQL JDBC Driver under Apache License, Version 2.0
-  Arrow Format under Apache License, Version 2.0
-  Arrow Memory - Core under Apache License, Version 2.0
-  Arrow Memory - Unsafe under Apache License, Version 2.0
-  Arrow Vectors under Apache License, Version 2.0
+  Arrow Flight SQL JDBC Driver under Apache-2.0
+  Arrow Format under Apache-2.0
+  Arrow Memory - Core under Apache-2.0
+  Arrow Memory - Unsafe under Apache-2.0
+  Arrow Vectors under Apache-2.0
   Bouncy Castle Provider under Bouncy Castle Licence
   brotli4j under Apache License 2.0
   BSON under The Apache License, Version 2.0
@@ -79,7 +79,7 @@ This project includes:
   JUnit under Eclipse Public License 1.0
   LatencyUtils under Public Domain, per Creative Commons CC0
   LZ4 and xxHash under The Apache Software License, Version 2.0
-  mariadb-java-client under LGPL-2.1
+  mariadb-java-client under LGPL-2.1-or-later
   micrometer-commons under The Apache Software License, Version 2.0
   micrometer-core under The Apache Software License, Version 2.0
   micrometer-observation under The Apache Software License, Version 2.0
@@ -90,6 +90,7 @@ This project includes:
   Prometheus Metrics Config under The Apache Software License, Version 2.0
   Prometheus Metrics Core under The Apache Software License, Version 2.0
   Prometheus Metrics Exposition Formats under The Apache Software License, Version 2.0
+  Prometheus Metrics Exposition Text Formats under The Apache Software License, Version 2.0
   Prometheus Metrics Model under The Apache Software License, Version 2.0
   Prometheus Metrics Tracer Common under The Apache Software License, Version 2.0
   Protocol Buffers [Core] under BSD-3-Clause
@@ -106,5 +107,5 @@ This project includes:
   Toxiproxy Java Client under The Apache License, Version 2.0
   waffle-jna under MIT
   Woodstox under The Apache License, Version 2.0
-  XZ for Java under Public Domain
+  XZ for Java under 0BSD
   zstd-jni under BSD 2-Clause License

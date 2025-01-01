@@ -81,9 +81,9 @@ jobs:
           && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
             server/target/jdbcx-server-*-dependencies.tar.gz docker/app/.
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Build & Test Docker Image
         run: |
           docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
@@ -138,7 +138,7 @@ jobs:
       - name: Test libraries
         run: mvn --batch-mode --show-version --strict-checksums install
       - name: Upload test results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: result ${{ github.job }}
@@ -194,7 +194,7 @@ jobs:
         # skip integration due to poor support of docker
         run: mvn --batch-mode --show-version --strict-checksums -DskipITs install
       - name: Upload test results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: result ${{ github.job }}
