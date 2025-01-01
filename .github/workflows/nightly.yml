@@ -38,7 +38,7 @@ jobs:
           java-version: |
             8
             21
-          cache: 'maven'
+          cache: "maven"
       - name: Setup Toolchain
         shell: bash
         run: |
@@ -72,3 +72,28 @@ jobs:
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
           nexus_username: ${{ secrets.SONATYPE_USER }}
           nexus_password: ${{ secrets.SONATYPE_PASSWD }}
+      - name: Prepare libraries
+        run: |
+          mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
+            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_PASSWD }}
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            JDBCX_VERSION=${{ env.JDBCX_VERSION }}-SNAPSHOT
+          tags: |
+            ${{ github.event.inputs.owner }}/jdbcx:nightly
+            ${{ github.event.inputs.owner }}/jdbcx:${{ env.JDBCX_VERSION }}-nightly
