@@ -21,7 +21,7 @@ ARG JDBCX_VERSION=0.6.0
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
     JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
-    JDBCX_USER_ID=1000 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.6.0}
+    JDBCX_USER_ID=2025 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.6.0}
 
 # Labels
 LABEL os.dist=Ubuntu os.version=24.04 app.name=JDBCX app.version=${JDBCX_VERSION}
@@ -34,12 +34,12 @@ RUN apt update \
     && locale-gen en_US.UTF-8 \
     && wget -nv -O /tmp/prqlc.deb \
         https://github.com/PRQL/prql/releases/download/${PRQLC_VERSION}/prqlc_${PRQLC_VERSION}_$(arch | sed -e 's|aarch64|arm64|' -e 's|x86_64|amd64|').deb \
+    && dpkg -i /tmp/prqlc.deb \
     && groupadd -r -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
     && useradd -r -Md /app -s /bin/bash -u ${JDBCX_USER_ID} -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
     && echo 13 > /etc/timezone \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
-    && dpkg -i /tmp/prqlc.deb \
     && apt-get clean \
     && rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/*
 
