@@ -41,15 +41,18 @@ public class MainTest {
     }
 
     @Test(groups = { "unit" })
-    public void testCustomArguments() throws IOException {
+    public void testCustomArguments() {
+        Properties connProps = new Properties();
+        connProps.setProperty("x", "1");
+        connProps.setProperty("y", "false");
         Properties props = new Properties();
         props.setProperty("x", "y");
         String[][] queries = new String[][] { { "q1", "select 'q'" }, { "q 1", "select 2" } };
-        Main.Arguments args = new Main.Arguments(10L, 9L, true, "12.3", Compression.BROTLI, 8,
+        Main.Arguments args = new Main.Arguments(connProps, 10L, 9L, "12.3", Compression.BROTLI, 8,
                 7, Format.ARROW_STREAM, props, 6, 5, "4321", Arrays.asList(queries), "select 2", 3, true);
+        Assert.assertEquals(args.connectionProps, connProps);
         Assert.assertEquals(args.loopCount, 10L);
         Assert.assertEquals(args.loopInterval, 9L);
-        Assert.assertTrue(args.noProperties);
         Assert.assertEquals(args.outputFile, "12.3");
         Assert.assertEquals(args.outputFormat, Format.ARROW_STREAM);
         Assert.assertEquals(args.outputParams, props);
@@ -68,9 +71,9 @@ public class MainTest {
     @Test(groups = { "unit" })
     public void testDefaultArguments() throws IOException {
         Main.Arguments args = new Main.Arguments(new String[] { "new" });
+        Assert.assertEquals(args.connectionProps, new Properties());
         Assert.assertEquals(args.loopCount, 1L);
         Assert.assertEquals(args.loopInterval, 0L);
-        Assert.assertEquals(args.noProperties, false);
         Assert.assertEquals(args.outputFile, "");
         Assert.assertEquals(args.outputFormat, Format.TSV);
         Assert.assertEquals(args.outputParams, new Properties());
@@ -90,9 +93,9 @@ public class MainTest {
     public void testNewArguments() throws IOException {
         Main.Arguments args = new Main.Arguments(new String[1]);
         Main.Arguments newArgs = new Main.Arguments(args, Collections.singletonList(new String[] { "1", "q1" }));
+        Assert.assertTrue(args.connectionProps == newArgs.connectionProps);
         Assert.assertTrue(args.loopCount == newArgs.loopCount);
         Assert.assertTrue(args.loopInterval == newArgs.loopInterval);
-        Assert.assertTrue(args.noProperties == newArgs.noProperties);
         Assert.assertTrue(args.outputFile == newArgs.outputFile);
         Assert.assertTrue(args.outputFormat == newArgs.outputFormat);
         Assert.assertTrue(args.outputParams == newArgs.outputParams);

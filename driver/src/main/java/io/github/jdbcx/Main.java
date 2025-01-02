@@ -49,9 +49,9 @@ import io.github.jdbcx.executor.Stream;
 
 public final class Main {
     static final class Arguments {
+        final Properties connectionProps;
         final long loopCount;
         final long loopInterval;
-        final boolean noProperties;
         final String outputFile;
         final Compression outputCompression;
         final int compressionLevel;
@@ -102,10 +102,12 @@ public final class Main {
         }
 
         Arguments(String[] args) throws IOException {
+            this.connectionProps = new Properties();
+            this.connectionProps
+                    .putAll(Utils.toKeyValuePairs(System.getProperty("connectionProps", Constants.EMPTY_STRING)));
+
             this.loopCount = Long.getLong("loopCount", 1L);
             this.loopInterval = Long.getLong("loopInterval", 0L);
-            this.noProperties = Boolean
-                    .parseBoolean(System.getProperty("noProperties", Boolean.FALSE.toString()));
             this.outputFile = System.getProperty("outputFile", Constants.EMPTY_STRING);
 
             final Compression defaultCompression = Compression.fromFileName(outputFile);
@@ -135,19 +137,19 @@ public final class Main {
         }
 
         Arguments(Arguments args, List<String[]> queries) {
-            this(args.loopCount, args.loopInterval, args.noProperties, args.outputFile, args.outputCompression,
+            this(args.connectionProps, args.loopCount, args.loopInterval, args.outputFile, args.outputCompression,
                     args.compressionLevel, args.compressionBuffer, args.outputFormat, args.outputParams, args.tasks,
                     args.taskCheckInterval, args.url, queries, args.validationQuery, args.validationTimeout,
                     args.verbose);
         }
 
-        Arguments(long loopCount, long loopInterval, boolean noProperties, String outputFile, // NOSONAR
+        Arguments(Properties connectionProps, long loopCount, long loopInterval, String outputFile, // NOSONAR
                 Compression outputCompression, int compressionLevel, int compressionBuffer, Format outputFormat,
                 Properties outputParams, int tasks, long taskCheckInterval, String url, List<String[]> queries,
                 String validationQuery, int validationTimeout, boolean verbose) {
+            this.connectionProps = connectionProps;
             this.loopCount = loopCount;
             this.loopInterval = loopInterval;
-            this.noProperties = noProperties;
             this.outputFile = outputFile;
             this.outputCompression = outputCompression;
             this.compressionLevel = compressionLevel;
@@ -225,9 +227,9 @@ public final class Main {
         println("Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments.");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
+        println("  connectionProps   Comma separated connection properties (e.g. 'ssl=true,sslmode=none')");
         println("  loopCount         Number of times to repeat the same query, defaults to 1");
         println("  loopInterval      Interval in milliseconds between repeated executions, defaults to 0");
-        println("  noProperties      Whether to pass all system properties to the underlying driver, defaults to false");
         println("  outputFile        Output file name, including its extension, indicates data format and compression method (e.g. out.csv.gz), defaults to empty string");
         println("  outputCompression Output compression method, defaults to NONE");
         println("  compressionLevel  Output compression level, defaults to -1");
@@ -241,13 +243,16 @@ public final class Main {
         println("  verbose           Whether to show logs, defaults to false");
         println();
         println("Examples:");
-        println("  -  %s 'jdbcx:sqlite::memory:' 'select 1'",
+        println("  -  %s 'jdbcx:duckdb:' 'select 1'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' '@*.js'", execFile);
         println("  -  %s 'jdbcx:sqlite::memory:' 'select 1' 'select 2'",
-                index > 0 ? (execFile.substring(0, index) + " -noProperties=true" + execFile.substring(index))
-                        : (execFile + " -noProperties=true"));
+                index > 0
+                        ? (execFile.substring(0, index)
+                                + " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"
+                                + execFile.substring(index))
+                        : (execFile + " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"));
     }
 
     static void closeQuietly(AutoCloseable resource) {
@@ -366,8 +371,8 @@ public final class Main {
                     }
                 }
 
-                conn = getOrCreateConnection(args.url, args.noProperties ? new Properties() : System.getProperties(),
-                        conn, args.validationTimeout, args.validationQuery);
+                conn = getOrCreateConnection(args.url, args.connectionProps, conn, args.validationTimeout,
+                        args.validationQuery);
 
                 final long startTime = args.verbose ? System.nanoTime() : 0L;
                 final int[] rounds = execute(conn, pair[1], args.outputFile, args.outputFormat, args.outputParams,
