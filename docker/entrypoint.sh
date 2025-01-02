@@ -17,8 +17,9 @@ run_cli() {
 }
 
 run_server() {
-    if [ ! -f ${BASE_DIR}/simplelogger.properties ]; then
-        cat << EOF > ${BASE_DIR}/simplelogger.properties
+    local log_conf_file="${BASE_DIR}/simplelogger.properties"
+    if [ ! -f ${log_conf_file} ]; then
+        cat << EOF > ${log_conf_file}
 org.slf4j.simpleLogger.defaultLogLevel=info
 org.slf4j.simpleLogger.log.io.github.jdbcx=debug
 org.slf4j.simpleLogger.log.io.github.jdbcx.internal=warn
