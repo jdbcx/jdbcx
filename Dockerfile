@@ -20,7 +20,7 @@ ARG JDBCX_VERSION=0.6.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
-    JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
+    JDBCX_HOME="/app" JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
     JDBCX_USER_ID=2025 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.6.0}
 
 # Labels
@@ -36,7 +36,7 @@ RUN apt update \
         https://github.com/PRQL/prql/releases/download/${PRQLC_VERSION}/prqlc_${PRQLC_VERSION}_$(arch | sed -e 's|aarch64|arm64|' -e 's|x86_64|amd64|').deb \
     && dpkg -i /tmp/prqlc.deb \
     && groupadd -r -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
-    && useradd -r -Md /app -s /bin/bash -u ${JDBCX_USER_ID} -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
+    && useradd -r -Md ${JDBCX_HOME} -s /bin/bash -u ${JDBCX_USER_ID} -g ${JDBCX_USER_ID} ${JDBCX_USER_NAME} \
     && echo 13 > /etc/timezone \
     && echo 33 >> /etc/timezone \
     && cat /etc/timezone | dpkg-reconfigure -f noninteractive tzdata \
@@ -46,7 +46,7 @@ RUN apt update \
 # Use custom configuration
 COPY --chown=${JDBCX_USER_NAME}:${JDBCX_USER_NAME} docker/ /
 
-WORKDIR /app
+WORKDIR ${JDBCX_HOME}
 
 COPY --from=jdk /min-jre ./openjdk
 
@@ -83,7 +83,7 @@ RUN for ext in arrow aws azure fts httpfs json mysql parquet postgres sqlite vss
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
-VOLUME [ "/app/drivers" ]
+VOLUME [ "${JDBCX_HOME}/drivers" ]
 
 # bridge server
 EXPOSE 8080
