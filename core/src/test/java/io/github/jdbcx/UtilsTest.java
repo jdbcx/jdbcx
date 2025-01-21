@@ -331,6 +331,24 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split(" ", '\0'), Collections.singletonList(" "));
         Assert.assertEquals(Utils.split("a\0\0b", '\0'), Arrays.asList("a", "", "b"));
         Assert.assertEquals(Utils.split(",,,a,c,,b,,,", ','), Arrays.asList("", "", "", "a", "c", "", "b", "", ""));
+
+        Assert.assertEquals(Utils.split(null, '\0', true, true, true), Collections.emptyList());
+
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', false, false, false),
+                Arrays.asList("", "", "", "x ", "y ", "x", "Bcd", "", " "));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, false, false),
+                Arrays.asList("", "", "", "x", "y", "x", "Bcd", "", ""));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', false, true, false),
+                Arrays.asList("x ", "y ", "x", "Bcd", " "));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', false, false, true),
+                Arrays.asList("", "x ", "y ", "x", "Bcd", " "));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, true, false),
+                Arrays.asList("x", "y", "x", "Bcd"));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', false, true, true),
+                Arrays.asList("x ", "y ", "x", "Bcd", " "));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, false, true),
+                Arrays.asList("", "x", "y", "Bcd"));
+        Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, true, true), Arrays.asList("x", "y", "Bcd"));
     }
 
     @Test(groups = { "unit" })

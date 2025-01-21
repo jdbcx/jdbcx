@@ -123,7 +123,8 @@ public final class Option implements Serializable {
             "Execution timeout in milliseconds. A negative value or 0 disables the timeout.", "0");
 
     public static final Option WORK_DIRECTORY = Option.of("work.dir",
-            "Path to the working directory. If left empty, the current directory will be used.", "");
+            "Path to the working directory. If left empty, the current directory will be used.",
+            Constants.EMPTY_STRING);
 
     public static final Option INPUT_FILE = Option
             .of(new String[] { "input.file",
@@ -135,6 +136,13 @@ public final class Option implements Serializable {
             "Character encoding to use when reading the input stream.", Constants.DEFAULT_CHARSET.name());
     public static final Option OUTPUT_CHARSET = Option.of("output.charset",
             "Character encoding to use when writing the output stream.", Constants.DEFAULT_CHARSET.name());
+
+    /**
+     * Comma separated overrideable parameters.
+     */
+    public static final Option OVERRIDEABLE_PARAMS = Option.of(new String[] { "overrideable.params",
+            "Comma separate list of parameters can be override in query for execution.", Constants.EMPTY_STRING });
+
     /**
      * Proxy to use.
      */

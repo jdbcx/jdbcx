@@ -1092,6 +1092,10 @@ public final class Utils {
     }
 
     public static List<String> split(String str, char delimiter) {
+        return split(str, delimiter, false, false, false);
+    }
+
+    public static List<String> split(String str, char delimiter, boolean trim, boolean ignoreEmpty, boolean dedup) {
         if (str == null) {
             return Collections.emptyList();
         }
@@ -1101,8 +1105,15 @@ public final class Utils {
         for (int i = 0, len = str.length(); i < len; i++) {
             char ch = str.charAt(i);
             if (ch == delimiter) {
-                list.add(builder.toString());
+                String v = builder.toString();
+                if (trim) {
+                    v = v.trim();
+                }
                 builder.setLength(0);
+                if ((ignoreEmpty && v.isEmpty()) || (dedup && list.contains(v))) {
+                    continue;
+                }
+                list.add(v);
             } else {
                 builder.append(ch);
             }
@@ -1111,7 +1122,13 @@ public final class Utils {
         if (list.isEmpty()) {
             return Collections.singletonList(str);
         } else if (builder.length() > 0) {
-            list.add(builder.toString());
+            String v = builder.toString();
+            if (trim) {
+                v = v.trim();
+            }
+            if (!(ignoreEmpty && v.isEmpty()) && !(dedup && list.contains(v))) {
+                list.add(v);
+            }
         }
         return Collections.unmodifiableList(list);
     }
