@@ -153,6 +153,10 @@ public interface DriverExtension extends Comparable<DriverExtension> {
             defined = manager.getConfig(getName(), id);
         }
 
+        final String overridableParams = (String) defined.remove(Option.OVERRIDEABLE_PARAMS.getName());
+        final List<String> overridables = Checker.isNullOrBlank(overridableParams) ? Collections.emptyList()
+                : Utils.split(overridableParams, ',', true, true, true);
+
         // ensures the configured properties won't be overrided
         Properties config = new Properties(props);
         for (Option option : getOptions(props)) {
@@ -160,6 +164,14 @@ public interface DriverExtension extends Comparable<DriverExtension> {
             Object value = defined.remove(name);
             config.put(name, value != null ? value : option.getDefaultValue());
         }
+
+        // and then the overridable properties
+        for (String s : overridables) {
+            if (config.getProperty(s) != null) {
+                defined.remove(s);
+            }
+        }
+
         if (!defined.isEmpty()) {
             config.putAll(defined);
         }

@@ -85,6 +85,23 @@ public class WebDriverExtensionTest extends BaseIntegrationTest {
         }
     }
 
+    @Test(groups = { "integration" })
+    public void testDryRunWithCustomParams() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        try (Connection conn = DriverManager.getConnection("jdbcx:", props);
+                Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt
+                    .executeQuery("{{ web.my-service(api.requestor=you,api.key=123,exec.dryrun=true): abc }}")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertEquals(rs.getString("request"), "{\"requestor\":\"you\",\"message\":\"abc\"}");
+                Assert.assertEquals(rs.getString("headers"),
+                        "{Authorization=Bearer secret-key, Content-Type=application/json}");
+                Assert.assertFalse(rs.next(), "Should have only one row");
+            }
+        }
+    }
+
     @Test(groups = { "private" })
     public void testCustomUrlTemplate() throws SQLException {
         Properties props = new Properties();
