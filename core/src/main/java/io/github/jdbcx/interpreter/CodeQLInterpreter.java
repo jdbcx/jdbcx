@@ -67,7 +67,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
                     OPTION_DECODE_ARGS, OPTION_QUERY_ARGS, OPTION_TIMEOUT,
                     CommandLineExecutor.OPTION_CLI_PATH.update().defaultValue(DEFAULT_COMMAND).build(),
                     CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
-                    Option.INPUT_CHARSET, Option.OUTPUT_CHARSET, Option.WORK_DIRECTORY));
+                    Option.INPUT_FILE, Option.INPUT_CHARSET, Option.OUTPUT_CHARSET, Option.WORK_DIRECTORY));
 
     public static List<String> getAllQlPacks(Properties props) {
         final List<String> qlpacks = new LinkedList<>();
@@ -200,10 +200,15 @@ public class CodeQLInterpreter extends AbstractInterpreter {
                         Utils.format("No [%s] found in work directory [%s]", CONFIG_FILE, workDir));
             }
 
-            queryFile = Utils.createTempFile(workDir, Option.PROPERTY_JDBCX, ".ql", false);
-            try (OutputStream out = new FileOutputStream(queryFile)) {
-                long bytes = Stream.pipe(new ByteArrayInputStream(query.getBytes()), out);
-                log.debug("Wrote %d bytes into file [%s]", bytes, queryFile);
+            final String inputFile = executor.getInputFile(props);
+            if (Checker.isNullOrEmpty(inputFile)) {
+                queryFile = Utils.createTempFile(workDir, Option.PROPERTY_JDBCX, ".ql", false);
+                try (OutputStream out = new FileOutputStream(queryFile)) {
+                    long bytes = Stream.pipe(new ByteArrayInputStream(query.getBytes()), out);
+                    log.debug("Wrote %d bytes into file [%s]", bytes, queryFile);
+                }
+            } else {
+                queryFile = new File(inputFile);
             }
 
             final String format = OPTION_FORMAT.getValue(props, defaultFormat);

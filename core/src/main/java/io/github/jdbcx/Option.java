@@ -128,7 +128,7 @@ public final class Option implements Serializable {
 
     public static final Option INPUT_FILE = Option
             .of(new String[] { "input.file",
-                    "Path to an input file containing the query text to execute. This property is only used if no inline query content is provided" });
+                    "Path to an input file containing the query text to be executed. Utilizing this property will omit any inline query content." });
     public static final Option OUTPUT_FILE = Option
             .of(new String[] { "output.file",
                     "Path to an output file for writing query results. If the file already exists, it will be overwritten without warning." });

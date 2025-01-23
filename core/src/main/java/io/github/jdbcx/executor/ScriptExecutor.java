@@ -207,7 +207,8 @@ public class ScriptExecutor extends AbstractExecutor {
                     new Object[][] { { defaultLanguage, query, getTimeout(props), vars, props } });
         }
 
-        if (Checker.isNullOrBlank(query)) {
+        final String actualQuery = loadInputFile(props, query);
+        if (Checker.isNullOrBlank(actualQuery)) {
             return Constants.EMPTY_STRING;
         }
 
@@ -233,7 +234,7 @@ public class ScriptExecutor extends AbstractExecutor {
 
         CompletableFuture<?> future = supply(() -> {
             try {
-                return engine.eval(query);
+                return engine.eval(actualQuery);
             } catch (ScriptException e) {
                 throw new CompletionException(e);
             }

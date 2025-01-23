@@ -31,7 +31,7 @@ import io.github.jdbcx.QueryContext;
 
 public class WebInterpreterTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
-    public void testConstructor() throws IOException {
+    public void testConstructor() {
         WebInterpreter interpreter = null;
         Assert.assertEquals(interpreter = new WebInterpreter(null, null), interpreter);
         Assert.assertEquals(interpreter.getDefaultUrl(), WebInterpreter.OPTION_URL_TEMPLATE.getDefaultValue());
@@ -77,15 +77,16 @@ public class WebInterpreterTest extends BaseIntegrationTest {
         Assert.assertEquals(interpreter.getDefaultRequestHeaders(), headers);
         Assert.assertEquals(interpreter.getDefaultRequestTemplate(), "");
 
-        WebInterpreter.OPTION_REQUEST_TEMPLATE_FILE.setValue(config, "target/test-classes/non-existent.file");
-        Assert.assertThrows(IllegalArgumentException.class, () -> new WebInterpreter(context, config));
+        Option.INPUT_FILE.setValue(config, "target/test-classes/non-existent.file");
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new WebInterpreter(context, config).interpret("123", config));
 
-        String classFile = "target/classes/" + WebInterpreter.class.getName().replace('.', '/') + ".class";
-        WebInterpreter.OPTION_REQUEST_TEMPLATE_FILE.setValue(config, classFile);
+        Option.INPUT_FILE.setValue(config,
+                "target/classes/" + WebInterpreter.class.getName().replace('.', '/') + ".class");
         Assert.assertEquals(interpreter = new WebInterpreter(context, config), interpreter);
         Assert.assertEquals(interpreter.getDefaultUrl(), "my url is this");
         Assert.assertEquals(interpreter.getDefaultRequestHeaders(), headers);
-        Assert.assertTrue(interpreter.getDefaultRequestTemplate().length() > 0);
+        Assert.assertTrue(interpreter.getDefaultRequestTemplate().isEmpty());
 
         WebInterpreter.OPTION_REQUEST_TEMPLATE.setValue(config, "321");
         Assert.assertEquals(interpreter = new WebInterpreter(context, config), interpreter);
@@ -95,7 +96,7 @@ public class WebInterpreterTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testInterpret() throws IOException {
+    public void testInterpret() {
         QueryContext context = QueryContext.newContext();
         Properties config = new Properties();
 

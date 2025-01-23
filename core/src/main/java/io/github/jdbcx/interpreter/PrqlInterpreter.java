@@ -48,7 +48,7 @@ public class PrqlInterpreter extends AbstractInterpreter {
                     Arrays.asList(Option.EXEC_ERROR, OPTION_COMPILE_TARGET, OPTION_COMPILE_OPTIONS, OPTION_TIMEOUT,
                             CommandLineExecutor.OPTION_CLI_PATH.update().defaultValue(DEFAULT_COMMAND).build(),
                             CommandLineExecutor.OPTION_CLI_TEST_ARGS.update().defaultValue("-V").build(),
-                            Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
+                            Option.INPUT_FILE, Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
 
     private final String defaultCompileTarget;
     private final String defaultCompileOptions;

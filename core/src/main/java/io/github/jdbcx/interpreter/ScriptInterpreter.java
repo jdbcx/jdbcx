@@ -46,8 +46,8 @@ public class ScriptInterpreter extends AbstractInterpreter {
             .of(new String[] { "var.helper", "Variable name of the helper object", "helper" });
 
     public static final List<Option> OPTIONS = Collections.unmodifiableList(Arrays.asList(Option.EXEC_ERROR,
-            OPTION_TIMEOUT, ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR, OPTION_VAR_CONTEXT,
-            OPTION_VAR_HELPER));
+            Option.INPUT_FILE, OPTION_TIMEOUT, ScriptExecutor.OPTION_LANGUAGE, ScriptExecutor.OPTION_BINDING_ERROR,
+            OPTION_VAR_CONTEXT, OPTION_VAR_HELPER));
 
     private final ScriptExecutor executor;
 

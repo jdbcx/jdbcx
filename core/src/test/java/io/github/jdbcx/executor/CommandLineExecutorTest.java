@@ -61,8 +61,13 @@ public class CommandLineExecutorTest {
         return new Object[][] { { Constants.IS_WINDOWS ? "cmd /c echo" : "echo" } };
     }
 
+    @DataProvider(name = "echoScript")
+    public static Object[][] getEchoScript() {
+        return new Object[][] { { Constants.IS_WINDOWS ? "cmd /c" : "sh -c", "echo_jdbcx.sh" } };
+    }
+
     @Test(groups = "unit")
-    public void testToArray() throws IOException {
+    public void testToArray() {
         Assert.assertThrows(NullPointerException.class, () -> CommandLineExecutor.toArray(null));
         Assert.assertEquals(CommandLineExecutor.toArray(""), new String[0]);
         Assert.assertEquals(CommandLineExecutor.toArray("\r \n \t"), new String[0]);
@@ -72,7 +77,7 @@ public class CommandLineExecutorTest {
     }
 
     @Test(dataProvider = "echoCommand", groups = "unit")
-    public void testCheck(String echoCommand) throws IOException {
+    public void testCheck(String echoCommand) {
         Assert.assertFalse(CommandLineExecutor.check("non_existing_command", 0));
         Assert.assertTrue(CommandLineExecutor.check(echoCommand, 0));
         Assert.assertTrue(CommandLineExecutor.check(echoCommand, 0, "Y"));
@@ -81,7 +86,7 @@ public class CommandLineExecutorTest {
     }
 
     @Test(dataProvider = "echoCommand", groups = "unit")
-    public void testConstructor(String echoCommand) throws IOException {
+    public void testConstructor(String echoCommand) {
         Assert.assertThrows(IllegalArgumentException.class,
                 () -> new CommandLineExecutor("non_existing_command", true,
                         null, newProperties(null, null, 0, null, null, null)));
@@ -111,6 +116,24 @@ public class CommandLineExecutorTest {
                                 .execute(null, null, "o", "k"))
                         .trim(),
                 "o k");
+    }
+
+    @Test(dataProvider = "echoScript", groups = "unit")
+    public void testInputFile(String cmd, String echoScript) throws IOException, TimeoutException {
+        Properties props = newProperties(null, null, 0, null, null, null);
+
+        Option.INPUT_FILE.setValue(props, "target/test-classes/non-existent.file");
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CommandLineExecutor(cmd, false, null, props)
+                        .execute(props, null));
+
+        Option.INPUT_FILE.setValue(props, "target/test-classes/queries/" + echoScript);
+        Assert.assertEquals(
+                Stream.readAllAsString(
+                        new CommandLineExecutor(cmd, false, null, props)
+                                .execute(props, null, "o", "k"))
+                        .trim(),
+                "jdbcx");
     }
 
     @Test

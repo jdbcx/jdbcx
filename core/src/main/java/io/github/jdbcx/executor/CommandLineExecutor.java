@@ -220,12 +220,13 @@ public class CommandLineExecutor extends AbstractExecutor {
         final boolean stdErrRedirect = getStdErrRedirect(props);
         final int timeout = getTimeout(props);
         final Path workDir = getWorkDirectory(props);
+        final String inputFile = getInputFile(props);
         final Charset inputCharset = getInputCharset(props);
         final Charset outputCharset = getOutputCharset(props);
 
         if (getDryRun(props)) {
             return new ByteArrayInputStream(
-                    new StringBuilder().append("command.line=").append(command).append('\n')
+                    new StringBuilder().append("command_line=").append(command).append('\n')
                             .append("arguments=").append(Arrays.toString(args)).append('\n')
                             .append("input=").append(input).append('\n')
                             .append("options=").append(props).append('\n')
@@ -234,10 +235,19 @@ public class CommandLineExecutor extends AbstractExecutor {
                             .toString().getBytes(outputCharset));
         }
 
+        final String[] arguments;
+        if (!Checker.isNullOrEmpty(inputFile)) {
+            final String content = loadFile(inputFile, inputCharset,
+                    args.length > 0 ? args[0] : Constants.EMPTY_STRING);
+            arguments = Checker.isNullOrEmpty(content) ? args : new String[] { content };
+        } else {
+            arguments = args;
+        }
+
         if (parallelism <= 0) {
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 int exitCode = execute(parallelism, stdErrRedirect, timeout, workDir, input, inputCharset, out,
-                        outputCharset, args);
+                        outputCharset, arguments);
                 if (exitCode != 0) {
                     throw new IllegalStateException(new String(out.toByteArray(), outputCharset));
                 }
@@ -249,7 +259,7 @@ public class CommandLineExecutor extends AbstractExecutor {
         return new CustomPipedInputStream(out, Constants.DEFAULT_BUFFER_SIZE, timeout).attach(runAsync(() -> {
             try (OutputStream o = out) {
                 int exitCode = execute(parallelism, stdErrRedirect, timeout, workDir, input, inputCharset, o,
-                        outputCharset, args);
+                        outputCharset, arguments);
                 if (exitCode != 0) {
                     throw new IllegalStateException(Utils.format("Comamnd exited with code %d", exitCode));
                 }
