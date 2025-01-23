@@ -25,12 +25,33 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Option;
 
 public class JdbcExecutorTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
         Assert.assertNotNull(new JdbcExecutor(null, null));
         Assert.assertNotNull(new JdbcExecutor(null, new Properties()));
+    }
+
+    @Test(groups = { "integration" })
+    public void testInputFile() throws SQLException {
+        Properties props = new Properties();
+        final String query = "select 1";
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "?allowMultiQueries=true")) {
+            Option.INPUT_FILE.setValue(props, "target/test-classes/non-existent.file");
+            Assert.assertThrows(IllegalArgumentException.class,
+                    () -> new JdbcExecutor(null, props).execute("query", conn, props));
+
+            Option.INPUT_FILE.setValue(props, "target/test-classes/queries/select_7.sql");
+            JdbcExecutor exec = new JdbcExecutor(null, props);
+            try (ResultSet rs = (ResultSet) exec.execute(query, conn, props)) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 7);
+                Assert.assertFalse(rs.next());
+            }
+        }
     }
 
     @Test(groups = { "integration" })

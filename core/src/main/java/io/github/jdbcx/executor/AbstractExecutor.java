@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.charset.Charset;
@@ -173,6 +174,7 @@ abstract class AbstractExecutor implements Executor {
 
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
+    protected final String defaultInputFile;
     protected final Charset defaultInputCharset;
     protected final Charset defaultOutputCharset;
     protected final int defaultParallelism;
@@ -188,6 +190,7 @@ abstract class AbstractExecutor implements Executor {
 
         this.defaultDryRun = Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(props));
         this.defaultErrorHandling = Option.EXEC_ERROR.getValue(props);
+        this.defaultInputFile = Option.INPUT_FILE.getValue(props);
         this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
                 : Constants.DEFAULT_CHARSET;
         this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
@@ -199,6 +202,23 @@ abstract class AbstractExecutor implements Executor {
         } else {
             this.defaultWorkDir = Utils.getPath(workDir, true);
         }
+    }
+
+    protected final String loadFile(String file, Charset charset, String defaultContent) {
+        if (Checker.isNullOrEmpty(file)) {
+            return defaultContent;
+        }
+
+        try {
+            final String content = Stream.readAllAsString(new FileInputStream(file), charset);
+            return Checker.isNullOrEmpty(content) ? defaultContent : content;
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    public final String loadInputFile(Properties props, String query) {
+        return loadFile(getInputFile(props), getInputCharset(props), query);
     }
 
     protected final CompletableFuture<Void> run(Runnable runnable, int parallelism) {
@@ -267,6 +287,10 @@ abstract class AbstractExecutor implements Executor {
         return defaultDryRun;
     }
 
+    public final String getDefaultInputFile() {
+        return defaultInputFile;
+    }
+
     public final Charset getDefaultInputCharset() {
         return defaultInputCharset;
     }
@@ -290,6 +314,11 @@ abstract class AbstractExecutor implements Executor {
     public boolean getDryRun(Properties props) {
         String value = props != null ? props.getProperty(Option.EXEC_DRYRUN.getName()) : null;
         return value != null ? Boolean.parseBoolean(value) : defaultDryRun;
+    }
+
+    public String getInputFile(Properties props) {
+        return Utils.normalizePath(Utils.applyVariables(Option.INPUT_FILE.getValue(props, defaultInputFile),
+                VariableTag.valueOf(Option.TAG.getValue(props)), props)).trim();
     }
 
     public Charset getInputCharset(Properties props) {

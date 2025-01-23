@@ -179,10 +179,11 @@ public class WrappedConnection implements ManagedConnection {
                         : manager.getExtension(block.getExtensionName());
                 if (ext == null) {
                     ext = defaultExtension;
-                    final String msg = "Extension \"%s\" is not supported, using default extension [%s] instead";
-                    log.warn(msg, block.getExtensionName(), ext);
-                    ref.set(SqlExceptionUtils.consolidate(w,
-                            new SQLWarning(Utils.format(msg, block.getExtensionName(), ext))));
+                    final String msg = Utils.format(
+                            "Extension \"%s\" is not supported, using default extension [%s] instead",
+                            block.getExtensionName(), ext);
+                    log.warn(msg);
+                    ref.set(SqlExceptionUtils.consolidate(w, new SQLWarning(msg)));
                 }
 
                 Properties p = new Properties(

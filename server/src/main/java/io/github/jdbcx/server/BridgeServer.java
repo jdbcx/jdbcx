@@ -58,6 +58,7 @@ import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
+import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.driver.ConnectionManager;
 import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.JdbcExecutor;
@@ -231,6 +232,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         }
         config.setMetricRegistry(promRegistry);
         if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
+            config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver
             config.addDataSourceProperty(Option.CONFIG_PATH.getJdbcxName(), Option.CONFIG_PATH.getJdbcxValue(props));
         }
         datasource = new HikariDataSource(config);

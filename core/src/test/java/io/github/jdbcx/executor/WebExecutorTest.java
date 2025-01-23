@@ -123,6 +123,28 @@ public class WebExecutorTest extends BaseIntegrationTest {
     }
 
     @Test(groups = "integration")
+    public void testExecute() throws Exception {
+        Properties props = new Properties();
+        String address = getClickHouseServer();
+        Assert.assertEquals(
+                Stream.readAllAsString(
+                        new WebExecutor(null, null).execute(Utils.toURL("http://" + address), null, props, null)),
+                "Ok.\n");
+        Assert.assertEquals(
+                Stream.readAllAsString(
+                        new WebExecutor(null, null).execute(Utils.toURL("http://default@" + getClickHouseServer()),
+                                "select 5", props, null)),
+                "5\n");
+
+        Option.INPUT_FILE.setValue(props, "target/test-classes/queries/select_7.sql");
+        Assert.assertEquals(
+                Stream.readAllAsString(
+                        new WebExecutor(null, null).execute(Utils.toURL("http://default@" + getClickHouseServer()),
+                                "select 5", props, null)),
+                "7\n");
+    }
+
+    @Test(groups = "integration")
     public void testGet() throws Exception {
         Properties props = new Properties();
         String address = getClickHouseServer();

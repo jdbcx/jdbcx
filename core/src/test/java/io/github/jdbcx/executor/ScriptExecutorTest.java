@@ -24,6 +24,8 @@ import java.util.concurrent.TimeoutException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.Option;
+
 public class ScriptExecutorTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
@@ -56,5 +58,11 @@ public class ScriptExecutorTest {
         // Assert.assertEquals(new Scripting("rhino", props, vars).execute("a+b",
         // tmp), 11L);
         Assert.assertEquals(new ScriptExecutor("Groovy", null, props, vars).execute("a+b", props, tmp), 11L);
+
+        Option.INPUT_FILE.setValue(props, "target/test-classes/non-existent.file");
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ScriptExecutor("Groovy", null, props, vars).execute("4+5", props, tmp));
+        Option.INPUT_FILE.setValue(props, "target/test-classes/queries/3_plus_4.groovy");
+        Assert.assertEquals(new ScriptExecutor("Groovy", null, props, vars).execute("4+5", props, tmp), 7);
     }
 }

@@ -15,6 +15,9 @@
  */
 package io.github.jdbcx.executor;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -256,6 +259,33 @@ public class WebExecutor extends AbstractExecutor {
 
     public String getDefaultProxy() {
         return defaultProxy;
+    }
+
+    public InputStream execute(URL url, String request, Properties props, Map<?, ?> headers) throws IOException {
+        if (getDryRun(props)) {
+            return new ByteArrayInputStream(
+                    new StringBuilder().append("url=").append(url).append('\n')
+                            .append("headers=").append(headers).append('\n')
+                            .append("request=").append(request).append('\n')
+                            .append("connect_timeout_ms=").append(getConnectTimeout(props)).append('\n')
+                            .append("socket_timeout_ms=").append(getSocketTimeout(props)).append('\n')
+                            .append("options=").append(props).append('\n')
+                            .toString().getBytes(getOutputCharset(props)));
+        }
+
+        final String inputFile = getInputFile(props);
+        if (!Checker.isNullOrEmpty(inputFile)) {
+            final File f = new File(inputFile);
+            if (!f.exists() || !f.isFile() || !f.canRead()) {
+                throw new IllegalArgumentException(
+                        Utils.format("File [%s] does not exist or cannot be read!", inputFile));
+            }
+            return post(url, new FileInputStream(f), props, headers);
+        } else if (Checker.isNullOrBlank(request)) {
+            return get(url, props, headers);
+        } else {
+            return post(url, request, props, headers);
+        }
     }
 
     public InputStream get(URL url, Properties config, Map<?, ?> headers) throws IOException {

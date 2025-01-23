@@ -288,7 +288,10 @@ public class JdbcExecutor extends AbstractExecutor {
         if (getDryRun(props)) {
             return new ReadOnlyResultSet(null,
                     Result.of(Row.of(dryRunFields, new Object[] { conn, query, getTimeout(props), props })));
-        } else if (Checker.isNullOrBlank(query)) {
+        }
+
+        query = loadInputFile(props, query);
+        if (Checker.isNullOrBlank(query)) {
             return new CombinedResultSet();
         }
 

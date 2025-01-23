@@ -34,8 +34,8 @@ public class ShellInterpreter extends AbstractInterpreter {
             .build();
 
     public static final List<Option> OPTIONS = Collections
-            .unmodifiableList(Arrays.asList(OPTION_PATH, Option.EXEC_ERROR, OPTION_TIMEOUT, Option.INPUT_CHARSET,
-                    Option.OUTPUT_CHARSET));
+            .unmodifiableList(Arrays.asList(OPTION_PATH, Option.EXEC_ERROR, OPTION_TIMEOUT, Option.INPUT_FILE,
+                    Option.INPUT_CHARSET, Option.OUTPUT_CHARSET));
 
     private final CommandLineExecutor executor;
 
