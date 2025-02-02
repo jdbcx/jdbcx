@@ -123,6 +123,9 @@ public class QueryExecutor extends AbstractExecutor {
             for (QueryTask t : tasks) {
                 currentSource = t.getSource();
                 for (QueryGroup g : t.getGroups()) {
+                    if (g == null) {
+                        continue;
+                    }
                     currentGroup = g;
                     if (failedRef != null && failedRef.get()) {
                         return Collections.emptyList(); // fail fast
@@ -151,10 +154,7 @@ public class QueryExecutor extends AbstractExecutor {
                 }
             }
         } catch (SQLException e) {
-            throw currentGroup != null
-                    ? new SQLException(Utils.format("Failed to execute %s",
-                            currentGroup.toString(currentSource)), e)
-                    : e;
+            throw new SQLException(Utils.format("Failed to execute %s", currentGroup.toString(currentSource)), e);
         } finally {
             Utils.closeQuietly(conn);
         }
@@ -202,7 +202,7 @@ public class QueryExecutor extends AbstractExecutor {
             results = executeQueries(tasks, manager.get(), null, null);
         } else {
             final AtomicBoolean failedRef = new AtomicBoolean(false);
-            final ExecutorService threadPool = newThreadPool(this, parallel, -1);
+            final ExecutorService threadPool = newThreadPool(this, parallel, -1); // NOSONAR
             final List<CompletableFuture<Void>> futures = new LinkedList<>();
 
             results = Collections.synchronizedList(new LinkedList<>());
@@ -230,7 +230,7 @@ public class QueryExecutor extends AbstractExecutor {
                             it.remove();
                             try {
                                 future.get();
-                            } catch (InterruptedException e) {
+                            } catch (InterruptedException e) { // NOSONAR
                                 failedRef.compareAndSet(false, cancel = true);
                                 log.warn("Query is interrupted", e);
                             } catch (CancellationException e) {
@@ -251,6 +251,7 @@ public class QueryExecutor extends AbstractExecutor {
                 Thread.currentThread().interrupt();
             } finally {
                 threadPool.shutdownNow();
+                Utils.closeQuietly(threadPool);
             }
 
             if (failedRef.get()) {
