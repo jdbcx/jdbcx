@@ -15,7 +15,7 @@ FROM ubuntu:noble
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
 
-ARG PRQLC_VERSION=0.13.2
+ARG PRQLC_VERSION=0.13.3
 ARG JDBCX_VERSION=0.6.0
 
 # Environment variables
