@@ -92,12 +92,16 @@ public class DriverExtensionTest {
         Assert.assertEquals(DriverExtension.extractProperties(DefaultDriverExtension.getInstance(), props), expected);
 
         props.setProperty("jdbcx.custom.property2", "value2");
+        expected.setProperty("custom.property2", "value2");
         Assert.assertEquals(DriverExtension.extractProperties(DefaultDriverExtension.getInstance(), props), expected);
 
         props.setProperty("jdbcx.prql.cli.path", "/path/to/prqlc");
+        expected.setProperty("prql.cli.path", "/path/to/prqlc");
         Assert.assertEquals(DriverExtension.extractProperties(DefaultDriverExtension.getInstance(), props), expected);
 
         PrqlDriverExtension ext = new PrqlDriverExtension();
+        expected.remove("custom.property2");
+        expected.remove("prql.cli.path");
         expected.putAll(ext.getDefaultConfig());
         expected.setProperty("cli.path", "/path/to/prqlc");
         Assert.assertEquals(DriverExtension.extractProperties(ext, props), expected);

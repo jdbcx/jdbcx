@@ -15,11 +15,15 @@
  */
 package io.github.jdbcx;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -473,6 +477,32 @@ public class UtilsTest {
             Assert.assertEquals(url.getPath(), Paths.get(Constants.CURRENT_DIR, "a:%5Cb%5Cc").toUri().getPath());
 
             Assert.assertThrows(MalformedURLException.class, () -> Utils.toURL("a:/b/c"));
+        }
+    }
+
+    @Test(groups = { "unit" })
+    public void testCloseConnection() throws SQLException {
+        Utils.closeQuietly(null);
+        Utils.closeQuietly(new ByteArrayInputStream(new byte[1]));
+
+        final String url = "jdbc:sqlite::memory:";
+        final Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection(url, props)) {
+            Assert.assertFalse(conn.isClosed());
+            Utils.closeQuietly(conn);
+            Assert.assertTrue(conn.isClosed());
+        }
+
+        try (Connection c1 = DriverManager.getConnection(url, props);
+                Connection c2 = DriverManager.getConnection(url, props);
+                Connection c3 = DriverManager.getConnection(url, props)) {
+            Assert.assertFalse(c1.isClosed());
+            Assert.assertFalse(c2.isClosed());
+            Assert.assertFalse(c3.isClosed());
+            Utils.closeQuietly(c1, null, c2, null, c3, null);
+            Assert.assertTrue(c1.isClosed());
+            Assert.assertTrue(c2.isClosed());
+            Assert.assertTrue(c3.isClosed());
         }
     }
 }

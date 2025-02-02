@@ -85,7 +85,13 @@ public enum Compression {
         return Compression.getProvider(this);
     }
 
-    static CompressionProvider getProvider(Compression compress) {
+    /**
+     * Gets provider for the given compression.
+     *
+     * @param compress the given compression
+     * @return non-null provider for compressing and decompressing
+     */
+    public static CompressionProvider getProvider(Compression compress) {
         if (compress == null || compress == Compression.NONE) {
             return NoneSupport.getInstance();
         }

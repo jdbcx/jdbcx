@@ -99,7 +99,7 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
         this.schema = new AtomicReference<>();
 
         this.manager = new ConnectionManager(configManager, extensions, defaultExtension, this, url, extensionProps,
-                normalizedProps, originalProps);
+                normalizedProps, url, originalProps);
 
         this.url = url;
     }

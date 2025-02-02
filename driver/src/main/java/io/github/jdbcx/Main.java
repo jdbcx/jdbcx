@@ -26,7 +26,6 @@ import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
@@ -255,34 +254,6 @@ public final class Main {
                         : (execFile + " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"));
     }
 
-    static void closeQuietly(AutoCloseable resource) {
-        if (resource != null) {
-            try {
-                resource.close();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
-    }
-
-    static long getAffectedRows(Statement stmt) throws SQLException {
-        long rows = 0L;
-        try {
-            rows = stmt.getLargeUpdateCount();
-        } catch (Exception e) {
-            rows = stmt.getUpdateCount();
-        }
-        return rows;
-    }
-
-    static String getColumnLabel(ResultSetMetaData md, int columnIndex) throws SQLException {
-        String label = md.getColumnLabel(columnIndex);
-        if (label == null || label.isEmpty()) {
-            label = md.getColumnName(columnIndex);
-        }
-        return label;
-    }
-
     static Connection getOrCreateConnection(String url, Properties props, Connection conn, int validationTimeout,
             String validationQuery) throws SQLException {
         if (conn != null) {
@@ -303,7 +274,7 @@ public final class Main {
                 }
             } finally {
                 if (!valid) {
-                    closeQuietly(conn);
+                    Utils.closeQuietly(conn);
                     conn = null;
                 }
             }
@@ -324,7 +295,7 @@ public final class Main {
 
         try (Statement stmt = conn.createStatement()) {
             boolean hasResultSet = stmt.execute(query);
-            long affectedRows = !hasResultSet ? getAffectedRows(stmt) : -1L;
+            long affectedRows = !hasResultSet ? Utils.getAffectedRows(stmt) : -1L;
             int reads = 0;
             int updates = 0;
             while (true) {
@@ -346,7 +317,8 @@ public final class Main {
                 }
 
                 try {
-                    if (!(hasResultSet = stmt.getMoreResults()) && (affectedRows = getAffectedRows(stmt)) == -1L) { // NOSONAR
+                    if (!(hasResultSet = stmt.getMoreResults())
+                            && (affectedRows = Utils.getAffectedRows(stmt)) == -1L) { // NOSONAR
                         break;
                     }
                 } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
@@ -393,7 +365,7 @@ public final class Main {
                 i++;
             }
         } finally {
-            closeQuietly(conn);
+            Utils.closeQuietly(conn);
         }
         return true;
     }

@@ -46,6 +46,7 @@ public class DefaultConnectionTest {
     @Test(groups = { "unit" })
     public void testChangeCatalog() throws SQLException {
         Properties props = new Properties();
+        props.setProperty("jdbcx.exec.error", "warn");
         WrappedDriver d = new WrappedDriver();
 
         try (Connection conn = d.connect("jdbcx:", props)) {

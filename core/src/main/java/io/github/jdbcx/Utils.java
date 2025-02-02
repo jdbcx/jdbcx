@@ -41,6 +41,9 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -1288,6 +1291,67 @@ public final class Utils {
             }
         }
         return true;
+    }
+
+    /**
+     * Closes resources without throwing any exception.
+     *
+     * @param resource resource to close
+     * @param more     optionally more resources to close
+     */
+    public static void closeQuietly(AutoCloseable resource, AutoCloseable... more) {
+        final int len = more != null ? more.length : 0;
+
+        int i = 0;
+        do {
+            if (resource != null) {
+                try {
+                    resource.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            if (i < len) {
+                resource = more[i];
+            }
+        } while (i++ < len);
+    }
+
+    /**
+     * Gets affected rows from JDBC statement. It tries
+     * {@link Statement#getLargeUpdateCount()} first, and then fall back to
+     * {@link Statement#getUpdateCount()} if any error.
+     *
+     * @param stmt non-null JDBC statement
+     * @return affected rows
+     * @throws SQLException when failed to get affected rows
+     */
+    public static long getAffectedRows(Statement stmt) throws SQLException {
+        long rows = 0L;
+        try {
+            rows = stmt.getLargeUpdateCount();
+        } catch (Exception e) {
+            rows = stmt.getUpdateCount();
+        }
+        return rows;
+    }
+
+    /**
+     * Gets column label. It tries {@link ResultSetMetaData#getColumnLabel(int)}
+     * first, and then fall back to {@link ResultSetMetaData#getColumnName(int)} if
+     * any error.
+     *
+     * @param md          non-null ResultSet metadata
+     * @param columnIndex column index greater than zero
+     * @return non-null column label
+     * @throws SQLException when failed to get column label
+     */
+    public static String getColumnLabel(ResultSetMetaData md, int columnIndex) throws SQLException {
+        String label = md.getColumnLabel(columnIndex);
+        if (label == null || label.isEmpty()) {
+            label = md.getColumnName(columnIndex);
+        }
+        return label;
     }
 
     private Utils() {

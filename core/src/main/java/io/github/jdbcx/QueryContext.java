@@ -43,6 +43,10 @@ public final class QueryContext implements AutoCloseable, Serializable {
      */
     public static final String KEY_CONNECTION = "connection";
     /**
+     * Key for function to get JDBCX wrapped {@link java.sql.Connection}.
+     */
+    public static final String KEY_WRAPPED_CONNECTION = "wrappedConnection";
+    /**
      * Key for JDBC dialect.
      */
     public static final String KEY_DIALECT = "dialect";

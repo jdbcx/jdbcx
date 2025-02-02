@@ -15,10 +15,8 @@
  */
 package io.github.jdbcx;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -111,18 +109,6 @@ public class MainTest {
 
         Assert.assertNotEquals(args.queries, newArgs.queries);
         Assert.assertEquals(newArgs.queries.toArray(new String[1][]), new String[][] { { "1", "q1" } });
-    }
-
-    @Test(groups = { "unit" })
-    public void testCloseConnection() throws SQLException {
-        Main.closeQuietly(null);
-        Main.closeQuietly(new ByteArrayInputStream(new byte[1]));
-
-        try (Connection conn = DriverManager.getConnection(DEFAULT_CONNECTION_URL, new Properties())) {
-            Assert.assertFalse(conn.isClosed());
-            Main.closeQuietly(conn);
-            Assert.assertTrue(conn.isClosed());
-        }
     }
 
     @Test(groups = { "unit" })
