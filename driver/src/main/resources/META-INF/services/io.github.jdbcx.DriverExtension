@@ -4,6 +4,7 @@ io.github.jdbcx.extension.CodeQLDriverExtension
 io.github.jdbcx.extension.DbDriverExtension
 io.github.jdbcx.extension.PromptDriverExtension
 io.github.jdbcx.extension.PrqlDriverExtension
+io.github.jdbcx.extension.QueryDriverExtension
 io.github.jdbcx.extension.ScriptDriverExtension
 io.github.jdbcx.extension.ShellDriverExtension
 io.github.jdbcx.extension.VarDriverExtension

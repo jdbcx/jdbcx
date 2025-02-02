@@ -95,43 +95,54 @@ public final class Option implements Serializable {
      * Whether to perform a dry run.
      */
     public static final Option EXEC_DRYRUN = Option
-            .of(new String[] { "exec.dryrun", "Whether to perform a dry run without actual execution.",
-                    Constants.FALSE_EXPR, Constants.TRUE_EXPR });
+            .ofBool("exec.dryrun", "Whether to perform a dry run without actual execution.", false);
     /**
      * The error handling approach to use when an execution fails.
      */
     public static final Option EXEC_ERROR = Option
             .of(new String[] { "exec.error", "The error handling strategy to use when execution fails.",
-                    ERROR_HANDLING_WARN, ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN, ERROR_HANDLING_THROW });
+                    ERROR_HANDLING_THROW, ERROR_HANDLING_WARN, ERROR_HANDLING_IGNORE, ERROR_HANDLING_RETURN });
     /**
      * The maximum number of threads that can be used for query execution. 0
      * enforces sequential execution.
      */
-    public static final Option EXEC_PARALLELISM = Option.of(new String[] { "exec.parallelism",
+    public static final Option EXEC_PARALLELISM = Option.ofInt("exec.parallelism",
             "The maximum number of threads to use for parallel query execution. 0 enforces sequential, single-threaded execution.",
-            "0" });
+            0);
     /**
      * The priority for executing the query.
      */
-    public static final Option EXEC_PRIORITY = Option
-            .of(new String[] { "exec.priority",
-                    "Priority for query execution. Higher integer values indicate higher priority.", "5" });
+    public static final Option EXEC_PRIORITY = Option.ofInt("exec.priority",
+            "Priority for query execution. Higher integer values indicate higher priority.", 5);
     /**
      * The execution timeout in milliseconds.
      */
-    public static final Option EXEC_TIMEOUT = Option.of("exec.timeout",
-            "Execution timeout in milliseconds. A negative value or 0 disables the timeout.", "0");
+    public static final Option EXEC_TIMEOUT = Option.ofInt("exec.timeout",
+            "Execution timeout in milliseconds. A negative value or 0 disables the timeout.", 0);
 
-    public static final Option WORK_DIRECTORY = Option.of("work.dir",
-            "Path to the working directory. If left empty, the current directory will be used.",
-            Constants.EMPTY_STRING);
+    public static final Option WORK_DIRECTORY = Option.ofOptional("work.dir",
+            "Path to the working directory. If left empty, the current directory will be used.");
 
     public static final Option INPUT_FILE = Option
-            .of(new String[] { "input.file",
-                    "Path to an input file containing the query text to be executed. Utilizing this property will omit any inline query content." });
+            .ofOptional("input.file",
+                    "Path to an input file containing the query text to be executed. Utilizing this property will omit any inline query content.");
+    public static final Option INTPUT_FILE_EXIST = Option.ofBool("input.file.exist",
+            "Throw error if input does not exist", true);
     public static final Option OUTPUT_FILE = Option
-            .of(new String[] { "output.file",
-                    "Path to an output file for writing query results. If the file already exists, it will be overwritten without warning." });
+            .ofOptional("output.file",
+                    "Path to an output file for writing query results. If the file already exists, it will be overwritten without warning.");
+    public static final Option OUTPUT_FILE_OVERRIDE = Option.ofBool("output.file.override",
+            "Override if the output file already exists", true);
+    public static final Option OUTPUT_FILE_COMPRESS_ALGORITHM = Option
+            .ofEnum("output.file.compress.algorithm", "Compression alogirhtm used for the output file.",
+                    Compression.NONE.name(), Compression.class);
+    public static final Option OUTPUT_FILE_COMPRESS_BUFFER = Option.ofInt("output.file.compress.buffer",
+            "Buffer size for compression", 0);
+    public static final Option OUTPUT_FILE_COMPRESS_LEVEL = Option.ofInt("output.file.compress.level",
+            "Compression level which is different for different algorithms.", -1);
+    public static final Option OUTPUT_FILE_COMPRESS_PARAMS = Option.ofOptional("output.file.compress.params",
+            "Additional comma seperated parameters for compression.");
+
     public static final Option INPUT_CHARSET = Option.of("input.charset",
             "Character encoding to use when reading the input stream.", Constants.DEFAULT_CHARSET.name());
     public static final Option OUTPUT_CHARSET = Option.of("output.charset",
@@ -387,6 +398,12 @@ public final class Option implements Serializable {
         return of(info[0], description, defaultValue, choices);
     }
 
+    public static Option ofBool(String name, String description, boolean defaultValue) {
+        return of(new String[] { name, description,
+                defaultValue ? Constants.TRUE_EXPR : Constants.FALSE_EXPR,
+                defaultValue ? Constants.FALSE_EXPR : Constants.TRUE_EXPR });
+    }
+
     /**
      * Creates an option.
      *
@@ -410,6 +427,14 @@ public final class Option implements Serializable {
         }
 
         return of(name, description, defaultValue, arr);
+    }
+
+    public static Option ofInt(String name, String description, int defaultValue) {
+        return of(name, description, String.valueOf(defaultValue));
+    }
+
+    public static Option ofOptional(String name, String description) {
+        return of(name, description, Constants.EMPTY_STRING);
     }
 
     /**

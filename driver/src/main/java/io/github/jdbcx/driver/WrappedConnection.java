@@ -105,7 +105,7 @@ public class WrappedConnection implements ManagedConnection {
             this.warning = wrappedConn.warning;
         } else {
             this.manager = new ConnectionManager(info.configManager, info.getExtensions(), info.extension, conn, url,
-                    info.extensionProps, info.normalizedInfo, info.mergedInfo);
+                    info.extensionProps, info.normalizedInfo, info.normalizedUrl, info.mergedInfo);
             this.warning = new AtomicReference<>();
         }
     }

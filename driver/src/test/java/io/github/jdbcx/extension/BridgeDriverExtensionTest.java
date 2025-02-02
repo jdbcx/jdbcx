@@ -89,6 +89,7 @@ public class BridgeDriverExtensionTest {
         Properties props = new Properties();
         props.setProperty("_secret1_", "xxx");
         props.setProperty("_secret2_", "***");
+        props.setProperty("exec.error", "warn");
         try (Connection conn = DriverManager.getConnection("jdbcx:db:sqlite::memory:", props);
                 QueryContext context = QueryContext.newContext()) {
             BridgeDriverExtension ext = new BridgeDriverExtension();

@@ -175,6 +175,7 @@ abstract class AbstractExecutor implements Executor {
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
     protected final String defaultInputFile;
+    protected final String defaultOutputFile;
     protected final Charset defaultInputCharset;
     protected final Charset defaultOutputCharset;
     protected final int defaultParallelism;
@@ -191,6 +192,7 @@ abstract class AbstractExecutor implements Executor {
         this.defaultDryRun = Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(props));
         this.defaultErrorHandling = Option.EXEC_ERROR.getValue(props);
         this.defaultInputFile = Option.INPUT_FILE.getValue(props);
+        this.defaultOutputFile = Option.OUTPUT_FILE.getValue(props);
         this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
                 : Constants.DEFAULT_CHARSET;
         this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)

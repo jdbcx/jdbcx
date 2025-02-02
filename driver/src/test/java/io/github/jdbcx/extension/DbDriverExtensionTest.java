@@ -32,8 +32,10 @@ import io.github.jdbcx.WrappedDriver;
 public class DbDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })
     public void testQuery() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.db.exec.error", "warn");
         final String address = getClickHouseServer();
-        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch://" + address);
+        try (Connection conn = DriverManager.getConnection("jdbcx:db:ch://" + address, props);
                 Statement stmt = conn.createStatement()) {
             try (ResultSet rs = stmt.executeQuery("select 1")) {
                 Assert.assertTrue(rs.next(), "Should have at least one row");
@@ -42,7 +44,8 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
             }
 
             try (ResultSet rs = stmt
-                    .executeQuery("select '{{ db(url='jdbc:ch://${ch.server.address}'): select ''${_}:${_.url}'', 2}}'")) {
+                    .executeQuery(
+                            "select '{{ db(url='jdbc:ch://${ch.server.address}'): select ''${_}:${_.url}'', 2}}'")) {
                 Assert.assertNotNull(stmt.getWarnings());
                 Assert.assertTrue(rs.next(), "Should have at least one row");
                 Assert.assertEquals(rs.getString(1), "select 'db:jdbc:ch://${ch.server.address}', 2");
@@ -50,7 +53,7 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
             }
         }
 
-        Properties props = new Properties();
+        props = new Properties();
         props.setProperty("jdbcx.db.ch.server.address", address);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + address, props);
                 Statement stmt = conn.createStatement()) {

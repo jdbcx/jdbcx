@@ -87,7 +87,7 @@ jobs:
       - name: Build & Test Docker Image
         run: |
           docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
-          && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{prql:3}}'
+          && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' 'select {{script:1}}, {{shell:echo 2}}, {{db:select 3}}'
 
   test-jdk21-linux:
     needs: compile

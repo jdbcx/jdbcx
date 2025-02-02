@@ -89,7 +89,19 @@ public interface DriverExtension extends Comparable<DriverExtension> {
             }
         }
 
-        if (extension != null && extension != DefaultDriverExtension.getInstance()) {
+        if (extension == DefaultDriverExtension.getInstance()) {
+            final int len = Option.PROPERTY_PREFIX.length();
+            for (Entry<Object, Object> entry : properties.entrySet()) {
+                String key = entry.getKey().toString();
+                if (key.startsWith(Option.PROPERTY_PREFIX)) {
+                    String name = key.substring(len);
+                    Object val = entry.getValue();
+                    if (val != null) {
+                        props.put(name, val);
+                    }
+                }
+            }
+        } else if (extension != null) {
             Properties p = extension.getDefaultConfig();
             final String prefix = new StringBuilder(Option.PROPERTY_PREFIX).append(extension.getName()).append('.')
                     .toString();

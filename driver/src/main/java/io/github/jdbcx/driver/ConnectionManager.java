@@ -155,6 +155,7 @@ public final class ConnectionManager implements AutoCloseable {
     private final String jdbcUrl;
     private final Properties props;
     private final Properties normalizedProps;
+    private final String originalJdbcUrl;
     private final Properties originalProps;
 
     private final ConfigManager configManager;
@@ -182,13 +183,13 @@ public final class ConnectionManager implements AutoCloseable {
 
     ConnectionManager(DriverInfo info) throws SQLException {
         this(info.configManager, info.getExtensions(), info.extension,
-                info.driver.connect(info.actualUrl, info.normalizedInfo),
-                info.actualUrl, info.extensionProps, info.normalizedInfo, info.mergedInfo);
+                info.driver.connect(info.actualUrl, info.normalizedInfo), info.actualUrl, info.extensionProps,
+                info.normalizedInfo, info.normalizedUrl, info.mergedInfo);
     }
 
     public ConnectionManager(ConfigManager configManager, Map<String, DriverExtension> extensions,
             DriverExtension defaultExtension, Connection conn, String url, Properties extensionProps,
-            Properties normalizedProps, Properties originalProps) {
+            Properties normalizedProps, String originalUrl, Properties originalProps) {
         List<DriverExtension> list = new LinkedList<>();
         for (DriverExtension e : extensions.values()) {
             if (!list.contains(e)) {
@@ -215,6 +216,7 @@ public final class ConnectionManager implements AutoCloseable {
         this.jdbcUrl = url;
         this.props = extensionProps;
         this.normalizedProps = normalizedProps;
+        this.originalJdbcUrl = originalUrl;
         this.originalProps = originalProps;
 
         this.configManager = configManager;
@@ -233,6 +235,15 @@ public final class ConnectionManager implements AutoCloseable {
     @Override
     public void close() throws SQLException {
         conn.close();
+    }
+
+    public Connection createWrappedConnection() {
+        try {
+            final Connection connection = DriverManager.getConnection(originalJdbcUrl, originalProps);
+            return connection instanceof WrappedConnection ? connection : new WrappedConnection(connection);
+        } catch (SQLException e) {
+            throw new CompletionException(e);
+        }
     }
 
     public Connection createConnection() {
@@ -254,9 +265,11 @@ public final class ConnectionManager implements AutoCloseable {
     public QueryContext createContext() {
         final QueryContext context = QueryContext.newContext();
         final Supplier<Connection> connSupplier = this::createConnection;
+        final Supplier<Connection> wrappedConnSupplier = this::createWrappedConnection;
         final Supplier<VariableTag> tagSupplier = this::getVariableTag;
         context.put(QueryContext.KEY_CONFIG, configManager);
         context.put(QueryContext.KEY_CONNECTION, connSupplier);
+        context.put(QueryContext.KEY_WRAPPED_CONNECTION, wrappedConnSupplier);
         context.put(QueryContext.KEY_TAG, tagSupplier);
         return context;
     }
@@ -386,11 +399,13 @@ public final class ConnectionManager implements AutoCloseable {
     public Properties getBridgeContext() {
         if (bridgeConfig.isEmpty()) {
             final String url = bridgeUrl + "config";
+            final String timeout = WebExecutor.OPTION_CONNECT_TIMEOUT.getValue(normalizedProps);
             try {
                 Properties config = new Properties();
                 WebExecutor web = new WebExecutor(getVariableTag(), config);
-                WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
-                WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
+
+                WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, timeout);
+                WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, timeout);
                 WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
                 try (InputStream input = web.get(Utils.toURL(url), config,
                         Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
@@ -407,7 +422,9 @@ public final class ConnectionManager implements AutoCloseable {
                     bridgeConfig.setProperty(DriverExtension.PROPERTY_USER, md.getUserName());
                 }
             } catch (Exception e) {
-                log.error("Failed to get bridge server config from: " + url, e);
+                log.warn(
+                        "Failed to get bridge server config from [%s] (timeout is %s ms), use default configuration instead",
+                        url, timeout, e);
             }
         }
         return new Properties(bridgeConfig);

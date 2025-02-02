@@ -143,7 +143,9 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
         }
 
-        try (Connection conn = d.connect(url, null);
+        Properties props = new Properties();
+        props.setProperty("jdbcx.script.exec.error", "warn");
+        try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select '3'")) {
             Assert.assertTrue(rs.next(), "Should have at least one row in result");
@@ -151,7 +153,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertFalse(rs.next(), "Should have ONLY one row in result");
         }
 
-        Properties props = new Properties();
+        props = new Properties();
         props.setProperty("jdbcx.script.exec.error", "throw");
         try (Connection conn = d.connect(url, props); Statement stmt = conn.createStatement();) {
             Assert.assertThrows(SQLException.class, () -> stmt.executeQuery("helper.invalidMethod()"));
@@ -174,6 +176,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertNotNull(stmt.getWarnings(), "Should have SQLWarning");
             Assert.assertFalse(rs.next(), "Should NOT have any result");
         }
+        props.setProperty("jdbcx.script.exec.error", "warn");
         try (Connection conn = d.connect(url, props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 5")) {

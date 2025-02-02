@@ -75,6 +75,21 @@ public class OptionTest {
     }
 
     @Test(groups = { "unit" })
+    public void testOfBool() {
+        Option option = Option.ofBool("b1", null, true);
+        Assert.assertEquals(option.getName(), "b1");
+        Assert.assertEquals(option.getDescription(), "");
+        Assert.assertEquals(option.getDefaultValue(), Constants.TRUE_EXPR);
+        Assert.assertEquals(option.getChoices(), new String[] { Constants.TRUE_EXPR, Constants.FALSE_EXPR });
+
+        option = Option.ofBool("b2", "test", false);
+        Assert.assertEquals(option.getName(), "b2");
+        Assert.assertEquals(option.getDescription(), "test");
+        Assert.assertEquals(option.getDefaultValue(), Constants.FALSE_EXPR);
+        Assert.assertEquals(option.getChoices(), new String[] { Constants.FALSE_EXPR, Constants.TRUE_EXPR });
+    }
+
+    @Test(groups = { "unit" })
     public void testOfEnum() {
         Option option = Option.ofEnum("n", null, null, null);
         Assert.assertEquals(option.getDefaultValue(), "");
@@ -95,6 +110,36 @@ public class OptionTest {
         option = Option.ofEnum("n", null, "LZ4", Compression.class);
         Assert.assertEquals(option.getDefaultValue(), Compression.LZ4.name());
         Assert.assertEquals(option.getChoices().length, Compression.values().length);
+    }
+
+    @Test(groups = { "unit" })
+    public void testOfInt() {
+        Option option = Option.ofInt("i1", null, 3);
+        Assert.assertEquals(option.getName(), "i1");
+        Assert.assertEquals(option.getDescription(), "");
+        Assert.assertEquals(option.getDefaultValue(), "3");
+        Assert.assertEquals(option.getChoices(), new String[0]);
+
+        option = Option.ofInt("i2", "test", -1);
+        Assert.assertEquals(option.getName(), "i2");
+        Assert.assertEquals(option.getDescription(), "test");
+        Assert.assertEquals(option.getDefaultValue(), "-1");
+        Assert.assertEquals(option.getChoices(), new String[0]);
+    }
+
+    @Test(groups = { "unit" })
+    public void testOfOptional() {
+        Option option = Option.ofOptional("o1", null);
+        Assert.assertEquals(option.getName(), "o1");
+        Assert.assertEquals(option.getDescription(), "");
+        Assert.assertEquals(option.getDefaultValue(), "");
+        Assert.assertEquals(option.getChoices(), new String[0]);
+
+        option = Option.ofOptional("o2", "test");
+        Assert.assertEquals(option.getName(), "o2");
+        Assert.assertEquals(option.getDescription(), "test");
+        Assert.assertEquals(option.getDefaultValue(), "");
+        Assert.assertEquals(option.getChoices(), new String[0]);
     }
 
     @Test(groups = { "unit" })

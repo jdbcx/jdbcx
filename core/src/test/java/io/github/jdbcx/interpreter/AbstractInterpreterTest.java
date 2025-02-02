@@ -77,7 +77,7 @@ public class AbstractInterpreterTest {
     @Test(groups = { "unit" })
     public void testHandleError() {
         final TestInterpreter i = new TestInterpreter(QueryContext.newContext());
-        Assert.assertThrows(NullPointerException.class, () -> i.handleError(null, null, null, null));
+        Assert.assertThrows(CompletionException.class, () -> i.handleError(null, null, null, null));
         Assert.assertThrows(CompletionException.class, () -> i.handleError(new Exception(), null, null, null));
 
         Properties props = new Properties();
