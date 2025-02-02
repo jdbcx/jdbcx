@@ -251,7 +251,6 @@ public class QueryExecutor extends AbstractExecutor {
                 Thread.currentThread().interrupt();
             } finally {
                 threadPool.shutdownNow();
-                Utils.closeQuietly(threadPool);
             }
 
             if (failedRef.get()) {
