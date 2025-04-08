@@ -410,17 +410,22 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             } else {
                 result = Result.of(JdbcExecutor.getUpdateCount(stmt));
             }
+            info.setResources(rs, stmt, conn);
+            rs = null;
+            stmt = null;
+            conn = null;
+
             queries.put(info.qid, info.setResult(result));
             log.debug("Async query [%s] returned successfully", info.qid);
             respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
         } catch (SQLException e) {
-            // invalidate the query now so that client-side retry later will end up with 404
-            queries.invalidate(info.qid);
-            log.debug("Invalidated query [%s] due to error: %s", info.qid, e.getMessage());
+            log.warn("Failed to execute query [%s] due to error: %s", info.qid, e.getMessage());
             throw new IOException(e);
         } finally {
             if (rs != null || stmt != null || conn != null) {
                 info.setResources(rs, stmt, conn);
+                log.debug("Invalidated query [%s] due to error", info.qid);
+                queries.invalidate(info.qid);
             }
         }
     }
