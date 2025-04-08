@@ -40,8 +40,8 @@ flightsql:
 
 # https://github.com/Shopify/toxiproxy/pkgs/container/toxiproxy
 toxiproxy:
-  # 2.9.0 will somehow end up with the following error on GitHub CI:
+  # 2.12.0 does not work on Github; 2.9.0 will somehow end up with the following error on GitHub CI:
   # Timed out waiting for container port to open (localhost ports: [32769, 32770] should be listening)
-  image: zhicwu/toxiproxy:2.12.0
+  image: zhicwu/toxiproxy:2.8.0
   links:
     - clickhouse
