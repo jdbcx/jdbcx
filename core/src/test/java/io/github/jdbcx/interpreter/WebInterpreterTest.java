@@ -15,7 +15,6 @@
  */
 package io.github.jdbcx.interpreter;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -120,8 +119,20 @@ public class WebInterpreterTest extends BaseIntegrationTest {
         Assert.assertEquals(interpreter.interpret("select 3", props).get(String.class), "3\n");
     }
 
+    @Test(groups = { "integration" })
+    public void testInterpretUrl() {
+        QueryContext context = QueryContext.newContext();
+        Properties config = new Properties();
+        WebInterpreter.OPTION_REQUEST_PLACEMENT.setValue(config, "url");
+
+        WebInterpreter interpreter = new WebInterpreter(context, config);
+        Properties props = new Properties();
+        WebInterpreter.OPTION_URL_TEMPLATE.setValue(props, "http://" + getClickHouseServer() + "?query=${}");
+        Assert.assertEquals(interpreter.interpret("select 1", props).get(String.class), "1\n");
+    }
+
     @Test(groups = { "private" })
-    public void testGraphQL() throws IOException {
+    public void testGraphQL() {
         QueryContext context = QueryContext.newContext();
         Properties config = new Properties();
         WebInterpreter.OPTION_BASE_URL.setValue(config, "https://countries.trevorblades.com");

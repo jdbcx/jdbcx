@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -504,5 +505,21 @@ public class UtilsTest {
             Assert.assertTrue(c2.isClosed());
             Assert.assertTrue(c3.isClosed());
         }
+    }
+
+    @Test(groups = { "unit" })
+    public void testToBase64() {
+        Assert.assertEquals(Utils.toBase64((byte[]) null), "");
+        Assert.assertEquals(Utils.toBase64((String) null), "");
+        Assert.assertEquals(Utils.toBase64((byte[]) null, null), "");
+        Assert.assertEquals(Utils.toBase64((String) null, null), "");
+
+        for (String str : new String[] { "", "12345Abcde", "壮壮哒💪123" }) {
+            Assert.assertEquals(Utils.toBase64(str), Utils.toBase64(str.getBytes(Constants.DEFAULT_CHARSET)));
+            Assert.assertEquals(Utils.toBase64(str, Constants.DEFAULT_CHARSET),
+                    Utils.toBase64(str.getBytes(Constants.DEFAULT_CHARSET), Constants.DEFAULT_CHARSET));
+        }
+
+        Assert.assertNotEquals(Utils.toBase64("壮壮哒💪123", StandardCharsets.ISO_8859_1), Utils.toBase64("壮壮哒💪123"));
     }
 }

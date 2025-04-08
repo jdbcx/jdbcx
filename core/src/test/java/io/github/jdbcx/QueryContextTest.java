@@ -38,7 +38,7 @@ public class QueryContextTest {
     @Test(groups = { "unit" })
     public void testVariable() {
         final String uuid = UUID.randomUUID().toString();
-        try (QueryContext context = QueryContext.newContextForThread()) {
+        try (QueryContext context = QueryContext.newContextForThread(new QueryContext(Constants.SCOPE_GLOBAL, null))) {
             Assert.assertEquals(context.getVariable(uuid), null);
             Assert.assertEquals(context.getVariable(uuid, "x"), "x");
             context.setVariable(uuid, uuid);
@@ -47,9 +47,10 @@ public class QueryContextTest {
             Assert.assertEquals(context.getVariable(uuid), null);
             Assert.assertEquals(context.getVariable(uuid, "x"), "x");
 
-            context.getParent().setVariable(uuid, "1");
+            Assert.assertNull(context.getParent().setVariable(uuid, "1"));
             Assert.assertEquals(context.getVariable(uuid), "1");
-            context.setVariable(uuid, "2");
+            Assert.assertNull(context.setVariable(uuid, "3"));
+            Assert.assertEquals(context.setVariable(uuid, "2"), "3");
             Assert.assertEquals(context.getVariable(uuid), "2");
             Assert.assertEquals(context.getVariableInScope(Constants.SCOPE_GLOBAL, uuid), "1");
             Assert.assertEquals(context.getVariableInScope(Constants.SCOPE_THREAD, uuid), "2");
@@ -65,6 +66,22 @@ public class QueryContextTest {
             Assert.assertEquals(context.getVariables(), props);
             props.setProperty(uuid, "2");
             Assert.assertEquals(context.getMergedVariables(), props);
+        }
+    }
+
+    @Test(groups = { "unit" })
+    public void testScopedVariable() {
+        final String uuid = UUID.randomUUID().toString();
+        try (QueryContext context = QueryContext.newContextForThread(new QueryContext(Constants.SCOPE_GLOBAL, null))) {
+            Assert.assertNull(context.setVariableInScope(Constants.SCOPE_GLOBAL, uuid, "1"));
+            Assert.assertEquals(context.getVariable(uuid), "1");
+            Assert.assertEquals(context.setVariableInScope(Constants.SCOPE_GLOBAL, uuid, "2"), "1");
+            Assert.assertEquals(context.getVariable(uuid), "2");
+
+            Assert.assertNull(context.setVariableInScope(Constants.SCOPE_THREAD, uuid, "t1"));
+            Assert.assertEquals(context.getVariable(uuid), "t1");
+            Assert.assertEquals(context.setVariableInScope(Constants.SCOPE_THREAD, uuid, "t2"), "t1");
+            Assert.assertEquals(context.getVariable(uuid), "t2");
         }
     }
 }

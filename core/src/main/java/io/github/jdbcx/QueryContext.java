@@ -60,7 +60,11 @@ public final class QueryContext implements AutoCloseable, Serializable {
             .withInitial(QueryContext::newContextForThread);
 
     static final QueryContext newContextForThread() {
-        return new QueryContext(Constants.SCOPE_THREAD, globalContext);
+        return newContextForThread(null);
+    }
+
+    static final QueryContext newContextForThread(QueryContext parent) {
+        return new QueryContext(Constants.SCOPE_THREAD, parent != null ? parent : globalContext);
     }
 
     static boolean checkScope(String scope, QueryContext context) {
@@ -213,8 +217,8 @@ public final class QueryContext implements AutoCloseable, Serializable {
         return props;
     }
 
-    public void setVariable(String name, String value) {
-        vars.setProperty(name, value);
+    public Object setVariable(String name, String value) {
+        return vars.setProperty(name, value);
     }
 
     public void removeVariable(String name) {
@@ -222,12 +226,11 @@ public final class QueryContext implements AutoCloseable, Serializable {
     }
 
     @SuppressWarnings("resource")
-    public void setVariableInScope(String scope, String name, String value) {
+    public Object setVariableInScope(String scope, String name, String value) {
         QueryContext context = this;
         do {
             if (context.scope.equals(scope)) {
-                context.vars.setProperty(name, value);
-                return;
+                return context.vars.setProperty(name, value);
             }
         } while ((context = context.parent) != null);
         throw new IllegalArgumentException(Utils.format("Unknown scope \"%s\"", scope));

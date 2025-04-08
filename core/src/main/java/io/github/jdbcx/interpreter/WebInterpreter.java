@@ -49,6 +49,9 @@ public class WebInterpreter extends AbstractInterpreter {
             .of(new String[] { "url.template", "URL template", "${base.url}" });
     public static final Option OPTION_REQUEST_HEADERS = Option
             .of(new String[] { "request.headers", "Comma separated key value pairs" });
+    public static final Option OPTION_REQUEST_PLACEMENT = Option
+            .of(new String[] { "request.placement", "Request placement, url or body, defaults to the latter.",
+                    Constants.EMPTY_STRING, "body", ScriptHelper.ENCODER_URL });
     public static final Option OPTION_REQUEST_TEMPLATE = Option
             .of(new String[] { "request.template", "Request template" });
     public static final Option OPTION_REQUEST_ENCODE = Option
@@ -70,9 +73,10 @@ public class WebInterpreter extends AbstractInterpreter {
     public static final List<Option> OPTIONS = Collections
             .unmodifiableList(
                     Arrays.asList(Option.EXEC_ERROR, OPTION_BASE_URL, OPTION_URL_TEMPLATE, OPTION_REQUEST_HEADERS,
-                            OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_ESCAPE_CHAR, OPTION_REQUEST_ENCODE,
-                            OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT, Option.INPUT_FILE,
-                            WebExecutor.OPTION_FOLLOW_REDIRECT, Option.PROXY, WebExecutor.OPTION_SOCKET_TIMEOUT));
+                            OPTION_REQUEST_PLACEMENT, OPTION_REQUEST_TEMPLATE, OPTION_REQUEST_ESCAPE_CHAR,
+                            OPTION_REQUEST_ENCODE, OPTION_REQUEST_ESCAPE_TARGET, WebExecutor.OPTION_CONNECT_TIMEOUT,
+                            Option.INPUT_FILE, WebExecutor.OPTION_FOLLOW_REDIRECT, Option.PROXY,
+                            WebExecutor.OPTION_SOCKET_TIMEOUT));
 
     private static final List<Field> dryRunFields = Collections.unmodifiableList(Arrays.asList(
             Field.of("url"), Field.of("method"), Field.of("request"), Field.of("connect_timeout_ms", JDBCType.BIGINT),
@@ -97,6 +101,7 @@ public class WebInterpreter extends AbstractInterpreter {
     }
 
     private final Map<String, String> defaultHeaders;
+    private final String defaultPlacement;
     private final String defaultTemplate;
     private final String defaultUrl;
 
@@ -107,6 +112,7 @@ public class WebInterpreter extends AbstractInterpreter {
 
         final VariableTag tag = getVariableTag();
         this.defaultHeaders = Collections.unmodifiableMap(getHeaders(tag, config));
+        this.defaultPlacement = OPTION_REQUEST_PLACEMENT.getValue(config, Constants.EMPTY_STRING);
         this.defaultTemplate = OPTION_REQUEST_TEMPLATE.getValue(config, Constants.EMPTY_STRING);
         this.defaultUrl = Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(config), tag, config);
 
@@ -115,6 +121,10 @@ public class WebInterpreter extends AbstractInterpreter {
 
     public final Map<String, String> getDefaultRequestHeaders() {
         return defaultHeaders;
+    }
+
+    public final String getDefaultRequestPlacement() {
+        return defaultPlacement;
     }
 
     public final String getDefaultRequestTemplate() {
@@ -130,8 +140,6 @@ public class WebInterpreter extends AbstractInterpreter {
         InputStream input = null;
         try {
             final VariableTag tag = getVariableTag();
-            final URL url = Utils
-                    .toURL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag, props));
             Map<?, ?> headers = (Map<?, ?>) getContext().get(KEY_HEADERS);
             if (headers == null || headers.isEmpty()) {
                 headers = getHeaders(tag, props);
@@ -140,23 +148,42 @@ public class WebInterpreter extends AbstractInterpreter {
                 }
             }
 
+            final String body;
+            final URL url;
             final String request;
+            final boolean bodyInUrl = ScriptHelper.ENCODER_URL
+                    .equals(OPTION_REQUEST_PLACEMENT.getValue(props, defaultPlacement));
             final String template = OPTION_REQUEST_TEMPLATE.getValue(props, defaultTemplate);
             if (Checker.isNullOrEmpty(template)) {
-                request = query;
+                body = query;
             } else {
                 Properties newProps = new Properties(props);
                 String encoder = OPTION_REQUEST_ENCODE.getValue(props);
                 String escapeTarget = OPTION_REQUEST_ESCAPE_TARGET.getValue(props);
                 String escapeChar = OPTION_REQUEST_ESCAPE_CHAR.getValue(props);
-                if (!Checker.isNullOrEmpty(encoder)) {
+                if (!Checker.isNullOrEmpty(encoder) && !bodyInUrl) {
                     newProps.setProperty(Constants.EMPTY_STRING, ScriptHelper.getInstance().encode(query, encoder));
                 } else {
                     newProps.setProperty(Constants.EMPTY_STRING,
                             Checker.isNullOrEmpty(escapeTarget) || Checker.isNullOrEmpty(escapeChar) ? query
                                     : Utils.escape(query, escapeTarget.charAt(0), escapeChar.charAt(0)));
                 }
-                request = Utils.applyVariables(template, tag, newProps);
+                body = Utils.applyVariables(template, tag, newProps);
+            }
+
+            if (bodyInUrl) {
+                request = Constants.EMPTY_STRING;
+
+                Properties newProps = new Properties(props);
+                newProps.setProperty(Constants.EMPTY_STRING,
+                        ScriptHelper.getInstance().encode(body, ScriptHelper.ENCODER_URL));
+                url = Utils
+                        .toURL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag,
+                                newProps));
+            } else {
+                request = body;
+                url = Utils
+                        .toURL(Utils.applyVariables(OPTION_URL_TEMPLATE.getValue(props, defaultUrl), tag, props));
             }
 
             if (executor.getDryRun(props)) {

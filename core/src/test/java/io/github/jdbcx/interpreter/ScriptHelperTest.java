@@ -15,21 +15,81 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.UUID;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.Field;
+import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.executor.Stream;
 
 public class ScriptHelperTest extends BaseIntegrationTest {
     private final ScriptHelper helper = ScriptHelper.getInstance();
+
+    @Test(groups = { "unit" })
+    public void testEncode() {
+        Object value = null;
+        Assert.assertEquals(helper.encode(value, null), "null");
+        Assert.assertEquals(helper.encode(value, "unknown"), "null");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_BASE64), "");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_JSON), "null");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_URL), "");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_XML), "");
+
+        value = "";
+        Assert.assertEquals(helper.encode(value, null), "");
+        Assert.assertEquals(helper.encode(value, "unknown"), "");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_BASE64), "");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_JSON), "\"\"");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_URL), "");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_XML),
+                ScriptHelper.CDATA_START + ScriptHelper.CDATA_END);
+
+        value = 12.3;
+        Assert.assertEquals(helper.encode(value, null), String.valueOf(value));
+        Assert.assertEquals(helper.encode(value, "unknown"), String.valueOf(value));
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_BASE64), "MTIuMw==");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_JSON), String.valueOf(value));
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_URL), String.valueOf(value));
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_XML),
+                ScriptHelper.CDATA_START + String.valueOf(value) + ScriptHelper.CDATA_END);
+
+        value = "1 2/3😂四";
+        Assert.assertEquals(helper.encode(value, null), value);
+        Assert.assertEquals(helper.encode(value, "unknown"), value);
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_BASE64), "MSAyLzPwn5iC5Zub");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_JSON), "\"" + value + "\"");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_URL), "1+2%2F3%F0%9F%98%82%E5%9B%9B");
+        Assert.assertEquals(helper.encode(value, ScriptHelper.ENCODER_XML),
+                ScriptHelper.CDATA_START + value + ScriptHelper.CDATA_END);
+    }
+
+    @Test(groups = { "unit" })
+    public void testEncodeFile() throws IOException {
+        Assert.assertEquals(helper.encodeFile(null, null, false), "");
+        Assert.assertEquals(helper.encodeFile(null, null, true), "");
+        Assert.assertEquals(helper.encodeFile(null, false), "");
+        Assert.assertEquals(helper.encodeFile(null, true), "");
+
+        for (String type : new String[] { "bmp", "gif", "ico", "jpeg", "png", "webp" }) {
+            String imageFile = "target/test-classes/images/jdbcx." + type;
+            Assert.assertEquals(helper.encodeFile(imageFile, false),
+                    Stream.readAllAsBase64(new FileInputStream(imageFile)));
+
+            Assert.assertEquals(helper.encodeFile(imageFile, true),
+                    "data:image/" + type + ";base64," + Stream.readAllAsBase64(new FileInputStream(imageFile)));
+        }
+    }
 
     @Test(groups = { "unit" })
     public void testRead() throws IOException {
@@ -104,5 +164,43 @@ public class ScriptHelperTest extends BaseIntegrationTest {
             count++;
         }
         Assert.assertEquals(count, 2);
+    }
+
+    @Test(groups = { "unit" })
+    public void testVariable() {
+        try (QueryContext context = QueryContext.newContext(Constants.SCOPE_THREAD, null)) {
+            QueryContext.setCurrentContext(context);
+            final String key = UUID.randomUUID().toString();
+            Assert.assertEquals(helper.var(key), "");
+            Assert.assertEquals(helper.var(key, null), null);
+            Assert.assertEquals(helper.var(key, 1), "1");
+            Assert.assertEquals(helper.var(null, key, null), "");
+            Assert.assertEquals(helper.var(Constants.SCOPE_GLOBAL, key, "0"), "0");
+            Assert.assertEquals(helper.var(Constants.SCOPE_THREAD, key, "t0"), "t0");
+            Assert.assertThrows(IllegalArgumentException.class, () -> helper.var(Constants.SCOPE_QUERY, key, "q0"));
+            Assert.assertThrows(IllegalArgumentException.class, () -> helper.var(1, key, "?"));
+
+            Assert.assertNull(helper.setVariable(key, "a"));
+            Assert.assertEquals(helper.var(key), "a");
+            Assert.assertEquals(helper.var(Constants.SCOPE_THREAD, key, "t0"), "a");
+            Assert.assertEquals(helper.var(Constants.SCOPE_GLOBAL, key, "0"), "0");
+
+            Assert.assertEquals(helper.setVariable(Constants.SCOPE_THREAD, key, "b"), "a");
+            Assert.assertEquals(helper.var(key), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_THREAD, key, "t0"), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_GLOBAL, key, "0"), "0");
+
+            Assert.assertNull(helper.setVariable(Constants.SCOPE_GLOBAL, key, "5"));
+            Assert.assertEquals(helper.var(key), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_THREAD, key, "t0"), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_GLOBAL, key, "0"), "5");
+
+            Assert.assertEquals(helper.setVariable(Constants.SCOPE_GLOBAL, key, "6"), "5");
+            Assert.assertEquals(helper.var(key), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_THREAD, key, "t0"), "b");
+            Assert.assertEquals(helper.var(Constants.SCOPE_GLOBAL, key, "0"), "6");
+
+            context.getParent().removeVariable(key);
+        }
     }
 }

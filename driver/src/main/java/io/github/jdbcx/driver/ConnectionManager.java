@@ -25,7 +25,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -210,8 +209,7 @@ public final class ConnectionManager implements AutoCloseable {
         this.bridgeConfig = new Properties();
 
         String token = Option.SERVER_TOKEN.getJdbcxValue(originalProps).trim();
-        this.bridgeToken = Checker.isNullOrEmpty(token) ? token
-                : Base64.getEncoder().encodeToString(token.getBytes(Constants.DEFAULT_CHARSET));
+        this.bridgeToken = Checker.isNullOrEmpty(token) ? token : Utils.toBase64(token);
 
         this.jdbcUrl = url;
         this.props = extensionProps;
@@ -293,6 +291,10 @@ public final class ConnectionManager implements AutoCloseable {
 
     public Connection getConnection() {
         return conn;
+    }
+
+    public List<DriverExtension> getSupportedExtensions() {
+        return this.extList;
     }
 
     public VariableTag getVariableTag() {

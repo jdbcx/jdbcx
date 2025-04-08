@@ -28,7 +28,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -107,9 +106,7 @@ public class WebExecutor extends AbstractExecutor {
                 user = Utils.decode(userInfo);
             }
             userInfo = new StringBuilder(user).append(':').append(passwd).toString();
-            conn.setRequestProperty(HEADER_AUTHORIZATION,
-                    AUTH_SCHEME_BASIC
-                            .concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
+            conn.setRequestProperty(HEADER_AUTHORIZATION, AUTH_SCHEME_BASIC.concat(Utils.toBase64(userInfo)));
         }
     }
 
