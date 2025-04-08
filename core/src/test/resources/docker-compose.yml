@@ -5,19 +5,19 @@
 
 # https://hub.docker.com/_/mariadb
 mariadb:
-  image: mariadb:11.5
+  image: mariadb:11
   environment:
     MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
 
 # https://hub.docker.com/_/mysql
 mysql:
-  image: mysql:9.0
+  image: mysql:9
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
 # https://hub.docker.com/_/postgres
 postgresql:
-  image: postgres:16.4
+  image: postgres:17
   environment:
     POSTGRES_HOST_AUTH_METHOD: "trust"
 
@@ -42,6 +42,6 @@ flightsql:
 toxiproxy:
   # 2.9.0 will somehow end up with the following error on GitHub CI:
   # Timed out waiting for container port to open (localhost ports: [32769, 32770] should be listening)
-  image: zhicwu/toxiproxy:2.8.0
+  image: ghcr.io/shopify/toxiproxy:2.12.0
   links:
     - clickhouse

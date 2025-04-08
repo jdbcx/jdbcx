@@ -15,13 +15,15 @@ FROM ubuntu:noble
 # Maintainer
 LABEL maintainer="zhicwu@gmail.com"
 
-ARG PRQLC_VERSION=0.13.3
+ARG PRQLC_VERSION=0.13.4
 ARG JDBCX_VERSION=0.6.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
     JDBCX_HOME="/app" JAVA_HOME="/app/openjdk" PATH="${PATH}:/app/openjdk/bin" \
-    JDBCX_USER_ID=2025 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.6.0}
+    JDBCX_USER_ID=2025 JDBCX_USER_NAME=jdbcx JDBCX_VERSION=${JDBCX_VERSION:-0.6.0} \
+    CLICKHOUSE_DRIVER_VERSION=0.4.6 DUCKDB_DRIVER_VERSION=1.2.1 MYSQL_DRIVER_VERSION=9.2.0 \
+    OPENSEARCH_DRIVER_VERSION=1.4.0.1 POSTGRES_DRIVER_VERSION=42.7.5 SQLITE_DRIVER_VERSION=3.49.1.0
 
 # Labels
 LABEL os.dist=Ubuntu os.version=24.04 app.name=JDBCX app.version=${JDBCX_VERSION}
@@ -60,21 +62,28 @@ RUN if [ -f jdbcx-server-*.jar ]; then echo "Skip downloading"; \
 RUN chmod +x /*.sh \
     && ln -s jdbcx-server-*.jar jdbcx.jar \
     && tar -zxvf jdbcx-server-*-dependencies.tar.gz --strip 1 -C lib/ \
-    && wget -nv -O ./drivers/duckdb.LICENSE https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
-    && wget -nv -O ./drivers/mysql-connector-j.LICENSE \
-        https://raw.githubusercontent.com/mysql/mysql-connector-j/release/9.x/LICENSE \
-    && wget -nv -O ./drivers/pgjdbc.LICENSE \
-        https://raw.githubusercontent.com/pgjdbc/pgjdbc/master/LICENSE \
-    && wget -nv -O ./drivers/rhino.LICENSE \
-        https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
-    && wget -nv -P ./drivers/ \
-        https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.4.6/clickhouse-jdbc-0.4.6-http.jar \
-        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/9.1.0/mysql-connector-j-9.1.0.jar \
-        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/1.1.3/duckdb_jdbc-1.1.3.jar \
-        https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar \
-        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.47.1.0/sqlite-jdbc-3.47.1.0.jar \
-        https://repo1.maven.org/maven2/org/opensearch/driver/opensearch-sql-jdbc/1.4.0.1/opensearch-sql-jdbc-1.4.0.1.jar \
-    && rm -fv ./*.tar.gz /tmp/*
+    && wget -nv -O ./lib/rhino.LICENSE https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
+    && mkdir -p drivers/clickhouse drivers/duckdb drivers/mysql drivers/opensearch drivers/postgres drivers/sqlite \
+    && wget -nv -P ./drivers/clickhouse/ \
+        https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/${CLICKHOUSE_DRIVER_VERSION}/clickhouse-jdbc-${CLICKHOUSE_DRIVER_VERSION}-http.jar \
+    && wget -nv -P ./drivers/duckdb/ https://raw.githubusercontent.com/duckdb/duckdb/main/LICENSE \
+        https://repo1.maven.org/maven2/org/duckdb/duckdb_jdbc/${DUCKDB_DRIVER_VERSION}/duckdb_jdbc-${DUCKDB_DRIVER_VERSION}.jar \
+    && wget -nv -P ./drivers/mysql/ https://raw.githubusercontent.com/mysql/mysql-connector-j/release/9.x/LICENSE \
+        https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/${MYSQL_DRIVER_VERSION}/mysql-connector-j-${MYSQL_DRIVER_VERSION}.jar \
+    && wget -nv -P ./drivers/opensearch/ \
+        https://repo1.maven.org/maven2/org/opensearch/driver/opensearch-sql-jdbc/${OPENSEARCH_DRIVER_VERSION}/opensearch-sql-jdbc-${OPENSEARCH_DRIVER_VERSION}.jar \
+    && wget -nv -P ./drivers/postgres/ https://raw.githubusercontent.com/pgjdbc/pgjdbc/master/LICENSE \
+        https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRES_DRIVER_VERSION}/postgresql-${POSTGRES_DRIVER_VERSION}.jar \
+    && wget -nv -P ./drivers/sqlite/ \
+        https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/${SQLITE_DRIVER_VERSION}/sqlite-jdbc-${SQLITE_DRIVER_VERSION}.jar \
+    && rm -fv ./drivers/.gitkeep ./lib/.gitkeep ./*.tar.gz /tmp/* \
+    && cd drivers \
+    && ln -s clickhouse/clickhouse-jdbc-${CLICKHOUSE_DRIVER_VERSION}-http.jar clickhouse-jdbc.jar \
+    && ln -s duckdb/duckdb_jdbc-${DUCKDB_DRIVER_VERSION}.jar duckdb-jdbc.jar \
+    && ln -s mysql/mysql-connector-j-${MYSQL_DRIVER_VERSION}.jar mysql-jdbc.jar \
+    && ln -s opensearch/opensearch-sql-jdbc-${OPENSEARCH_DRIVER_VERSION}.jar opensearch-jdbc.jar \
+    && ln -s postgres/postgresql-${POSTGRES_DRIVER_VERSION}.jar postgresql-jdbc.jar \
+    && ln -s sqlite/sqlite-jdbc-${SQLITE_DRIVER_VERSION}.jar sqlite-jdbc.jar
 
 USER jdbcx
 
