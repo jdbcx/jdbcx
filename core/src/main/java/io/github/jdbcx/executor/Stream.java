@@ -32,6 +32,7 @@ import java.nio.charset.Charset;
 import java.util.concurrent.CompletionException;
 
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Utils;
 
 public final class Stream {
     public static long pipe(InputStream from, OutputStream to) throws IOException {
@@ -147,6 +148,29 @@ public final class Stream {
             return pipe(from, to, buffer, closeOutput);
         } catch (IOException e) {
             throw new CompletionException(e);
+        }
+    }
+
+    public static byte[] readAllBytes(InputStream input) throws IOException {
+        if (input == null) {
+            return Constants.EMPTY_BYTE_ARRAY;
+        }
+        try (InputStream in = input;
+                ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
+            Stream.pipe(in, out);
+            return out.toByteArray();
+        }
+    }
+
+    public static String readAllAsBase64(InputStream input) throws IOException {
+        if (input == null) {
+            return Constants.EMPTY_STRING;
+        }
+
+        try (InputStream in = input;
+                ByteArrayOutputStream out = new ByteArrayOutputStream(Constants.DEFAULT_BUFFER_SIZE)) {
+            Stream.pipe(in, out);
+            return Utils.toBase64(out.toByteArray());
         }
     }
 

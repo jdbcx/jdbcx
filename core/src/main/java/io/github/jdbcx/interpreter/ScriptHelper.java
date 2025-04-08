@@ -15,7 +15,10 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
@@ -24,9 +27,9 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,6 +47,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
@@ -119,30 +123,168 @@ public final class ScriptHelper {
         return Utils.escape(obj.toString(), '"');
     }
 
+    public String encodeFile(Object file, String encoder) {
+        return encodeFile(file, encoder, false);
+    }
+
+    public String encodeFile(Object file, boolean withContentTypePrefix) {
+        return encodeFile(file, ENCODER_BASE64, withContentTypePrefix);
+    }
+
+    public String encodeFile(Object file, String encoder, boolean withContentTypePrefix) {
+        if (file == null) {
+            return Constants.EMPTY_STRING;
+        }
+
+        final StringBuilder encoded;
+        if (withContentTypePrefix) {
+            encoded = new StringBuilder("data:image/");
+        } else {
+            encoded = new StringBuilder();
+        }
+        final byte[] bytes;
+        final String fileName;
+        try {
+            if (file instanceof byte[]) {
+                bytes = (byte[]) file;
+                fileName = Constants.EMPTY_STRING;
+            } else if (file instanceof File) {
+                final File f = (File) file;
+                bytes = Stream.readAllBytes(new FileInputStream(f));
+                fileName = f.getName();
+            } else if (file instanceof Path) {
+                final File f = ((Path) file).toFile();
+                bytes = Stream.readAllBytes(new FileInputStream(f));
+                fileName = f.getName();
+            } else if (file instanceof InputStream) {
+                bytes = Stream.readAllBytes((InputStream) file);
+                fileName = Constants.EMPTY_STRING;
+            } else if (file instanceof URI) {
+                final URL url = ((URI) file).toURL();
+                bytes = Stream.readAllBytes(url.openStream());
+                fileName = url.getPath();
+            } else if (file instanceof URL) {
+                final URL url = (URL) file;
+                bytes = Stream.readAllBytes(url.openStream());
+                fileName = url.getPath();
+            } else {
+                final String s = file.toString();
+                URL u = null;
+                try {
+                    u = Utils.toURL(s);
+                } catch (MalformedURLException e) {
+                    // ignore
+                }
+
+                if (u != null && !Checker.isNullOrEmpty(u.getProtocol()) && !"file".equals(u.getProtocol())) {
+                    bytes = Stream.readAllBytes(u.openStream());
+                    fileName = u.getPath();
+                } else {
+                    fileName = Utils.normalizePath(file.toString());
+                    bytes = Stream.readAllBytes(Utils.getFileInputStream(fileName));
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(Utils.format("Failed to access [%s] due to %s", file, e.getMessage()));
+        }
+
+        if (ENCODER_BASE64.equals(encoder) && withContentTypePrefix) {
+            final String part = ";base64,";
+            if (!fileName.isEmpty()) {
+                int index = fileName.lastIndexOf(".");
+                if (index > 0) {
+                    return encoded.append(fileName.substring(index + 1)).append(part).append(encode(bytes, encoder))
+                            .toString();
+                }
+            }
+
+            final int len = bytes.length;
+            final String extension;
+            if (len >= 2 &&
+                    bytes[0] == (byte) 0x42 &&
+                    bytes[1] == (byte) 0x4D) {
+                extension = "bmp";
+            } else if (len >= 3 &&
+                    bytes[0] == (byte) 0xFF &&
+                    bytes[1] == (byte) 0xD8 &&
+                    bytes[2] == (byte) 0xFF) {
+                extension = "jpeg";
+            } else if (len >= 4 &&
+                    bytes[0] == (byte) 0x00 &&
+                    bytes[1] == (byte) 0x00 &&
+                    bytes[2] == (byte) 0x01 &&
+                    bytes[3] == (byte) 0x00) {
+                extension = "ico";
+            } else if (len >= 8 &&
+                    bytes[0] == (byte) 0x89 &&
+                    bytes[1] == (byte) 0x50 &&
+                    bytes[2] == (byte) 0x4E &&
+                    bytes[3] == (byte) 0x47 &&
+                    bytes[4] == (byte) 0x0D &&
+                    bytes[5] == (byte) 0x0A &&
+                    bytes[6] == (byte) 0x1A &&
+                    bytes[7] == (byte) 0x0A) {
+                extension = "png";
+            } else if (len >= 6 &&
+                    bytes[0] == (byte) 0x47 &&
+                    bytes[1] == (byte) 0x49 &&
+                    bytes[2] == (byte) 0x46 &&
+                    bytes[3] == (byte) 0x38 &&
+                    (bytes[4] == (byte) 0x37 || bytes[4] == (byte) 0x39) &&
+                    bytes[5] == (byte) 0x61) {
+                extension = "gif";
+            } else if (len >= 12 &&
+                    bytes[0] == (byte) 0x52 &&
+                    bytes[1] == (byte) 0x49 &&
+                    bytes[2] == (byte) 0x46 &&
+                    bytes[3] == (byte) 0x46 &&
+                    bytes[8] == (byte) 0x57 &&
+                    bytes[9] == (byte) 0x45 &&
+                    bytes[10] == (byte) 0x42 &&
+                    bytes[11] == (byte) 0x50) {
+                extension = "webp";
+            } else {
+                throw new IllegalArgumentException(
+                        Utils.format("Unable to identify file type after reading %d bytes", len));
+            }
+            return encoded.append(extension).append(part).append(encode(bytes, encoder)).toString();
+        }
+        return encode(bytes, encoder);
+    }
+
     public String encode(Object obj, String encoder) {
+        if (encoder == null) {
+            encoder = Constants.EMPTY_STRING;
+        }
         final String encoded;
         switch (encoder) {
             case ENCODER_BASE64:
-                encoded = Base64.getEncoder()
-                        .encodeToString(obj != null ? obj.toString().getBytes(Constants.DEFAULT_CHARSET) : new byte[0]);
+                encoded = obj == null ? Constants.EMPTY_STRING
+                        : (obj instanceof byte[] ? Utils.toBase64((byte[]) obj) : Utils.toBase64(obj.toString()));
                 break;
             case ENCODER_JSON:
                 encoded = JsonHelper.encode(obj);
                 break;
             case ENCODER_URL:
                 try {
-                    encoded = obj != null ? URLEncoder.encode(obj.toString(), Constants.DEFAULT_CHARSET.name())
-                            : Constants.EMPTY_STRING;
+                    encoded = obj == null ? Constants.EMPTY_STRING
+                            : URLEncoder
+                                    .encode(obj instanceof byte[] ? new String((byte[]) obj, Constants.DEFAULT_CHARSET)
+                                            : obj.toString(), Constants.DEFAULT_CHARSET.name());
                 } catch (UnsupportedEncodingException e) {
                     throw new IllegalArgumentException(e); // not going to happen
                 }
                 break;
             case ENCODER_XML:
-                encoded = new StringBuilder(CDATA_START).append(obj != null ? obj.toString() : Constants.EMPTY_STRING)
-                        .append(CDATA_END).toString();
+                encoded = obj == null ? Constants.EMPTY_STRING
+                        : new StringBuilder(CDATA_START)
+                                .append(obj instanceof byte[] ? new String((byte[]) obj, Constants.DEFAULT_CHARSET)
+                                        : obj.toString())
+                                .append(CDATA_END).toString();
                 break;
             default:
-                encoded = String.valueOf(obj);
+                encoded = obj instanceof byte[] ? new String((byte[]) obj, Constants.DEFAULT_CHARSET)
+                        : String.valueOf(obj);
                 break;
         }
         return encoded;
@@ -251,8 +393,7 @@ public final class ScriptHelper {
                         user = Utils.decode(userInfo);
                     }
                     userInfo = new StringBuilder(user).append(':').append(passwd).toString();
-                    httpConn.setRequestProperty("Authorization", "Basic "
-                            .concat(Base64.getEncoder().encodeToString(userInfo.getBytes(Constants.DEFAULT_CHARSET))));
+                    httpConn.setRequestProperty("Authorization", "Basic ".concat(Utils.toBase64(userInfo)));
                 }
 
                 if (request != null) {
@@ -326,6 +467,57 @@ public final class ScriptHelper {
             rows = Collections.singletonList(Row.of(fieldsList, row));
         }
         return Result.of(fieldsList, rows);
+    }
+
+    public String var(Object name) {
+        return getVariable(name);
+    }
+
+    public String var(Object name, Object defaultValue) {
+        return getVariable(name, defaultValue);
+    }
+
+    public String var(Object scope, Object name, Object defaultValue) {
+        return getVariable(scope, name, defaultValue);
+    }
+
+    public String getVariable(Object name) {
+        return getVariable(name, Constants.EMPTY_STRING);
+    }
+
+    public String getVariable(Object name, Object defaultValue) {
+        if (name == null) {
+            return Constants.EMPTY_STRING;
+        }
+
+        return QueryContext.getCurrentContext().getVariable(name.toString(),
+                defaultValue != null ? defaultValue.toString() : null);
+    }
+
+    public String getVariable(Object scope, Object name, Object defaultValue) {
+        if (scope == null || name == null) {
+            return Constants.EMPTY_STRING;
+        }
+        return QueryContext.getCurrentContext().getVariableInScope(scope.toString(), name.toString(),
+                defaultValue != null ? defaultValue.toString() : null);
+    }
+
+    public Object setVariable(Object name, Object value) {
+        if (name == null) {
+            return null;
+        }
+
+        return QueryContext.getCurrentContext().setVariable(name.toString(),
+                value != null ? value.toString() : null);
+    }
+
+    public Object setVariable(Object scope, Object name, Object value) {
+        if (scope == null || name == null) {
+            return null;
+        }
+
+        return QueryContext.getCurrentContext().setVariableInScope(scope.toString(), name.toString(),
+                value != null ? value.toString() : null);
     }
 
     // TODO additional methods to simplify execution of sql, prql, script, and web

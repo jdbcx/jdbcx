@@ -18,6 +18,7 @@ package io.github.jdbcx.executor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
@@ -79,6 +80,23 @@ public class StreamTest {
             char[] buffer = new char[2];
             Assert.assertEquals(Stream.pipe(reader, writer, buffer, false), str.toCharArray().length);
             Assert.assertEquals(new String(out.toByteArray(), charset), str);
+        }
+    }
+
+    @Test(groups = "unit")
+    public void testReadAllBytes() throws IOException {
+        byte[] bytes = new byte[0];
+        Assert.assertEquals(Stream.readAllBytes(null), bytes);
+        try (InputStream in = new ByteArrayInputStream(bytes = new byte[] { 3, 2, 1, -1, -2, -3 })) {
+            Assert.assertEquals(Stream.readAllBytes(in), bytes);
+        }
+    }
+
+    @Test(groups = "unit")
+    public void testReadAllAsBase64() throws IOException {
+        Assert.assertEquals(Stream.readAllAsBase64(null), "");
+        try (InputStream in = new ByteArrayInputStream(new byte[] { 3, 2, 1, -1, -2, -3 })) {
+            Assert.assertEquals(Stream.readAllAsBase64(in), "AwIB//79");
         }
     }
 }

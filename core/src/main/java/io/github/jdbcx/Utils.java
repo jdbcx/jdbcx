@@ -32,6 +32,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -47,6 +48,7 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -1352,6 +1354,32 @@ public final class Utils {
             label = md.getColumnName(columnIndex);
         }
         return label;
+    }
+
+    public static String toBase64(String str) {
+        return toBase64(str, null);
+    }
+
+    public static String toBase64(byte[] bytes) {
+        return toBase64(bytes, null);
+    }
+
+    public static String toBase64(String str, Charset charset) {
+        if (str == null) {
+            return Constants.EMPTY_STRING;
+        } else if (charset == null) {
+            charset = Constants.DEFAULT_CHARSET;
+        }
+        return toBase64(str.getBytes(charset), charset);
+    }
+
+    public static String toBase64(byte[] bytes, Charset charset) {
+        if (bytes == null) {
+            return Constants.EMPTY_STRING;
+        } else if (charset == null) {
+            charset = Constants.DEFAULT_CHARSET;
+        }
+        return new String(Base64.getEncoder().encode(bytes), charset);
     }
 
     private Utils() {
