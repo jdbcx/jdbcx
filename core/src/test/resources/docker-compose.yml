@@ -5,19 +5,19 @@
 
 # https://hub.docker.com/_/mariadb
 mariadb:
-  image: mariadb:11.5
+  image: mariadb:11
   environment:
     MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
 
 # https://hub.docker.com/_/mysql
 mysql:
-  image: mysql:9.0
+  image: mysql:9
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
 # https://hub.docker.com/_/postgres
 postgresql:
-  image: postgres:16.4
+  image: postgres:17
   environment:
     POSTGRES_HOST_AUTH_METHOD: "trust"
 
@@ -25,14 +25,14 @@ postgresql:
 clickhouse:
   # 24.3+ has problem dealing with absolute-form in request
   # See https://github.com/ClickHouse/ClickHouse/issues/58828
-  image: clickhouse/clickhouse-server:23.8
+  image: zhicwu/clickhouse-server:23.8
   links:
     - mysql
     - postgresql
 
 # https://hub.docker.com/r/voltrondata/flight-sql
 flightsql:
-  image: voltrondata/flight-sql:v1.4.1
+  image: zhicwu/flight-sql:v1.4.1
   environment:
     TLS_ENABLED: "0"
     FLIGHT_PASSWORD: "f"
@@ -42,6 +42,6 @@ flightsql:
 toxiproxy:
   # 2.9.0 will somehow end up with the following error on GitHub CI:
   # Timed out waiting for container port to open (localhost ports: [32769, 32770] should be listening)
-  image: zhicwu/toxiproxy:2.8.0
+  image: zhicwu/toxiproxy:2.12.0
   links:
     - clickhouse
