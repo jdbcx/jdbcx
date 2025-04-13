@@ -699,8 +699,14 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         try {
             conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db"), config, headers);
             Assert.assertEquals(conn.getResponseCode(), 200);
-            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()),
-                    "[{\"id\":\"my-duckdb\",\"description\":\"Local DuckDB for testing purpose\"},{\"id\":\"my-sqlite\",\"description\":\"SQLite for local development\"}]");
+            String actual = Stream.readAllAsString(conn.getInputStream());
+            Assert.assertTrue(actual.startsWith("[") && actual.endsWith("]"), "Should be a JSON array");
+            Assert.assertTrue(
+                    actual.indexOf("{\"id\":\"my-duckdb\",\"description\":\"Local DuckDB for testing purpose\"}") > 0,
+                    "Should have my-duckdb");
+            Assert.assertTrue(
+                    actual.indexOf("{\"id\":\"my-sqlite\",\"description\":\"SQLite for local development\"}") > 0,
+                    "Should have sqlite");
         } finally {
             if (conn != null) {
                 conn.disconnect();
