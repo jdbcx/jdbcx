@@ -331,11 +331,14 @@ public class UtilsTest {
     public void testSplitByChar() {
         Assert.assertEquals(Utils.split(null, '\0'), Collections.emptyList());
         Assert.assertEquals(Utils.split("", '\0'), Collections.singletonList(""));
-        Assert.assertEquals(Utils.split(" ", ' '), Arrays.asList(""));
+        Assert.assertEquals(Utils.split(" ", ' '), Arrays.asList("", ""));
+        Assert.assertEquals(Utils.split(" ", ' ', true, false, false), Arrays.asList(""));
+
+        Assert.assertEquals(Utils.split("", ',', true, true, true), Collections.emptyList());
 
         Assert.assertEquals(Utils.split(" ", '\0'), Collections.singletonList(" "));
         Assert.assertEquals(Utils.split("a\0\0b", '\0'), Arrays.asList("a", "", "b"));
-        Assert.assertEquals(Utils.split(",,,a,c,,b,,,", ','), Arrays.asList("", "", "", "a", "c", "", "b", "", ""));
+        Assert.assertEquals(Utils.split(",,,a,c,,b,,,", ','), Arrays.asList("", "", "", "a", "c", "", "b", "", "", ""));
 
         Assert.assertEquals(Utils.split(null, '\0', true, true, true), Collections.emptyList());
 

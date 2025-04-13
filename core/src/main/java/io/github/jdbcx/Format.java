@@ -39,6 +39,7 @@ public enum Format {
     BSON(false, false, false, "application/bson", "bson"),
     JSONL(false, false, false, "application/jsonl", "jsonl"), // or application/json-lines?
     JSON_SEQ(false, false, false, "application/json-seq", "jsons"), // mainly for streaming, seldom used
+    MARKDOWN(false, false, false, "text/markdown", "md"),
     NDJSON(false, false, false, "application/x-ndjson", "ndjson"), // same as JSONL
     // https://issues.apache.org/jira/browse/PARQUET-1889
     PARQUET(true, true, true, "application/vnd.apache.parquet", "parquet"),

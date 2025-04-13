@@ -594,7 +594,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:", props);
                 Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery("insert into my_table {{ values.db.my-sqlite: select 1 a, '${_.id}.${_}' B }}")) {
+                ResultSet rs = stmt
+                        .executeQuery("insert into my_table {{ values.db.my-sqlite: select 1 a, '${_.id}.${_}' B }}")) {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), "insert into my_table (\"a\",\"B\") VALUES\n(1,'my-sqlite.db')");
             Assert.assertFalse(rs.next());
@@ -685,6 +686,118 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                     }
                     Assert.assertFalse(rs.next(), "Should NOT have more records");
                 }
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testNamedDataSources() throws Exception {
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(VariableTag.BRACE, config);
+        HttpURLConnection conn = null;
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db"), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            String actual = Stream.readAllAsString(conn.getInputStream());
+            Assert.assertTrue(actual.startsWith("[") && actual.endsWith("]"), "Should be a JSON array");
+            Assert.assertTrue(
+                    actual.indexOf("{\"id\":\"my-duckdb\",\"description\":\"Local DuckDB for testing purpose\"}") > 0,
+                    "Should have my-duckdb");
+            Assert.assertTrue(
+                    actual.indexOf("{\"id\":\"my-sqlite\",\"description\":\"SQLite for local development\"}") > 0,
+                    "Should have sqlite");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/script"), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "[]");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/notsupported"), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "[]");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testDataSourceConfig() throws Exception {
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(VariableTag.BRACE, config);
+        HttpURLConnection conn = null;
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/nonexist"), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "{}");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/my-sqlite"), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()),
+                    "{\"id\":\"my-sqlite\",\"aliases\":[\"local-sqlite\",\"private-sqlite\"],\"description\":,\"SQLite for local development\"}");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testErrorMessage() throws Exception {
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(VariableTag.BRACE, config);
+        HttpURLConnection conn = null;
+        for (String p : new String[] { "error", "error/", "error/123" }) {
+            try {
+                conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + p), config, headers);
+                Assert.assertEquals(conn.getResponseCode(), 404);
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        }
+
+        final String queryId = UUID.randomUUID().toString();
+        try {
+            conn = web.openConnection(
+                    Utils.toURL(this.server.getBaseUrl() + "async/" + queryId + ".csv?q="
+                            + Utils.encode("{{db.nonexist: select1}}")),
+                    config, headers);
+            Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_INTERNAL_ERROR);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "error/" + queryId), config, headers);
+            Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "Named db [nonexist] does not exist");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
             }
         }
     }

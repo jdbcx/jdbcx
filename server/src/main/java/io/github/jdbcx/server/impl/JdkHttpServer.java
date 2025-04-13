@@ -167,27 +167,43 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     }
 
     @Override
-    protected void showConfig(Object implementation) throws IOException {
+    protected void setResponse(Object implementation, int responseCode, String responseMsg, String... headers)
+            throws IOException {
+        final int len = headers != null ? headers.length : 0;
+        if (len % 2 != 0) {
+            throw new IllegalArgumentException("Even number of headers required but we got " + len);
+        }
         HttpExchange exchange = check(implementation);
-
         Headers responseHeaders = exchange.getResponseHeaders();
-        responseHeaders.set(HEADER_CONTENT_TYPE, Format.TXT.mimeType());
-        exchange.sendResponseHeaders(200, 0L);
-        try (OutputStream out = exchange.getResponseBody()) {
-            writeConfig(out);
+        for (int i = 0; i < len; i++) {
+            responseHeaders.set(headers[i++], headers[i]);
+        }
+        if (Checker.isNullOrEmpty(responseMsg)) {
+            exchange.sendResponseHeaders(responseCode, -1L);
+        } else {
+            exchange.sendResponseHeaders(responseCode, responseMsg.length());
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(responseMsg.getBytes(Constants.DEFAULT_CHARSET));
+            }
         }
     }
 
     @Override
-    protected void showMetrics(Object implementation) throws IOException {
-        HttpExchange exchange = check(implementation);
-
-        Headers responseHeaders = exchange.getResponseHeaders();
-        responseHeaders.set(HEADER_CONTENT_TYPE, Format.TXT.mimeType());
-        exchange.sendResponseHeaders(200, 0L);
-        try (OutputStream out = exchange.getResponseBody()) {
-            writeMetrics(out);
+    protected OutputStream getResponseStream(Object implementation, int responseCode, String... headers)
+            throws IOException {
+        final int len = headers != null ? headers.length : 0;
+        if (len % 2 != 0) {
+            throw new IllegalArgumentException("Even number of headers required but we got " + len);
         }
+
+        HttpExchange exchange = check(implementation);
+        Headers responseHeaders = exchange.getResponseHeaders();
+        for (int i = 0; i < len; i++) {
+            responseHeaders.set(headers[i++], headers[i]);
+        }
+
+        exchange.sendResponseHeaders(responseCode, 0L);
+        return exchange.getResponseBody();
     }
 
     @Override

@@ -72,6 +72,7 @@ public final class Option implements Serializable {
 
     // most common options
     public static final Option ID = Option.of(new String[] { "id", "ID for looking up configuration" });
+    public static final Option DESCRIPTION = Option.of(new String[] { "description", "Description" });
     public static final Option CLASSPATH = Option
             .of(new String[] { "classpath", "Comma separated classpath for loading classes" });
 

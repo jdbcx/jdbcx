@@ -45,6 +45,7 @@ import io.github.jdbcx.format.AvroSerde;
 import io.github.jdbcx.format.BsonSerde;
 import io.github.jdbcx.format.CsvSerde;
 import io.github.jdbcx.format.JsonlSerde;
+import io.github.jdbcx.format.MarkdownSerde;
 import io.github.jdbcx.format.JsonSeqSerde;
 import io.github.jdbcx.format.ParquetSerde;
 import io.github.jdbcx.format.TsvSerde;
@@ -211,6 +212,9 @@ public final class Result<T> implements AutoCloseable {
                 break;
             case JSON_SEQ:
                 serde = new JsonSeqSerde(config);
+                break;
+            case MARKDOWN:
+                serde = new MarkdownSerde(config);
                 break;
             case PARQUET:
                 serde = new ParquetSerde(config);
