@@ -1103,6 +1103,8 @@ public final class Utils {
     public static List<String> split(String str, char delimiter, boolean trim, boolean ignoreEmpty, boolean dedup) {
         if (str == null) {
             return Collections.emptyList();
+        } else if (trim) {
+            str = str.trim();
         }
 
         List<String> list = new LinkedList<>();
@@ -1125,8 +1127,8 @@ public final class Utils {
         }
 
         if (list.isEmpty()) {
-            return Collections.singletonList(str);
-        } else if (builder.length() > 0) {
+            return ignoreEmpty && str.isEmpty() ? Collections.emptyList() : Collections.singletonList(str);
+        } else if (builder.length() > 0 || str.charAt(str.length() - 1) == delimiter) {
             String v = builder.toString();
             if (trim) {
                 v = v.trim();

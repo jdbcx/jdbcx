@@ -17,14 +17,16 @@ package io.github.jdbcx.server;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -32,9 +34,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -60,9 +62,11 @@ import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.driver.ConnectionManager;
+import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.WebExecutor;
+import io.github.jdbcx.interpreter.JsonHelper;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
@@ -80,7 +84,12 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final String METHOD_HEAD = "HEAD";
 
+    public static final String JSON_PROP_ID = "\"id\":";
+    public static final String JSON_PROP_ALIASES = "\"aliases\":";
+    public static final String JSON_PROP_DESC = "\"description\":";
+
     public static final String PATH_CONFIG = "config";
+    public static final String PATH_ERROR = "error/";
     public static final String PATH_METRICS = "metrics";
 
     public static final String CONNECTION_CLOSE = "close";
@@ -149,6 +158,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     private final PrometheusMeterRegistry promRegistry;
 
+    private final Cache<String, String> errors;
     private final Cache<String, QueryInfo> queries;
 
     protected final HikariDataSource datasource;
@@ -244,12 +254,16 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
         log.debug("Initializing query cache...");
         // TODO load persistent requests from disk file or database
+        errors = Caffeine.newBuilder().maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT)
+                .recordStats().build();
+        CaffeineCacheMetrics.monitor(promRegistry, errors, "error");
+
         Caffeine<String, QueryInfo> builder = Caffeine.newBuilder()
                 .maximumSize(requestLimit > 0L ? requestLimit : DEFAULT_REQUEST_LIMIT).removalListener(this);
         if (requestTimeout > 0L) {
-            builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS);
+            builder.expireAfterWrite(requestTimeout, TimeUnit.MILLISECONDS).scheduler(Scheduler.systemScheduler());
         }
-        queries = builder.recordStats().scheduler(Scheduler.systemScheduler()).build();
+        queries = builder.recordStats().build();
         CaffeineCacheMetrics.monitor(promRegistry, queries, "query");
 
         backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
@@ -289,7 +303,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 try {
                     token = new String(Base64.getDecoder().decode(token), Constants.DEFAULT_CHARSET);
                 } catch (Exception e) {
-                    log.warn("Failed to decode token [%s] due to: %s", token, e.getMessage());
+                    // ignore the error for security reason
                 }
             }
             request = new Request(method, mode, rawParams, qid, query, txid, format, compress, token, user, client,
@@ -311,6 +325,54 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected final void writeMetrics(OutputStream out) throws IOException {
         promRegistry.scrape(out);
+    }
+
+    protected final void writeNamedDataSources(Writer writer, String extension) throws IOException {
+        writer.write('[');
+        try (Connection conn = datasource.getConnection()) {
+            ManagedConnection managedConn = conn.unwrap(ManagedConnection.class);
+            if (managedConn != null) {
+                ConfigManager manager = managedConn.getManager().getConfigManager();
+                StringBuilder builder = new StringBuilder();
+                for (String id : manager.getAllIDs(extension)) {
+                    Properties props = manager.getConfig(extension, id);
+                    builder.append('{').append(JSON_PROP_ID).append(JsonHelper.encode(id)).append(',')
+                            .append(JSON_PROP_DESC).append(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)))
+                            .append('}');
+                    writer.write(builder.toString());
+                    builder.setLength(0);
+                    builder.append(',');
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        writer.write(']');
+    }
+
+    protected final void writeDataSourceConfig(Writer writer, String extension, String name) throws IOException {
+        writer.write('{');
+        try (Connection conn = datasource.getConnection()) {
+            ManagedConnection managedConn = conn.unwrap(ManagedConnection.class);
+            if (managedConn != null) {
+                ConfigManager manager = managedConn.getManager().getConfigManager();
+                Properties props = manager.getConfig(extension, name);
+                writer.write(JSON_PROP_ID);
+                writer.write(JsonHelper.encode(name));
+                writer.write(',');
+                writer.write(JSON_PROP_ALIASES);
+                writer.write(JsonHelper
+                        .encode(Utils.split(ConfigManager.OPTION_ALIAS.getJdbcxValue(props), ',', true, true, true)));
+                writer.write(',');
+                writer.write(JSON_PROP_DESC);
+                writer.write(',');
+                writer.write(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)));
+            }
+        } catch (Exception e) {
+            // ignore
+            e.printStackTrace();
+        }
+        writer.write('}');
     }
 
     protected void batch(Request request, Properties config) throws IOException {
@@ -363,14 +425,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     protected void query(Request request, Properties config) throws IOException {
         final QueryInfo info = request.getQueryInfo();
         log.debug("Executing query [%s]...", info.qid);
-        boolean success = false;
+        String errorMessage = "Unknown error";
         try (Connection conn = datasource.getConnection();
                 Statement stmt = conn.createStatement();
                 // request.isMutation()
                 Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
                         : Result.of(JdbcExecutor.getUpdateCount(stmt))) {
             try (OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
-                success = true; // query was a success and we got the response output stream without any issue
+                errorMessage = null; // query was a success and we got the response output stream without any issue
                 final SQLWarning warning = stmt.getWarnings();
                 if (warning != null) {
                     log.warn("SQLWarning from [%s]", stmt, warning);
@@ -380,13 +442,17 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             // in case the query took too long
             queries.put(info.qid, info);
         } catch (SQLException e) {
+            errorMessage = e.getMessage();
             // invalidate the query now so that client-side retry later will end up with 404
             queries.invalidate(info.qid);
-            log.debug("Invalidated query [%s] due to error: %s", info.qid, e.getMessage());
+            log.debug("Invalidated query [%s] due to error: %s", info.qid, errorMessage);
             throw new IOException(e);
+        } catch (Exception e) {
+            errorMessage = e.getMessage();
+            throw e;
         } finally {
-            if (!success) {
-                respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR);
+            if (errorMessage != null) {
+                respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR, errorMessage);
             }
         }
         log.debug("Query [%s] finished successfully", info.qid);
@@ -419,8 +485,13 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             log.debug("Async query [%s] returned successfully", info.qid);
             respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
         } catch (SQLException e) {
-            log.warn("Failed to execute query [%s] due to error: %s", info.qid, e.getMessage());
+            final String errorMsg = e.getMessage();
+            errors.put(info.qid, errorMsg);
+            log.warn("Failed to execute query [%s] due to error: %s", info.qid, errorMsg);
             throw new IOException(e);
+        } catch (Exception e) {
+            errors.put(info.qid, e.getMessage());
+            throw e;
         } finally {
             if (rs != null || stmt != null || conn != null) {
                 info.setResources(rs, stmt, conn);
@@ -466,9 +537,26 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return false;
     }
 
-    protected abstract void showConfig(Object implementation) throws IOException;
+    protected abstract void setResponse(Object implementation, int responseCode, String responseMsg, String... headers)
+            throws IOException;
 
-    protected abstract void showMetrics(Object implementation) throws IOException;
+    protected abstract OutputStream getResponseStream(Object implementation, int responseCode, String... headers)
+            throws IOException;
+
+    protected final OutputStream getResponseStream(Object implementation, String... headers)
+            throws IOException {
+        return getResponseStream(implementation, HttpURLConnection.HTTP_OK, headers);
+    }
+
+    protected final Writer getResponseWriter(Object implementation, int responseCode, String... headers)
+            throws IOException {
+        return new OutputStreamWriter(getResponseStream(implementation, responseCode, headers),
+                Constants.DEFAULT_CHARSET);
+    }
+
+    protected final Writer getResponseWriter(Object implementation, String... headers) throws IOException {
+        return new OutputStreamWriter(getResponseStream(implementation, headers), Constants.DEFAULT_CHARSET);
+    }
 
     protected void dispatch(String method, String path, String rawParams, InetSocketAddress clientAddress,
             String encodedToken, Map<String, String> headers, Object implementation) throws IOException {
@@ -481,13 +569,50 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 path = path.substring(1);
             }
 
-            if (PATH_CONFIG.equals(path)) {
-                log.debug("Sending server configuration to %s", clientAddress);
-                showConfig(implementation);
-                return;
-            } else if (PATH_METRICS.equals(path)) {
+            if (PATH_METRICS.equals(path)) {
                 log.debug("Sending server metrics to %s", clientAddress);
-                showMetrics(implementation);
+                try (OutputStream out = getResponseStream(implementation, HEADER_CONTENT_TYPE,
+                        Format.TXT.mimeType())) {
+                    writeMetrics(out);
+                }
+                return;
+            } else if (path.startsWith(PATH_CONFIG)) {
+                if (path.length() == PATH_CONFIG.length()) {
+                    log.debug("Sending server configuration to %s", clientAddress);
+                    try (OutputStream out = getResponseStream(implementation, HEADER_CONTENT_TYPE,
+                            Format.TXT.mimeType())) {
+                        writeConfig(out);
+                    }
+                    return;
+                } else if (path.charAt(PATH_CONFIG.length()) == '/') {
+                    List<String> list = Utils.split(path.substring(PATH_CONFIG.length() + 1), '/');
+                    switch (list.size()) {
+                        case 1: // list named datasources
+                            try (Writer writer = getResponseWriter(implementation, HEADER_CONTENT_TYPE,
+                                    Format.JSON.mimeType())) {
+                                writeNamedDataSources(writer, list.get(0));
+                            }
+                            return;
+                        case 2: // show details of the named datasource
+                            try (Writer writer = getResponseWriter(implementation, HEADER_CONTENT_TYPE,
+                                    Format.JSON.mimeType())) {
+                                writeDataSourceConfig(writer, list.get(0), list.get(1));
+                            }
+                            return;
+                        default:
+                            break;
+                    }
+                }
+            } else if (path.startsWith(PATH_ERROR)) {
+                log.debug("Sending query error to %s", clientAddress);
+                String errorMsg = errors.getIfPresent(path.substring(PATH_ERROR.length()));
+                if (Checker.isNullOrEmpty(errorMsg)) {
+                    setResponse(implementation, HttpURLConnection.HTTP_NOT_FOUND, null, HEADER_CONTENT_TYPE,
+                            Format.TXT.mimeType());
+                } else {
+                    setResponse(implementation, HttpURLConnection.HTTP_OK, errorMsg, HEADER_CONTENT_TYPE,
+                            Format.TXT.mimeType());
+                }
                 return;
             }
 

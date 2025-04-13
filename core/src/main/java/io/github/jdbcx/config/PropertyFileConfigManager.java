@@ -17,6 +17,7 @@ package io.github.jdbcx.config;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -254,21 +255,25 @@ public class PropertyFileConfigManager extends ConfigManager {
             props = new Properties();
             final Path baseDir = path.get();
             Path p = baseDir.resolve(getUniqueId(category, id).concat(FILE_EXTENSION));
-            log.debug("Loading configuration [%s] from [%s]...", id, p);
+            log.debug("Loading configuration of named %s [%s] from [%s]...", category, id, p);
             try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
                 props.load(reader);
                 props.remove(Option.ID.getJdbcxName());
                 if (props.getProperty(Option.ID.getName()) != null) {
                     Option.ID.setValue(props, id);
                 }
+            } catch (FileNotFoundException e) {
+                throw new IllegalArgumentException(
+                        Utils.format("Named %s [%s] does not exist", category, id), e);
             } catch (IOException e) {
-                throw new IllegalArgumentException("Failed to load configuration", e);
+                throw new IllegalArgumentException(
+                        Utils.format("Failed to load configuration of named %s [%s]", category, id), e);
             }
         }
 
         if (props == null) {
             throw new IllegalArgumentException(
-                    Utils.format("Could not find configuration [category=%s, id=%s]", category, id));
+                    Utils.format("Could not find configuration for named %s [%s]", category, id));
         }
         return props;
     }
