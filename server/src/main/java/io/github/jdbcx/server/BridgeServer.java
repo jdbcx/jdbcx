@@ -370,7 +370,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             }
         } catch (Exception e) {
             // ignore
-            e.printStackTrace();
         }
         writer.write('}');
     }
