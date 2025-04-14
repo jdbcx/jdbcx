@@ -59,8 +59,8 @@ public class BridgeDriverExtensionTest {
             }
             Assert.assertEquals(WebInterpreter.OPTION_URL_TEMPLATE.getValue(newProps), "");
             Assert.assertEquals(WebInterpreter.OPTION_AUTH_BEARER_TOKEN.getValue(newProps), "");
-            Assert.assertEquals(WebInterpreter.OPTION_REQUEST_HEADERS.getValue(newProps),
-                    "User-Agent=JDBCX,accept=text/csv,accept-encoding=identity");
+            Assert.assertTrue(WebInterpreter.OPTION_REQUEST_HEADERS.getValue(newProps)
+                    .startsWith("User-Agent=JDBCX,accept=text/csv,accept-encoding=identity,x-query-id="));
 
             Properties bridgeCtx = new Properties();
             context.put(QueryContext.KEY_BRIDGE, bridgeCtx);
@@ -79,8 +79,9 @@ public class BridgeDriverExtensionTest {
             }
             Assert.assertEquals(WebInterpreter.OPTION_URL_TEMPLATE.getValue(newProps), "http://my.server:9090/bridge/");
             Assert.assertEquals(WebInterpreter.OPTION_AUTH_BEARER_TOKEN.getValue(newProps), "321321123123");
-            Assert.assertEquals(WebInterpreter.OPTION_REQUEST_HEADERS.getValue(newProps),
-                    "User-Agent=MyDatabase/0.1,x-query-user=me,x-query-mode=m,accept=application/vnd.apache.arrow.stream;text/csv,accept-encoding=br;identity");
+            Assert.assertTrue(WebInterpreter.OPTION_REQUEST_HEADERS.getValue(newProps)
+                    .startsWith(
+                            "User-Agent=MyDatabase/0.1,x-query-user=me,x-query-mode=m,accept=application/vnd.apache.arrow.stream;text/csv,accept-encoding=br;identity,x-query-id="));
         }
     }
 
