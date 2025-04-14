@@ -6,7 +6,7 @@
 FROM eclipse-temurin:21-jdk-noble AS jdk
 
 RUN jlink --add-modules \
-    java.base,java.compiler,java.logging,java.naming,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver,jdk.management,jdk.unsupported \
+    java.base,java.compiler,java.logging,java.naming,java.scripting,java.sql,java.transaction.xa,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.management,jdk.unsupported \
     --output /min-jre --strip-debug --no-man-pages --no-header-files --verbose
 
 # Stage 2 - build jdbcx
