@@ -29,7 +29,7 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
 public class WebDriverExtension implements DriverExtension {
-    static class ActivityListener extends AbstractActivityListener {
+    static final class ActivityListener extends AbstractActivityListener {
         ActivityListener(QueryContext context, Properties config) {
             super(new WebInterpreter(context, config), config);
         }

@@ -28,7 +28,7 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.interpreter.QueryInterpreter;
 
 public final class QueryDriverExtension implements DriverExtension {
-    static class ActivityListener extends AbstractActivityListener {
+    static final class ActivityListener extends AbstractActivityListener {
         ActivityListener(QueryContext context, Properties config) {
             super(new QueryInterpreter(context, config), config);
         }

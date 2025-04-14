@@ -32,7 +32,7 @@ public class PromptDriverExtension implements DriverExtension {
     static final Option OPTION_PROVIDER = Option
             .of(new String[] { "provider", "Service provider", "", "openai", "google" });
 
-    static class ActivityListener extends AbstractActivityListener {
+    static final class ActivityListener extends AbstractActivityListener {
         static Properties update(Properties config) {
             String provider = OPTION_PROVIDER.getValue(config);
             if ("openai".equalsIgnoreCase(provider)) {

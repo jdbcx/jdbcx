@@ -297,6 +297,10 @@ abstract class AbstractExecutor implements Executor {
         return defaultInputCharset;
     }
 
+    public final String getDefaultOutputFile() {
+        return defaultOutputFile;
+    }
+
     public final Charset getDefaultOutputCharset() {
         return defaultOutputCharset;
     }
@@ -326,6 +330,11 @@ abstract class AbstractExecutor implements Executor {
     public Charset getInputCharset(Properties props) {
         String value = props != null ? props.getProperty(Option.INPUT_CHARSET.getName()) : null;
         return value != null ? Charset.forName(value) : defaultInputCharset;
+    }
+
+    public String getOutputFile(Properties props) {
+        return Utils.normalizePath(Utils.applyVariables(Option.OUTPUT_FILE.getValue(props, defaultOutputFile),
+                VariableTag.valueOf(Option.TAG.getValue(props)), props)).trim();
     }
 
     public Charset getOutputCharset(Properties props) {
