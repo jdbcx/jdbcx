@@ -34,9 +34,34 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
     protected final Properties config;
     protected final Interpreter interpreter;
 
+    private final String defaultQuery;
+
     protected AbstractActivityListener(Interpreter interpreter, Properties config) {
         this.interpreter = interpreter;
         this.config = config;
+
+        this.defaultQuery = config.getProperty(Constants.EMPTY_STRING, Constants.EMPTY_STRING).trim();
+    }
+
+    protected SQLException onException(Exception e) { // NOSONAR
+        return null;
+    }
+
+    protected SQLException onCompletionException(CompletionException e) {
+        SQLException exp = onException(e);
+        if (exp == null) {
+            exp = e.getCause() == null ? SqlExceptionUtils.clientWarning(e)
+                    : SqlExceptionUtils.clientError(e.getCause());
+        }
+        return exp;
+    }
+
+    protected SQLException onUnexpectedException(Exception e) {
+        SQLException exp = onException(e);
+        if (exp == null) {
+            exp = SqlExceptionUtils.clientError(e);
+        }
+        return exp;
     }
 
     @Override
@@ -54,7 +79,7 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
                 }
             }
 
-            final Result<?> result = interpreter.interpret(query, config);
+            final Result<?> result = interpreter.interpret(Checker.isNullOrEmpty(query) ? defaultQuery : query, config);
             if (saveResult) {
                 final int len = result.getFieldCount();
                 final String value;
@@ -100,13 +125,9 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
             }
             return result;
         } catch (CompletionException e) {
-            if (e.getCause() == null) {
-                throw SqlExceptionUtils.clientWarning(e);
-            } else {
-                throw SqlExceptionUtils.clientError(e.getCause());
-            }
-        } catch (Exception e) { // unexpected error
-            throw SqlExceptionUtils.clientError(e);
+            throw onCompletionException(e);
+        } catch (Exception e) {
+            throw onUnexpectedException(e);
         }
     }
 }

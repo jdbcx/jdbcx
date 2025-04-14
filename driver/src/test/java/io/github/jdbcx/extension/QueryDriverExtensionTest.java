@@ -197,4 +197,43 @@ public class QueryDriverExtensionTest extends BaseIntegrationTest {
             Assert.assertFalse(rs.next(), "Should have only 3 rows");
         }
     }
+
+    @Test(groups = { "integration" })
+    public void testDefaultQuery() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        WrappedDriver driver = new WrappedDriver();
+        try (Connection conn = driver.connect("jdbcx:ch://" + getClickHouseServer(), props)) {
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("{{ query.insert3rows }}")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertTrue(rs.next(), "Should have at least two rows");
+                Assert.assertFalse(rs.next(), "Should have only two rows");
+            }
+
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("select * from abc_test order by s")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertEquals(rs.getString(1), "1");
+                Assert.assertTrue(rs.next(), "Should have at least two rows");
+                Assert.assertEquals(rs.getString(1), "2");
+                Assert.assertTrue(rs.next(), "Should have at least three rows");
+                Assert.assertEquals(rs.getString(1), "3");
+                Assert.assertFalse(rs.next(), "Should have only three rows");
+            }
+        }
+
+        try (Connection conn = driver.connect("jdbcx:ch://" + getClickHouseServer(), props)) {
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("{{ query.insert3rows: truncate table abc_test }}")) {
+                Assert.assertTrue(rs.next(), "Should have at least one row");
+                Assert.assertFalse(rs.next(), "Should have only one row");
+            }
+
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("select * from abc_test order by s")) {
+                Assert.assertFalse(rs.next(), "Should have no row");
+            }
+        }
+    }
 }
