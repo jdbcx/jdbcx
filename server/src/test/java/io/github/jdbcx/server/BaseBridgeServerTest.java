@@ -577,6 +577,14 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select * from {{ table.db.nonexist: select 1 }}")) {
+            Assert.fail("Should have threw SQL exception");
+        } catch (SQLException e) {
+            Assert.assertEquals(e.getMessage(), "Named db [nonexist] does not exist");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select * from {{ table.db.my-duckdb: select 1, '${_}.${_.id}'}}")) {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getInt(1), 1);

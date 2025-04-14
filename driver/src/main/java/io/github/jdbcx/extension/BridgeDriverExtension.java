@@ -16,6 +16,8 @@
 package io.github.jdbcx.extension;
 
 import java.io.InputStream;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -24,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.UUID;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
@@ -41,11 +44,17 @@ import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
+import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.interpreter.WebInterpreter;
 
 public class BridgeDriverExtension implements DriverExtension {
     private static final Logger log = LoggerFactory.getLogger(BridgeDriverExtension.class);
+
+    static final String DEFAULT_CONNECT_TIMEOUT = "3000";
+    static final String DEFAULT_SOCKET_TIMEOUT = "5000";
+
+    static final String KEY_QUERY_ID = "query_id";
 
     static final Option OPTION_COMPRESSION = Option.of(new String[] { "compression", "Compression algorithm" });
     static final Option OPTION_FORMAT = Option.of(new String[] { "format", "Data format" });
@@ -56,7 +65,33 @@ public class BridgeDriverExtension implements DriverExtension {
     static final Option OPTION_TOKEN = Option
             .of(new String[] { DriverExtension.PROPERTY_BRIDGE_TOKEN, "Secure token for accessing bridge server" });
 
-    static class ActivityListener extends AbstractActivityListener {
+    static final class ActivityListener extends AbstractActivityListener {
+        static StringBuilder getUrlBuilder(String url) {
+            if (Checker.isNullOrEmpty(url)) {
+                return new StringBuilder();
+            }
+
+            StringBuilder builder;
+            int index = url.indexOf('?');
+            if (index != -1) {
+                builder = new StringBuilder(url.substring(0, index));
+            } else {
+                builder = new StringBuilder(url);
+            }
+            if (builder.charAt(builder.length() - 1) != '/') {
+                builder.append('/');
+            }
+            return builder;
+        }
+
+        static WebExecutor getTempWebExecutor(VariableTag tag, Properties config) {
+            WebExecutor web = new WebExecutor(tag, config);
+            WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, DEFAULT_CONNECT_TIMEOUT);
+            WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, DEFAULT_SOCKET_TIMEOUT);
+            WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+            return web;
+        }
+
         ActivityListener(QueryContext context, Properties config) {
             super(new WebInterpreter(context, config), config);
         }
@@ -91,6 +126,39 @@ public class BridgeDriverExtension implements DriverExtension {
         }
 
         @Override
+        protected SQLException onException(Exception e) {
+            Throwable cause = e;
+            Throwable rootCause;
+            do {
+                // unable to access bridge server
+                if (cause instanceof SocketException || cause instanceof UnknownHostException) {
+                    return super.onException(e);
+                }
+                rootCause = cause;
+                cause = cause.getCause();
+            } while (cause != null);
+
+            final QueryContext context = interpreter.getContext();
+            final Object queryId = context.get(KEY_QUERY_ID);
+            if (queryId != null) { // only when query id is available
+                final StringBuilder builder = getUrlBuilder(
+                        OPTION_URL.getValue((Properties) context.get(QueryContext.KEY_BRIDGE)));
+                try {
+                    Properties config = new Properties();
+                    WebExecutor web = getTempWebExecutor(interpreter.getVariableTag(), config);
+                    try (InputStream input = web.get(Utils.toURL(builder.append("error/").append(queryId).toString()),
+                            config,
+                            Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
+                        return new SQLException(Stream.readAllAsString(input), rootCause);
+                    }
+                } catch (Exception exp) {
+                    log.error("Failed to retrieve error message from bridge server: " + builder.toString(), exp);
+                }
+            }
+            return super.onException(e);
+        }
+
+        @Override
         public Result<?> onQuery(String query) throws SQLException {
             return super.onQuery(rewrite(query));
         }
@@ -103,21 +171,9 @@ public class BridgeDriverExtension implements DriverExtension {
 
     static void updateBridgeConfig(Properties bridgeConfig, String url, VariableTag tag, String bridgeToken) {
         try {
-            final StringBuilder builder;
-            int index = url.indexOf('?');
-            if (index != -1) {
-                builder = new StringBuilder(url.substring(0, index));
-            } else {
-                builder = new StringBuilder(url);
-            }
-            if (builder.charAt(builder.length() - 1) != '/') {
-                builder.append('/');
-            }
+            final StringBuilder builder = ActivityListener.getUrlBuilder(url);
             Properties config = new Properties();
-            WebExecutor web = new WebExecutor(tag, config);
-            WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, "1000");
-            WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, "3000");
-            WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+            WebExecutor web = ActivityListener.getTempWebExecutor(tag, config);
             try (InputStream input = web.get(Utils.toURL(builder.append("config").toString()), config,
                     Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
                 bridgeConfig.load(input);
@@ -226,6 +282,10 @@ public class BridgeDriverExtension implements DriverExtension {
             builder.append(',').append(RequestParameter.COMPRESSION.header()).append('=')
                     .append(dialect == null ? compress.encoding() : dialect.getEncodings(compress));
         }
+
+        final String queryId = UUID.randomUUID().toString();
+        context.put(KEY_QUERY_ID, queryId);
+        builder.append(',').append(RequestParameter.QUERY_ID.header()).append('=').append(queryId);
 
         WebInterpreter.OPTION_REQUEST_HEADERS.setValue(props, builder.toString());
         return props;
