@@ -13,7 +13,7 @@
     <packaging>jar</packaging>
 
     <name>jdbcx-driver</name>
-    <description>Enhanced JDBC driver enabling dynamic multi-language query execution</description>
+    <description>JDBC wrapper with extended data and query features.</description>
     <url>https://github.com/jdbcx/jdbcx/tree/main/driver</url>
 
     <properties>

@@ -4,17 +4,42 @@
 
 <img align="right" width="96" height="96" src="https://avatars.githubusercontent.com/u/137983508">
 
-JDBCX enhances the JDBC driver by supporting additional data formats, compression algorithms, object mapping, type conversion, and query languages beyond SQL. It simplifies complex federated queries with dynamic query embedding and remote bridge server connectivity for multiple data sources.
+JDBCX extends JDBC with enhanced data format and compression support, object mapping, advanced type conversion, and multi-language query capabilities. It simplifies federated queries through dynamic embedding and offers a remote bridge for seamless multi-source connectivity.
 
 ![image](https://user-images.githubusercontent.com/4270380/257034477-a5e1fe1a-bb1c-4478-addc-43fbdf4e4d07.png)
 
-
 ## Quick Start
 
-Getting started with JDBCX is easy. You can use [JDBCX driver](/driver), [bridge server](/server), or both.
+Getting started with JDBCX is easy. Use it as a standard [JDBC driver](/driver), a standalone [bridge server](/server), or combine both functionalities.
 
+```bash
+# Using the standard JDBC driver
+$ docker run --rm -it jdbcx/jdbcx:main-nightly 'jdbc:duckdb:' 'select 2 as num'             
+num
+2
+
+# Using JDBCX as a drop-in replacement (with extensions)
+$ docker run --rm -it jdbcx/jdbcx:main-nightly 'jdbcx:duckdb:' 'select {{script:1+1}} as num'
+num
+2
+
+# Using JDBCX as a bridge server (HTTP API for data access)
+$ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx:main-nightly server
+$ curl -s -d 'select 2 as num' 'http://localhost:8080/query' 
+num
+2
+$ curl -s -d '{{ db.duckdb-local: select 2 as num }}' 'http://localhost:8080/query'
+num
+2
+
+# Combining JDBCX driver features with the bridge server for federated querying
+$ curl -s -d 'select * from {{ table.db.duckdb-local: select 2 as num }}' 'http://localhost:8080/query'
+num
+2
+```
 
 ## Features
+
 <table>
 <tr>
 <td> Feature </td> <td> Examples </td>
@@ -92,7 +117,7 @@ select a[1] `CPU%`, a[2] `MEM(KB)`, a[3] `Elapsed Time(s)`,
 	a[4] `CPU Time(s)`, a[5] `User Time(s)`, a[6] `Switches`,
 	a[7] `Waits`, a[8] `File Inputs`, a[9] `File Outputs`, a[10] `Swaps`
 from (
-select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true): 
+select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true):
 /bin/time -f '%P,%M,%e,%S,%U,%c,%w,%I,%O,%W' du -sh . > /dev/null
 }}') a
 )
@@ -117,16 +142,13 @@ select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true):
 </tr>
 </table>
 
-
 ## Known Issues
 
 | #   | Issue                                     | Workaround                          |
 | --- | ----------------------------------------- | ----------------------------------- |
 | 1   | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
-| 2   | Scripting does not work on DBeaver        | use JDK instead of JRE              |
-| 3   | Connection pooling is not supported       | -                                   |
-| 4   | Multi-ResultSet is not fully supported    | -                                   |
-| 5   | Nested query is not supported             | -                                   |
+| 2   | Connection pooling is not supported       | -                                   |
+| 3   | Nested query is not supported             | -                                   |
 
 ## Performance
 

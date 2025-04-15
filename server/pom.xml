@@ -13,7 +13,7 @@
     <packaging>jar</packaging>
 
     <name>jdbcx-server</name>
-    <description>Bridge Server of JDBCX</description>
+    <description>HTTP bridge for connecting to various data sources.</description>
     <url>https://github.com/jdbcx/jdbcx/tree/main/server</url>
 
     <dependencies>

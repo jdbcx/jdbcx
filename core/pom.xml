@@ -13,7 +13,7 @@
     <packaging>jar</packaging>
 
     <name>jdbcx-core</name>
-    <description>JDBCX core utilities</description>
+    <description>Enhanced JDBC with format/compression support, object mapping, advanced types, and multi-language queries.</description>
     <url>https://github.com/jdbcx/jdbcx/tree/main/core</url>
 
     <dependencies>

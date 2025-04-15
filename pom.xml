@@ -10,7 +10,7 @@
     <packaging>pom</packaging>
 
     <name>jdbcx</name>
-    <description>Extended JDBC driver for dynamic multi-language queries with optional bridge server for federated datasource connectivity.</description>
+    <description>Extends JDBC with advanced data handling, mapping, and multi-source query features.</description>
     <url>https://github.com/jdbcx/jdbcx</url>
     <inceptionYear>2022</inceptionYear>
 
@@ -95,7 +95,7 @@
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.6.3</dnsjava.version>
-        <duckdb.version>1.2.1</duckdb.version>
+        <duckdb.version>1.2.2.0</duckdb.version>
         <graphql.version>23.0</graphql.version>
         <groovy.version>4.0.26</groovy.version>
         <gson.version>2.12.1</gson.version>
