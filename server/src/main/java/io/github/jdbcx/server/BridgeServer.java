@@ -365,7 +365,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                         .encode(Utils.split(ConfigManager.OPTION_ALIAS.getJdbcxValue(props), ',', true, true, true)));
                 writer.write(',');
                 writer.write(JSON_PROP_DESC);
-                writer.write(',');
                 writer.write(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)));
             }
         } catch (Exception e) {
