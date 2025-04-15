@@ -762,7 +762,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/my-sqlite"), config, headers);
             Assert.assertEquals(conn.getResponseCode(), 200);
             Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()),
-                    "{\"id\":\"my-sqlite\",\"aliases\":[\"local-sqlite\",\"private-sqlite\"],\"description\":,\"SQLite for local development\"}");
+                    "{\"id\":\"my-sqlite\",\"aliases\":[\"local-sqlite\",\"private-sqlite\"],\"description\":\"SQLite for local development\"}");
         } finally {
             if (conn != null) {
                 conn.disconnect();
