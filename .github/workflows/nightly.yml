@@ -12,7 +12,7 @@ on:
 
 env:
   JDBCX_BRANCH: "main"
-  JDBCX_VERSION: "0.6.0"
+  JDBCX_VERSION: "0.7.0"
 
 jobs:
   nightly:

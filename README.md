@@ -14,17 +14,17 @@ Getting started with JDBCX is easy. Use it as a standard [JDBC driver](/driver),
 
 ```bash
 # Using the standard JDBC driver
-$ docker run --rm -it jdbcx/jdbcx:main-nightly 'jdbc:duckdb:' 'select 2 as num'             
+$ docker run --rm -it jdbcx/jdbcx 'jdbc:duckdb:' 'select 2 as num'             
 num
 2
 
 # Using JDBCX as a drop-in replacement (with extensions)
-$ docker run --rm -it jdbcx/jdbcx:main-nightly 'jdbcx:duckdb:' 'select {{script:1+1}} as num'
+$ docker run --rm -it jdbcx/jdbcx 'jdbcx:duckdb:' 'select {{script:1+1}} as num'
 num
 2
 
 # Using JDBCX as a bridge server (HTTP API for data access)
-$ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx:main-nightly server
+$ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx server
 $ curl -s -d 'select 2 as num' 'http://localhost:8080/query' 
 num
 2
