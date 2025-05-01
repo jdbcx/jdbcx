@@ -88,10 +88,12 @@ jobs:
       - name: Build & Test Docker Images
         run: |
           docker build --build-arg JDBCX_VERSION=latest -f ./Dockerfile.base -t jdbcx/jdbcx-base:ci . \
-          && docker build -t jdbcx/jdbcx:ci . && docker run --rm jdbcx/jdbcx:ci 'jdbcx:sqlite::memory:' \
+          && docker build -t jdbcx/jdbcx:ci . && echo "Testing [jdbcx/jdbcx:ci]..." \
+          && docker run --rm jdbcx/jdbcx:ci 'jdbcx:sqlite::memory:' \
             'select {{script:1}}, {{shell:echo 2}}, {{db:select 3}}, {{prql(exec.error=warn):7}}' \
           && docker build -f ./Dockerfile.full -t jdbcx/jdbcx-full:ci . \
-          && docker run --rm jdbcx/jdbcx-full:ci '{{ mcp(cmd=npx,args=@modelcontextprotocol/server-everything,target=prompt) }}'
+          && echo "Testing [jdbcx/jdbcx-full:ci]..." \
+          && docker run --rm jdbcx/jdbcx-full:ci 'jdbcx:' '{{ mcp(cmd=npx,args=@modelcontextprotocol/server-everything,target=prompt) }}'
 
   test-jdk21-linux:
     needs: compile

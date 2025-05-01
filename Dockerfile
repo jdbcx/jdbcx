@@ -16,5 +16,5 @@ COPY --from=jdk /min-jre ./openjdk
 
 USER jdbcx
 
-RUN for ext in arrow aws azure fts httpfs json mysql parquet postgres sqlite vss; \
+RUN for ext in nanoarrow aws azure fts httpfs json mysql parquet postgres sqlite vss; \
     do ./openjdk/bin/java -Dverbose=true -cp jdbcx.jar io.github.jdbcx.Main 'jdbcx:duckdb:' "INSTALL $ext" || true; done
