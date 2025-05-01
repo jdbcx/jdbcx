@@ -337,6 +337,7 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split("", ',', true, true, true), Collections.emptyList());
 
         Assert.assertEquals(Utils.split(" ", '\0'), Collections.singletonList(" "));
+        Assert.assertEquals(Utils.split(" a\r\n\tb c\\ d", ' '), Arrays.asList("", "a\r\n\tb", "c\\", "d"));
         Assert.assertEquals(Utils.split("a\0\0b", '\0'), Arrays.asList("a", "", "b"));
         Assert.assertEquals(Utils.split(",,,a,c,,b,,,", ','), Arrays.asList("", "", "", "a", "c", "", "b", "", "", ""));
 

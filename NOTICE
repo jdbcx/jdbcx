@@ -63,9 +63,8 @@ This project includes:
   Jackson-core under The Apache Software License, Version 2.0
   jackson-databind under The Apache Software License, Version 2.0
   janino under BSD-3-Clause
+  Java MCP SDK under MIT License
   Java Native Access under LGPL-2.1-or-later or Apache-2.0
-  Java Native Access Platform under LGPL-2.1-or-later or Apache-2.0
-  JCL 1.2 implemented over SLF4J under Apache License, Version 2.0
   jcommander under Apache License, Version 2.0
   jdbcx under The Apache Software License, Version 2.0
   jdbcx-core under The Apache Software License, Version 2.0
@@ -85,6 +84,7 @@ This project includes:
   micrometer-observation under The Apache Software License, Version 2.0
   micrometer-registry-prometheus under The Apache Software License, Version 2.0
   MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
+  Non-Blocking Reactive Foundation for the JVM under Apache License, Version 2.0
   org.brotli:dec under MIT License
   PostgreSQL JDBC Driver under BSD-2-Clause
   Prometheus Metrics Config under The Apache Software License, Version 2.0
@@ -94,10 +94,11 @@ This project includes:
   Prometheus Metrics Model under The Apache Software License, Version 2.0
   Prometheus Metrics Tracer Common under The Apache Software License, Version 2.0
   Protocol Buffers [Core] under BSD-3-Clause
+  reactive-streams under MIT-0
   rhino under Mozilla Public License, Version 2.0
   rhino-engine under Mozilla Public License, Version 2.0
-  SLF4J API Module under MIT License
-  SLF4J Simple Provider under MIT License
+  SLF4J API Module under MIT
+  SLF4J Simple Provider under MIT
   snappy-java under Apache-2.0
   SQLite JDBC under The Apache Software License, Version 2.0
   Stax2 API under The BSD License
@@ -105,7 +106,6 @@ This project includes:
   Testcontainers Core under MIT
   testng under Apache License, Version 2.0
   Toxiproxy Java Client under The Apache License, Version 2.0
-  waffle-jna under MIT
   Woodstox under The Apache License, Version 2.0
   XZ for Java under 0BSD
   zstd-jni under BSD 2-Clause License

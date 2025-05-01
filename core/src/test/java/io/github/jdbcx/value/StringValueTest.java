@@ -49,6 +49,8 @@ public class StringValueTest extends BaseValueTest {
     public void testValue() {
         ValueFactory factory = ValueFactory.getInstance();
         // null value
+        checkNull(factory, StringValue.of((String) null));
+        checkNull(factory, StringValue.of((Object) null));
         checkNull(factory, StringValue.of(ValueFactory.getInstance(), true, 0));
         checkNull(factory, StringValue.of(ValueFactory.getInstance(), true, 7, "1234567").resetToNull());
 

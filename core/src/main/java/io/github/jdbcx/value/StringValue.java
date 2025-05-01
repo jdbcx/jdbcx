@@ -40,6 +40,14 @@ public final class StringValue extends ObjectValue<String> {
         return v;
     }
 
+    public static StringValue of(String value) {
+        return new StringValue(ValueFactory.getInstance(), true, 0, value);
+    }
+
+    public static StringValue of(Object value) {
+        return of(value == null ? null : value.toString());
+    }
+
     private final int length;
 
     @Override

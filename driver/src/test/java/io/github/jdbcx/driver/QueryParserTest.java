@@ -142,6 +142,13 @@ public class QueryParserTest {
         Assert.assertEquals(props, expected);
 
         props.clear();
+        expected.setProperty("a.b", "c d e");
+        Assert.assertEquals(QueryParser.extractProperties(str = " a.b=c d\\ e", 0, str.length(), null, props),
+                str.length() - 1);
+        Assert.assertEquals(props, expected);
+
+        props.clear();
+        expected.setProperty("a.b", "");
         Assert.assertEquals(QueryParser.extractProperties(str = " a.b = ", 0, str.length(), null, props),
                 str.length() - 1);
         Assert.assertEquals(props, expected);

@@ -33,6 +33,14 @@ public class DoubleValue extends AbstractValue {
         return new DoubleValue(factory, nullable, value);
     }
 
+    public static final DoubleValue of(double value) {
+        return new DoubleValue(ValueFactory.getInstance(), false, value);
+    }
+
+    public static final DoubleValue of(Double value) {
+        return new DoubleValue(ValueFactory.getInstance(), true, value);
+    }
+
     private boolean isNull;
     private double value;
 
@@ -46,6 +54,17 @@ public class DoubleValue extends AbstractValue {
         super(factory, nullable);
         this.isNull = false;
         this.value = value;
+    }
+
+    protected DoubleValue(ValueFactory factory, boolean nullable, Double value) {
+        super(factory, nullable);
+        if (value == null) {
+            this.isNull = true;
+            this.value = this.factory.getDefaultDouble();
+        } else {
+            this.isNull = false;
+            this.value = value;
+        }
     }
 
     @Override

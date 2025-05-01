@@ -1,0 +1,311 @@
+/*
+ * Copyright 2022-2025, Zhichun Wu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.github.jdbcx.executor;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Properties;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Row;
+import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
+
+public class McpExecutorTest extends BaseIntegrationTest {
+    @Test(groups = { "unit" })
+    public void testConstructor() {
+        Assert.assertNotNull(new McpExecutor(null, null));
+        Assert.assertNotNull(new McpExecutor(null, new Properties()));
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetPrompts() throws SQLException {
+        skipTestsIfJdkIsOlderThan(17);
+
+        Properties props = new Properties();
+        McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
+        McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
+        McpExecutor exec = new McpExecutor(null, props);
+
+        // list prompts
+        props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "prompt");
+        int count = 0;
+        for (Row row : exec.execute("", props).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+
+        // prompt target
+        props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "prompt");
+        // or McpExecutor.OPTION_SERVER_TARGET.setValue(props, "PROMPT")
+        Assert.assertThrows(SQLException.class, () -> exec.execute("{}", props));
+        Assert.assertThrows(SQLException.class, () -> exec.execute("{\"name\":null}", props));
+        count = 0;
+        for (Row row : exec.execute("{\"name\": \"simple_prompt\"}", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+        count = 0;
+        for (Row row : exec.execute("{\"name\": \"complex_prompt\"}", props).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        count = 0;
+        for (Row row : exec
+                .execute("{\"name\": \"complex_prompt\", \"arguments\":{\"temperature\":\"0.95\",\"style\":\"json\"}}",
+                        props)
+                .rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        props.remove(McpExecutor.OPTION_SERVER_TARGET.getName());
+
+        // prompt in request body
+        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "a");
+        count = 0;
+        for (Row row : exec.execute(" simple_prompt ", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+
+        // prompt argument
+        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
+        count = 0;
+        for (Row row : exec.execute("", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+
+        // prompt argument mixed with request body
+        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
+        Assert.assertThrows(SQLException.class, () -> exec.execute(" non-exitsing-prompt", props));
+        count = 0;
+        for (Row row : exec.execute("complex_prompt", props).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        count = 0;
+        for (Row row : exec.execute("{\"a\":\"1\"}", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetResources() throws SQLException {
+        skipTestsIfJdkIsOlderThan(17);
+
+        Properties props = new Properties();
+        McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
+        McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
+        McpExecutor exec = new McpExecutor(null, props);
+
+        // list resources
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource.name());
+        int count = 0;
+        for (Row row : exec.execute("", props).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+
+        // resource in request body
+        count = 0;
+        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+        props.remove(McpExecutor.OPTION_SERVER_TARGET.getName());
+
+        // resource argument
+        McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
+        Assert.assertThrows(SQLException.class, () -> exec.execute("", props));
+
+        McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/7");
+        count = 0;
+        for (Row row : exec.execute("", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+        count = 0;
+        for (Row row : exec.execute("{\"uri\":null}", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+
+        // resource argument mixed with request body
+        McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
+        count = 0;
+        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props).rows()) {
+            count++;
+        }
+        Assert.assertEquals(count, 1);
+    }
+
+    @Test(groups = { "integration" })
+    public void testUseTool() throws SQLException {
+        skipTestsIfJdkIsOlderThan(17);
+
+        Properties props = new Properties();
+        McpExecutor.OPTION_SERVER_TOOL.setValue(props, "echo");
+        McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
+        McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
+        McpExecutor exec = new McpExecutor(null, props);
+        for (Row row : exec.execute("{\"message\":\"hello\"}", props).rows()) {
+            Assert.assertEquals(row.fields().size(), 5);
+            Assert.assertEquals(row.value("contentType"), row.value(0));
+            Assert.assertEquals(row.value("mimeType"), row.value(1));
+            Assert.assertEquals(row.value("priority"), row.value(2));
+            Assert.assertEquals(row.value("audience"), row.value(3));
+            Assert.assertEquals(row.value("content"), row.value(4));
+
+            Assert.assertEquals(row.value(0).asString(), "text");
+            Assert.assertEquals(row.value(1).asString(), "text/plain");
+            Assert.assertEquals(row.value(4).asString(), "Echo: hello");
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testServerTargets() throws SQLException {
+        skipTestsIfJdkIsOlderThan(17);
+
+        Properties props = new Properties();
+        McpExecutor exec = new McpExecutor(null, props);
+        McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
+        McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
+
+        // capabilities
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.capability.name());
+        int count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("type"), "Type should not be null");
+                Assert.assertNotNull(rs.getString("experimental"), "Experimental should not be null");
+                Assert.assertNotNull(rs.getString("logging"), "Logging should not be null");
+                Assert.assertNotNull(rs.getString("prompts"), "Prompts should not be null");
+                Assert.assertNotNull(rs.getString("resources"), "Resources should not be null");
+                Assert.assertNotNull(rs.getString("roots"), "Roots should not be null");
+                Assert.assertNotNull(rs.getString("sampling"), "Sampling should not be null");
+                Assert.assertNotNull(rs.getString("tools"), "Tools should not be null");
+
+                Assert.assertEquals(rs.getString("type"), rs.getString(1));
+                Assert.assertEquals(rs.getString("experimental"), rs.getString(2));
+                Assert.assertEquals(rs.getString("logging"), rs.getString(3));
+                Assert.assertEquals(rs.getString("prompts"), rs.getString(4));
+                Assert.assertEquals(rs.getString("resources"), rs.getString(5));
+                Assert.assertEquals(rs.getString("roots"), rs.getString(6));
+                Assert.assertEquals(rs.getString("sampling"), rs.getString(7));
+                Assert.assertEquals(rs.getString("tools"), rs.getString(8));
+                count++;
+            }
+        }
+        Assert.assertEquals(count, 2);
+
+        // info
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.info.name());
+        count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("type"), "Type should not be null");
+                Assert.assertNotNull(rs.getString("name"), "Name should not be null");
+                Assert.assertNotNull(rs.getString("version"), "Version should not be null");
+
+                Assert.assertEquals(rs.getString("type"), rs.getString(1));
+                Assert.assertEquals(rs.getString("name"), rs.getString(2));
+                Assert.assertEquals(rs.getString("version"), rs.getString(3));
+                count++;
+            }
+        }
+        Assert.assertEquals(count, 2);
+
+        // prompts
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.prompt.name());
+        count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
+                Assert.assertNotNull(rs.getString("description"), "Description should not be null");
+                Assert.assertNotNull(rs.getString("arguments"), "Arguments should not be null");
+
+                Assert.assertEquals(rs.getString("name"), rs.getString(1));
+                Assert.assertEquals(rs.getString("description"), rs.getString(2));
+                Assert.assertEquals(rs.getString("arguments"), rs.getString(3));
+                count++;
+            }
+        }
+        Assert.assertTrue(count > 0, "Should have more than one prompt");
+
+        // resources
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource.name());
+        count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
+                Assert.assertNotNull(rs.getString("description"), "Description should not be null");
+                Assert.assertNotNull(rs.getString("uri"), "URI should not be null");
+                Assert.assertNotNull(rs.getString("mimeType"), "MIME type should not be null");
+                Assert.assertNotNull(rs.getString("annotations"), "Annotations type should not be null");
+
+                Assert.assertEquals(rs.getString("name"), rs.getString(1));
+                Assert.assertEquals(rs.getString("description"), rs.getString(2));
+                Assert.assertEquals(rs.getString("uri"), rs.getString(3));
+                Assert.assertEquals(rs.getString("mimeType"), rs.getString(4));
+                Assert.assertEquals(rs.getString("annotations"), rs.getString(5));
+                count++;
+            }
+        }
+        Assert.assertTrue(count > 0, "Should have more than one resource");
+
+        // resource templates
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource_template.name());
+        count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
+                Assert.assertNotNull(rs.getString("description"), "Description should not be null");
+                Assert.assertNotNull(rs.getString("uriTemplate"), "URI template should not be null");
+                Assert.assertNotNull(rs.getString("mimeType"), "MIME type should not be null");
+                Assert.assertNotNull(rs.getString("annotations"), "Annotations type should not be null");
+
+                Assert.assertEquals(rs.getString("name"), rs.getString(1));
+                Assert.assertEquals(rs.getString("description"), rs.getString(2));
+                Assert.assertEquals(rs.getString("uriTemplate"), rs.getString(3));
+                Assert.assertEquals(rs.getString("mimeType"), rs.getString(4));
+                Assert.assertEquals(rs.getString("annotations"), rs.getString(5));
+                count++;
+            }
+        }
+        Assert.assertTrue(count > 0, "Should have more than one resource template");
+
+        // tools
+        McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.tool.name());
+        count = 0;
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+            while (rs.next()) {
+                Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
+                Assert.assertNotNull(rs.getString("description"), "Description should not be null");
+                Assert.assertNotNull(rs.getString("inputSchema"), "Input schema should not be null");
+
+                Assert.assertEquals(rs.getString("name"), rs.getString(1));
+                Assert.assertEquals(rs.getString("description"), rs.getString(2));
+                Assert.assertEquals(rs.getString("inputSchema"), rs.getString(3));
+                count++;
+            }
+        }
+        Assert.assertTrue(count > 0, "Should have more than one tool");
+    }
+}

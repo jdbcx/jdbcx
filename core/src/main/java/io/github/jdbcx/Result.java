@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 
 import io.github.jdbcx.data.IterableArray;
 import io.github.jdbcx.data.IterableInputStream;
@@ -259,12 +260,18 @@ public final class Result<T> implements AutoCloseable {
                 new IterableArray(fields, arr));
     }
 
-    public static Result<Iterable<?>> of(List<Field> fields, Iterable<?> it) { // NOSONAR
+    public static <T> Result<Iterable<T>> of(List<Field> fields, Iterable<T> it,
+            BiFunction<List<Field>, T, Row> converter) {
         if (fields == null || fields.isEmpty()) {
             fields = DEFAULT_FIELDS;
         }
-        IterableWrapper wrapper = new IterableWrapper(fields, it); // only works when both arguments are not null
+        // only works when the first two arguments are not null
+        IterableWrapper<T> wrapper = new IterableWrapper<>(fields, it, converter);
         return new Result<>(fields, it, it.getClass(), wrapper);
+    }
+
+    public static <T> Result<Iterable<T>> of(List<Field> fields, Iterable<T> it) {
+        return of(fields, it, null);
     }
 
     public static Result<?> of(List<Field> fields, Row... rows) { // NOSONAR
@@ -327,7 +334,7 @@ public final class Result<T> implements AutoCloseable {
     }
 
     public static Result<?> of(Collection<String> list) { // NOSONAR
-        return of(DEFAULT_FIELDS, list);
+        return of(DEFAULT_FIELDS, list, null);
     }
 
     public static Result<Long> of(Long l) {

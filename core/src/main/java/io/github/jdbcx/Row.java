@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import io.github.jdbcx.data.DefaultRow;
 
@@ -70,6 +71,10 @@ public interface Row extends Serializable {
             row = of(fields, Values.of(value));
         }
         return row;
+    }
+
+    static Row of(List<Field> fields, Object value, BiFunction<List<Field>, Object, Row> converter) {
+        return converter != null ? converter.apply(fields, value) : of(fields, value);
     }
 
     static Row of(List<Field> fields, Iterable<?> iterable) {
