@@ -1,0 +1,19 @@
+#
+# Full JDK, Node, Python3 + JDBCX Image
+#
+
+FROM jdbcx/jdbcx-base:latest
+
+# Configure system(charset and timezone) and install dependencies
+RUN apt update \
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y \
+        openjdk-21-jdk-headless python3 python3-pip python3-venv nodejs npm \
+    && curl -LsSf https://astral.sh/uv/install.sh | bash \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/cache/debconf /var/lib/apt/lists/* \
+    && ln -s /usr/lib/jvm/java-21-openjdk-* /app/openjdk
+
+USER jdbcx
+
+RUN for ext in arrow aws azure fts httpfs json mysql parquet postgres sqlite vss; \
+    do ./openjdk/bin/java -Dverbose=true -cp jdbcx.jar io.github.jdbcx.Main 'jdbcx:duckdb:' "INSTALL $ext" || true; done
