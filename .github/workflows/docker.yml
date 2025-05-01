@@ -56,10 +56,10 @@ jobs:
           build-args: |
             JDBCX_VERSION=${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}.${{ github.event.inputs.patch }}
           tags: |
-            ${{ github.event.inputs.owner }}/jdbcx-base:latest
-            ${{ github.event.inputs.owner }}/jdbcx-base:${{ github.event.inputs.major }}
-            ${{ github.event.inputs.owner }}/jdbcx-base:${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}
-            ${{ github.event.inputs.owner }}/jdbcx-base:${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}.${{ github.event.inputs.patch }}
+            ${{ github.event.inputs.owner }}/jdbcx:base
+            ${{ github.event.inputs.owner }}/jdbcx:base-${{ github.event.inputs.major }}
+            ${{ github.event.inputs.owner }}/jdbcx:base-${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}
+            ${{ github.event.inputs.owner }}/jdbcx:base-${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}.${{ github.event.inputs.patch }}
       - name: Build and Push Minimal Image
         uses: docker/build-push-action@v6
         with:
@@ -80,7 +80,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ github.event.inputs.owner }}/jdbcx-full:latest
-            ${{ github.event.inputs.owner }}/jdbcx-full:${{ github.event.inputs.major }}
-            ${{ github.event.inputs.owner }}/jdbcx-full:${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}
-            ${{ github.event.inputs.owner }}/jdbcx-full:${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}.${{ github.event.inputs.patch }}
+            ${{ github.event.inputs.owner }}/jdbcx:full
+            ${{ github.event.inputs.owner }}/jdbcx:full-${{ github.event.inputs.major }}
+            ${{ github.event.inputs.owner }}/jdbcx:full-${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}
+            ${{ github.event.inputs.owner }}/jdbcx:full-${{ github.event.inputs.major }}.${{ github.event.inputs.minor }}.${{ github.event.inputs.patch }}

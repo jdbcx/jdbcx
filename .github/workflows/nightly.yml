@@ -19,7 +19,7 @@ jobs:
     if: ${{ startsWith(github.repository, 'jdbcx/') }}
     name: "Build and Publish Nightly Snapshot"
     runs-on: "ubuntu-latest"
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
         run: |
           mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
             server/target/jdbcx-server-*-dependencies.tar.gz docker/app/. \
-          && sed -i -e 's|:latest|:${{ env.JDBCX_VERSION }}-nightly|' Dockerfile Dockerfile.full
+          && sed -i -e 's|:base|:base-${{ env.JDBCX_VERSION }}-nightly|' Dockerfile Dockerfile.full
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -96,8 +96,8 @@ jobs:
           build-args: |
             JDBCX_VERSION=${{ env.JDBCX_VERSION }}-SNAPSHOT
           tags: |
-            jdbcx/jdbcx-base:${{ env.JDBCX_BRANCH }}-nightly
-            jdbcx/jdbcx-base:${{ env.JDBCX_VERSION }}-nightly
+            jdbcx/jdbcx:base-nightly
+            jdbcx/jdbcx:base-${{ env.JDBCX_VERSION }}-nightly
       - name: Build and Push Minimal Image
         uses: docker/build-push-action@v6
         with:
@@ -106,7 +106,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            jdbcx/jdbcx:${{ env.JDBCX_BRANCH }}-nightly
+            jdbcx/jdbcx:nightly
             jdbcx/jdbcx:${{ env.JDBCX_VERSION }}-nightly
       - name: Build and Push Full Image
         uses: docker/build-push-action@v6
@@ -116,5 +116,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            jdbcx/jdbcx-full:${{ env.JDBCX_BRANCH }}-nightly
-            jdbcx/jdbcx-full:${{ env.JDBCX_VERSION }}-nightly
+            jdbcx/jdbcx:full-nightly
+            jdbcx/jdbcx:full-${{ env.JDBCX_VERSION }}-nightly

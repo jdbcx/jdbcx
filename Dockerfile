@@ -10,7 +10,7 @@ RUN jlink --add-modules \
     --output /min-jre --strip-debug --no-man-pages --no-header-files --verbose
 
 # Stage 2 - build jdbcx
-FROM jdbcx/jdbcx-base:latest
+FROM jdbcx/jdbcx:base
 
 COPY --from=jdk /min-jre ./openjdk
 

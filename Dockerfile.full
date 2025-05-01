@@ -2,7 +2,7 @@
 # Full JDK, Node, Python3 + JDBCX Image
 #
 
-FROM jdbcx/jdbcx-base:latest
+FROM jdbcx/jdbcx:base
 
 # Configure system(charset and timezone) and install dependencies
 RUN apt update \

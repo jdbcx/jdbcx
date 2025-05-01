@@ -80,20 +80,20 @@ jobs:
           mvn --batch-mode --show-version --strict-checksums -DskipTests package \
           && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
             server/target/jdbcx-server-*-dependencies.tar.gz docker/app/. \
-          && sed -i -e 's|:latest|:ci|' Dockerfile Dockerfile.full
+          && sed -i -e 's|:base|:ci|' Dockerfile Dockerfile.full
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build & Test Docker Images
         run: |
-          docker build --build-arg JDBCX_VERSION=latest -f ./Dockerfile.base -t jdbcx/jdbcx-base:ci . \
-          && docker build -t jdbcx/jdbcx:ci . && echo "Testing [jdbcx/jdbcx:ci]..." \
-          && docker run --rm jdbcx/jdbcx:ci 'jdbcx:sqlite::memory:' \
+          docker build --build-arg JDBCX_VERSION=latest -f ./Dockerfile.base -t jdbcx/jdbcx:ci . \
+          && docker build -t jdbcx:minimal . && echo "Testing [jdbcx:minimal]..." \
+          && docker run --rm jdbcx:minimal 'jdbcx:sqlite::memory:' \
             'select {{script:1}}, {{shell:echo 2}}, {{db:select 3}}, {{prql(exec.error=warn):7}}' \
-          && docker build -f ./Dockerfile.full -t jdbcx/jdbcx-full:ci . \
-          && echo "Testing [jdbcx/jdbcx-full:ci]..." \
-          && docker run --rm jdbcx/jdbcx-full:ci 'jdbcx:' '{{ mcp(cmd=npx,args=@modelcontextprotocol/server-everything,target=prompt) }}'
+          && docker build -f ./Dockerfile.full -t jdbcx:full . \
+          && echo "Testing [jdbcx:full]..." \
+          && docker run --rm jdbcx:full 'jdbcx:' '{{ mcp(cmd=npx,args=@modelcontextprotocol/server-everything,target=prompt) }}'
 
   test-jdk21-linux:
     needs: compile
