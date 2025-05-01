@@ -30,6 +30,7 @@ public class DoubleValueTest extends BaseValueTest {
     public void testValue() {
         ValueFactory factory = ValueFactory.getInstance();
         // null value
+        checkNull(factory, DoubleValue.of(null));
         checkNull(factory, DoubleValue.of(ValueFactory.getInstance(), true));
         checkNull(factory, new DoubleValue(ValueFactory.getInstance(), true, 1.0D).resetToNull());
 

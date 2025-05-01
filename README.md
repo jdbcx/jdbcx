@@ -14,7 +14,7 @@ Getting started with JDBCX is easy. Use it as a standard [JDBC driver](/driver),
 
 ```bash
 # Using the standard JDBC driver
-$ docker run --rm -it jdbcx/jdbcx 'jdbc:duckdb:' 'select 2 as num'             
+$ docker run --rm -it jdbcx/jdbcx 'jdbc:duckdb:' 'select 2 as num'
 num
 2
 
@@ -25,7 +25,7 @@ num
 
 # Using JDBCX as a bridge server (HTTP API for data access)
 $ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx server
-$ curl -s -d 'select 2 as num' 'http://localhost:8080/query' 
+$ curl -s -d 'select 2 as num' 'http://localhost:8080/query'
 num
 2
 $ curl -s -d '{{ db.duckdb-local: select 2 as num }}' 'http://localhost:8080/query'
@@ -149,6 +149,7 @@ select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true):
 | 1   | Query cancellation is not fully supported | avoid query like `{{ shell: top }}` |
 | 2   | Connection pooling is not supported       | -                                   |
 | 3   | Nested query is not supported             | -                                   |
+| 4   | MCP extension requires JDK 17+            | -                                   |
 
 ## Performance
 

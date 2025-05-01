@@ -75,7 +75,8 @@ jobs:
       - name: Prepare libraries
         run: |
           mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
-            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/.
+            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/. \
+          && sed -i -e 's|:latest|:${{ env.JDBCX_VERSION }}-nightly|' Dockerfile Dockerfile.full
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -85,15 +86,35 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PASSWD }}
-      - name: Build and Push Docker Image
+      - name: Build and Push Base Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.base
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            JDBCX_VERSION=${{ env.JDBCX_VERSION }}-SNAPSHOT
+          tags: |
+            jdbcx/jdbcx-base:${{ env.JDBCX_BRANCH }}-nightly
+            jdbcx/jdbcx-base:${{ env.JDBCX_VERSION }}-nightly
+      - name: Build and Push Minimal Image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          build-args: |
-            JDBCX_VERSION=${{ env.JDBCX_VERSION }}-SNAPSHOT
           tags: |
             jdbcx/jdbcx:${{ env.JDBCX_BRANCH }}-nightly
             jdbcx/jdbcx:${{ env.JDBCX_VERSION }}-nightly
+      - name: Build and Push Full Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.full
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            jdbcx/jdbcx-full:${{ env.JDBCX_BRANCH }}-nightly
+            jdbcx/jdbcx-full:${{ env.JDBCX_VERSION }}-nightly

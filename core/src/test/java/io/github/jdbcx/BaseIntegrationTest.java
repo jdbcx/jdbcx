@@ -30,6 +30,7 @@ import java.util.Properties;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testng.SkipException;
 import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 
@@ -214,6 +215,12 @@ public class BaseIntegrationTest {
     public static void afterSuite() {
         if (containers != null) {
             containers.stop();
+        }
+    }
+
+    protected final void skipTestsIfJdkIsOlderThan(float jdkVersion) {
+        if (Float.parseFloat(System.getProperty("java.specification.version")) < jdkVersion) {
+            throw new SkipException("Skip the test for JDK older than " + jdkVersion);
         }
     }
 }

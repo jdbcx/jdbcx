@@ -69,26 +69,31 @@ jobs:
           git fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 \
             origin pull/${{ github.event.inputs.pr }}/merge:merged-pr && git checkout merged-pr
         if: github.event.inputs.pr != ''
-      - name: Install JDK 8 and Maven
+      - name: Install JDK 21 and Maven
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: 8
+          java-version: 21
           cache: "maven"
       - name: Build and install libraries
         run: |
-          mvn --batch-mode --show-version --strict-checksums -Dj8 -DskipTests package \
+          mvn --batch-mode --show-version --strict-checksums -DskipTests package \
           && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
-            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/.
+            server/target/jdbcx-server-*-dependencies.tar.gz docker/app/. \
+          && sed -i -e 's|:latest|:ci|' Dockerfile Dockerfile.full
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build & Test Docker Image
+      - name: Build & Test Docker Images
         run: |
-          docker build --build-arg JDBCX_VERSION=latest -t jdbcx:ci . \
-          && docker run --rm jdbcx:ci 'jdbcx:sqlite::memory:' \
-          'select {{script:1}}, {{shell:echo 2}}, {{db:select 3}}, {{prql(exec.error=warn):7}}'
+          docker build --build-arg JDBCX_VERSION=latest -f ./Dockerfile.base -t jdbcx/jdbcx-base:ci . \
+          && docker build -t jdbcx/jdbcx:ci . && echo "Testing [jdbcx/jdbcx:ci]..." \
+          && docker run --rm jdbcx/jdbcx:ci 'jdbcx:sqlite::memory:' \
+            'select {{script:1}}, {{shell:echo 2}}, {{db:select 3}}, {{prql(exec.error=warn):7}}' \
+          && docker build -f ./Dockerfile.full -t jdbcx/jdbcx-full:ci . \
+          && echo "Testing [jdbcx/jdbcx-full:ci]..." \
+          && docker run --rm jdbcx/jdbcx-full:ci 'jdbcx:' '{{ mcp(cmd=npx,args=@modelcontextprotocol/server-everything,target=prompt) }}'
 
   test-jdk21-linux:
     needs: compile

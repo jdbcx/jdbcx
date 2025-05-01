@@ -17,16 +17,17 @@ package io.github.jdbcx.data;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Row;
 
-public final class IterableWrapper implements Iterable<Row> {
-    static final class WrappedIterator implements Iterator<Row> {
-        private final List<Field> fields;
-        private final Iterator<?> it;
+public final class IterableWrapper<T> implements Iterable<Row> {
+    static class WrappedIterator<T> implements Iterator<Row> {
+        protected final List<Field> fields;
+        protected final Iterator<T> it;
 
-        WrappedIterator(IterableWrapper wrapper) {
+        WrappedIterator(IterableWrapper<T> wrapper) {
             this.fields = wrapper.fields;
             this.it = wrapper.it.iterator();
         }
@@ -42,20 +43,41 @@ public final class IterableWrapper implements Iterable<Row> {
         }
     }
 
-    private final List<Field> fields;
-    private final Iterable<?> it;
+    static final class CustomizedIterator<T> extends WrappedIterator<T> {
+        private final BiFunction<List<Field>, T, Row> converter;
 
-    public IterableWrapper(List<Field> fields, Iterable<?> it) {
+        CustomizedIterator(IterableWrapper<T> wrapper) {
+            super(wrapper);
+            this.converter = wrapper.converter;
+        }
+
+        @Override
+        public Row next() {
+            return converter.apply(fields, it.next());
+        }
+    }
+
+    private final List<Field> fields;
+    private final Iterable<T> it;
+
+    private final BiFunction<List<Field>, T, Row> converter;
+
+    public IterableWrapper(List<Field> fields, Iterable<T> it, BiFunction<List<Field>, T, Row> converter) {
         if (fields == null || it == null) {
             throw new IllegalArgumentException("Non-null fields and values are required");
         }
 
         this.fields = fields;
         this.it = it;
+        this.converter = converter;
+    }
+
+    public IterableWrapper(List<Field> fields, Iterable<T> it) {
+        this(fields, it, null);
     }
 
     @Override
     public Iterator<Row> iterator() {
-        return new WrappedIterator(this);
+        return converter != null ? new CustomizedIterator<>(this) : new WrappedIterator<>(this);
     }
 }
