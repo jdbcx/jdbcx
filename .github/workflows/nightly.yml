@@ -19,7 +19,7 @@ jobs:
     if: ${{ startsWith(github.repository, 'jdbcx/') }}
     name: "Build and Publish Nightly Snapshot"
     runs-on: "ubuntu-latest"
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
