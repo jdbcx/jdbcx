@@ -878,23 +878,6 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>java11</id>
-                        <phase>none</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <release>11</release>
-                            <jdkToolchain>
-                                <version>11</version>
-                            </jdkToolchain>
-                            <compileSourceRoots>
-                                <compileSourceRoot>${project.basedir}/src/main/java11</compileSourceRoot>
-                            </compileSourceRoots>
-                            <multiReleaseOutput>true</multiReleaseOutput>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>java17</id>
                         <phase>none</phase>
                         <goals>
@@ -907,6 +890,23 @@
                             </jdkToolchain>
                             <compileSourceRoots>
                                 <compileSourceRoot>${project.basedir}/src/main/java17</compileSourceRoot>
+                            </compileSourceRoots>
+                            <multiReleaseOutput>true</multiReleaseOutput>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>java21</id>
+                        <phase>none</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>21</release>
+                            <jdkToolchain>
+                                <version>21</version>
+                            </jdkToolchain>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java21</compileSourceRoot>
                             </compileSourceRoots>
                             <multiReleaseOutput>true</multiReleaseOutput>
                         </configuration>
@@ -1143,28 +1143,6 @@
             </properties>
         </profile>
         <profile>
-            <id>compile-java11</id>
-            <activation>
-                <jdk>[11,)</jdk>
-                <property>
-                    <name>!j8</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>java11</id>
-                                <phase>compile</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>compile-java17</id>
             <activation>
                 <jdk>[17,)</jdk>
@@ -1179,6 +1157,28 @@
                         <executions>
                             <execution>
                                 <id>java17</id>
+                                <phase>compile</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>compile-java21</id>
+            <activation>
+                <jdk>[21,)</jdk>
+                <property>
+                    <name>!j8</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>
@@ -1202,10 +1202,10 @@
                         <configuration>
                             <toolchains>
                                 <jdk>
-                                    <version>11</version>
+                                    <version>17</version>
                                 </jdk>
                                 <jdk>
-                                    <version>17</version>
+                                    <version>21</version>
                                 </jdk>
                             </toolchains>
                         </configuration>
@@ -1214,11 +1214,11 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>java11</id>
+                                <id>java17</id>
                                 <phase>compile</phase>
                             </execution>
                             <execution>
-                                <id>java17</id>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>
@@ -1404,10 +1404,10 @@
                         <configuration>
                             <toolchains>
                                 <jdk>
-                                    <version>11</version>
+                                    <version>17</version>
                                 </jdk>
                                 <jdk>
-                                    <version>17</version>
+                                    <version>21</version>
                                 </jdk>
                             </toolchains>
                         </configuration>
@@ -1416,11 +1416,11 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>java11</id>
+                                <id>java17</id>
                                 <phase>compile</phase>
                             </execution>
                             <execution>
-                                <id>java17</id>
+                                <id>java21</id>
                                 <phase>compile</phase>
                             </execution>
                         </executions>
