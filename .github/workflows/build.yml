@@ -77,7 +77,7 @@ jobs:
           cache: "maven"
       - name: Build and install libraries
         run: |
-          mvn --batch-mode --show-version --strict-checksums -Dj8 -DskipTests package \
+          mvn --batch-mode --show-version --strict-checksums -DskipTests package \
           && mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
             server/target/jdbcx-server-*-dependencies.tar.gz docker/app/. \
           && sed -i -e 's|:latest|:ci|' Dockerfile Dockerfile.full
