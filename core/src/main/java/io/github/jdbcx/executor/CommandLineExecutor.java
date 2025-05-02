@@ -79,6 +79,8 @@ public class CommandLineExecutor extends AbstractExecutor {
             "Docker image name to use for running the container. Leave empty if you do not want to run in a Docker or Podman container.",
             "");
 
+    static final List<String> WIN_CMDS = Collections.unmodifiableList(Arrays.asList("cmd", "cmd.exe"));
+
     static String[] toArray(String command) {
         String[] array = command.split("\\s");
         if (array.length == 0) {

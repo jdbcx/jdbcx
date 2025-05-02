@@ -15,6 +15,8 @@
  */
 package io.github.jdbcx;
 
+import java.io.StringReader;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -25,11 +27,18 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 
 import io.github.jdbcx.value.StringValue;
 
@@ -103,6 +112,29 @@ public class ValueFactoryTest {
         Assert.assertEquals(ValueFactory.getInstance().getDefaultString(), factory.getDefaultString());
 
         Assert.assertEquals(ValueFactory.getInstance().getMappings(), factory.getMappings());
+    }
+
+    @Test(groups = { "unit" })
+    public void testJson() {
+        Assert.assertEquals(ValueFactory.toJson(null), "null");
+        Assert.assertEquals(ValueFactory.fromJson("null", JsonElement.class).isJsonNull(), true);
+        Assert.assertEquals(ValueFactory.fromJson("null", JsonNull.class).isJsonNull(), true);
+
+        Assert.assertEquals(ValueFactory.toJson(1), "1");
+        Assert.assertEquals(ValueFactory.fromJson("1", JsonElement.class).getAsInt(), 1);
+
+        final String json = "{\"name\":\"a\",\"value\":1}";
+        Assert.assertEquals(ValueFactory.fromJson(json, JsonObject.class).get("name").getAsString(), "a");
+        Assert.assertEquals(ValueFactory.fromJson(new StringReader(json), JsonObject.class).get("name").getAsString(),
+                "a");
+
+        final Type mapType = new TypeToken<Map<String, Object>>() {
+        }.getType();
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", "a");
+        map.put("value", 1D);
+        Assert.assertEquals(ValueFactory.fromJson(json, mapType), map);
+        Assert.assertEquals(ValueFactory.fromJson(new StringReader(json), mapType), map);
     }
 
     @Test(groups = { "unit" })

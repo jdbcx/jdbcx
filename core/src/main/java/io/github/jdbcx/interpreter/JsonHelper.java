@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 import io.burt.jmespath.Expression;
@@ -35,20 +34,20 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.ValueFactory;
 
 public final class JsonHelper {
-    private static final Gson gson = new Gson();
     private static final JmesPath<JsonElement> jmesPath = new GsonRuntime();
 
     private static final Cache<String, Expression<JsonElement>> cache = Cache.create(100, 0L, jmesPath::compile);
 
     static JsonElement parse(Reader reader, String path) {
         final Expression<JsonElement> compiledPath = cache.get(path);
-        return compiledPath.search(gson.fromJson(reader, JsonElement.class));
+        return compiledPath.search(ValueFactory.fromJson(reader, JsonElement.class));
     }
 
     static String toJsonString(JsonElement e) {
-        return gson.toJson(e);
+        return ValueFactory.toJson(e);
     }
 
     public static List<Row> extract(InputStream input, Charset charset, String path, String delimiter, boolean trim)
@@ -60,7 +59,7 @@ public final class JsonHelper {
     public static List<Row> extract(Reader input, String path, String delimiter, boolean trim) throws IOException {
         final Expression<JsonElement> compiledPath = cache.get(path);
         try (Reader reader = input) {
-            JsonElement json = compiledPath.search(gson.fromJson(reader, JsonElement.class));
+            JsonElement json = compiledPath.search(ValueFactory.fromJson(reader, JsonElement.class));
             final List<Row> rows;
             if (json.isJsonNull()) {
                 rows = Collections.singletonList(Row.of(Constants.EMPTY_STRING));
@@ -79,7 +78,7 @@ public final class JsonHelper {
                         }
                         list.add(Row.of(s));
                     } else {
-                        list.add(Row.of(gson.toJson(e)));
+                        list.add(Row.of(ValueFactory.toJson(e)));
                     }
                 }
                 rows = Collections.unmodifiableList(list);
@@ -101,7 +100,7 @@ public final class JsonHelper {
                     rows = Collections.unmodifiableList(list);
                 }
             } else {
-                rows = Collections.singletonList(Row.of(gson.toJson(json)));
+                rows = Collections.singletonList(Row.of(ValueFactory.toJson(json)));
             }
             return rows;
         }
@@ -109,12 +108,12 @@ public final class JsonHelper {
 
     public static String extract(String json, String path) {
         final Expression<JsonElement> compiledPath = cache.get(path);
-        JsonElement j = compiledPath.search(gson.fromJson(json, JsonElement.class));
+        JsonElement j = compiledPath.search(ValueFactory.fromJson(json, JsonElement.class));
         return j.getAsString();
     }
 
     public static String encode(Object str) {
-        return gson.toJson(str);
+        return ValueFactory.toJson(str);
     }
 
     private JsonHelper() {

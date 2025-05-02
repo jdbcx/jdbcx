@@ -48,6 +48,10 @@ public final class StringValue extends ObjectValue<String> {
         return of(value == null ? null : value.toString());
     }
 
+    public static StringValue ofJson(Object value) {
+        return of(value == null ? null : ValueFactory.toJson(value));
+    }
+
     private final int length;
 
     @Override

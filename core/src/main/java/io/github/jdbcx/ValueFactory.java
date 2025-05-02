@@ -15,7 +15,9 @@
  */
 package io.github.jdbcx;
 
+import java.io.Reader;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -33,8 +35,12 @@ import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
 
+import com.google.gson.Gson;
+
 public class ValueFactory implements Serializable {
     private static final Logger log = LoggerFactory.getLogger(ValueFactory.class);
+
+    private static final Gson gson = new Gson();
 
     static final class InstanceHolder {
         static final ValueFactory instance = ValueFactory.newInstance(null);
@@ -91,6 +97,26 @@ public class ValueFactory implements Serializable {
 
     public static ValueFactory newInstance(Properties config, TypeMapping... mappings) {
         return new ValueFactory(config, mappings);
+    }
+
+    public static <T> T fromJson(Reader reader, Class<T> clazz) {
+        return gson.fromJson(reader, clazz);
+    }
+
+    public static <T> T fromJson(Reader reader, Type typeOfT) {
+        return gson.fromJson(reader, typeOfT);
+    }
+
+    public static <T> T fromJson(String json, Class<T> clazz) {
+        return gson.fromJson(json, clazz);
+    }
+
+    public static <T> T fromJson(String json, Type typeOfT) {
+        return gson.fromJson(json, typeOfT);
+    }
+
+    public static String toJson(Object obj) {
+        return gson.toJson(obj);
     }
 
     public static ValueFactory getInstance() {

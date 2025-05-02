@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
@@ -41,6 +41,7 @@ import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Value;
+import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.value.DoubleValue;
 import io.github.jdbcx.value.StringValue;
 import io.modelcontextprotocol.client.McpClient;
@@ -67,8 +68,6 @@ import io.modelcontextprotocol.spec.McpSchema.TextResourceContents;
 
 public final class McpSupport {
     private static final Logger log = LoggerFactory.getLogger(McpSupport.class);
-
-    private static final Gson gson = new Gson();
     private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
 
@@ -116,28 +115,27 @@ public final class McpSupport {
             values.add(StringValue.of(content.type()));
             values.add(StringValue.of(Format.TXT.mimeType()));
             values.add(DoubleValue.of(content.priority()));
-            values.add(StringValue.of(content.audience()));
+            values.add(StringValue.ofJson(content.audience()));
             values.add(StringValue.of(content.text()));
         } else if (obj instanceof ImageContent) { // NOSONAR
             final ImageContent content = (ImageContent) obj;
             values.add(StringValue.of(content.type()));
             values.add(StringValue.of(content.mimeType()));
             values.add(DoubleValue.of(content.priority()));
-            values.add(StringValue.of(content.audience()));
+            values.add(StringValue.ofJson(content.audience()));
             values.add(StringValue.of(content.data()));
         } else if (obj instanceof EmbeddedResource) { // NOSONAR
             final EmbeddedResource content = (EmbeddedResource) obj;
             values.add(StringValue.of(content.type()));
-            final String audience = content.audience() == null ? null : content.audience().toString();
             if (content.resource() == null) {
                 values.add(StringValue.of(Constants.EMPTY_STRING));
                 values.add(DoubleValue.of(content.priority()));
-                values.add(StringValue.of(audience));
+                values.add(StringValue.ofJson(content.audience()));
                 values.add(StringValue.of(Constants.EMPTY_STRING));
             } else {
                 values.add(StringValue.of(content.resource().mimeType()));
                 values.add(DoubleValue.of(content.priority()));
-                values.add(StringValue.of(audience));
+                values.add(StringValue.ofJson(content.audience()));
                 values.add(StringValue.of(content.resource().uri()));
             }
         } else {
@@ -151,7 +149,7 @@ public final class McpSupport {
         if (normalized.length() > 1 && normalized.charAt(0) == '{'
                 && normalized.charAt(normalized.length() - 1) == '}') {
             if (prompt.isEmpty()) {
-                JsonObject obj = gson.fromJson(normalized, JsonObject.class);
+                JsonObject obj = ValueFactory.fromJson(normalized, JsonObject.class);
                 JsonElement e = obj.get("name");
                 if (e != null && e.isJsonPrimitive()) {
                     prompt = e.getAsString();
@@ -168,7 +166,7 @@ public final class McpSupport {
                 }
                 request = new GetPromptRequest(prompt, args);
             } else {
-                request = new GetPromptRequest(prompt, gson.fromJson(query, MAP_TYPE));
+                request = new GetPromptRequest(prompt, ValueFactory.fromJson(query, MAP_TYPE));
             }
         } else if (!normalized.isEmpty()) {
             request = new GetPromptRequest(normalized, Collections.emptyMap());
@@ -190,7 +188,7 @@ public final class McpSupport {
         final String normalized = query.trim();
         if (normalized.length() > 1 && normalized.charAt(0) == '{'
                 && normalized.charAt(normalized.length() - 1) == '}') {
-            JsonObject obj = gson.fromJson(normalized, JsonObject.class);
+            JsonObject obj = ValueFactory.fromJson(normalized, JsonObject.class);
             JsonElement uri = obj.get("uri");
             if (uri != null && uri.isJsonPrimitive()) {
                 resource = uri.getAsString();
@@ -223,7 +221,7 @@ public final class McpSupport {
         final Map<String, Object> args;
         if (normalized.length() > 1 && normalized.charAt(0) == '{'
                 && normalized.charAt(normalized.length() - 1) == '}') {
-            args = gson.fromJson(query, MAP_TYPE);
+            args = ValueFactory.fromJson(query, MAP_TYPE);
         } else {
             args = Collections.emptyMap();
         }
@@ -266,8 +264,27 @@ public final class McpSupport {
         final String serverCmd = executor.getServerCommand(props);
         final String serverUrl = executor.getServerUrl(props);
         if (!Checker.isNullOrEmpty(serverCmd)) {
-            transport = new StdioClientTransport(ServerParameters.builder(executor.getServerCommand(props))
-                    .args(executor.getServerArguments(props)).env(executor.getServerEnvironment(props)).build());
+            String cmd = serverCmd;
+            List<String> args = executor.getServerArguments(props);
+            if (Constants.IS_WINDOWS) {
+                boolean customized = false;
+                for (String c : CommandLineExecutor.WIN_CMDS) {
+                    if (c.equalsIgnoreCase(serverCmd)) {
+                        customized = true;
+                        break;
+                    }
+                }
+                if (!customized) {
+                    cmd = CommandLineExecutor.WIN_CMDS.get(0);
+                    List<String> list = new LinkedList<>();
+                    list.add("/c");
+                    list.add(serverCmd);
+                    list.addAll(args);
+                    args = Collections.unmodifiableList(list);
+                }
+            }
+            transport = new StdioClientTransport(
+                    ServerParameters.builder(cmd).args(args).env(executor.getServerEnvironment(props)).build());
         } else if (!Checker.isNullOrEmpty(serverUrl)) {
             transport = HttpClientSseClientTransport.builder(serverUrl).build();
         } else {
@@ -282,7 +299,8 @@ public final class McpSupport {
         }
         final Result<?> result;
         try (McpSyncClient client = McpClient.sync(transport).initializationTimeout(Duration.ofSeconds(initTimeout))
-                .requestTimeout(Duration.ofSeconds(timeout <= 0 ? initTimeout : timeout)).build()) {
+                .requestTimeout(Duration.ofSeconds(timeout <= 0 ? initTimeout : timeout)).loggingConsumer(log::debug)
+                .build()) {
             final InitializeResult initResult = client.initialize();
             log.debug("MCP client (protocol=%s) initialized successfully, server is %s", initResult.protocolVersion(),
                     initResult.serverInfo());
@@ -308,12 +326,12 @@ public final class McpSupport {
                         final Value empty = StringValue.of(Constants.EMPTY_STRING);
                         result = Result.of(capabilityFields,
                                 Row.of(capabilityFields, StringValue.of(STR_SERVER),
-                                        StringValue.of(serverCaps.experimental()), StringValue.of(serverCaps.logging()),
-                                        StringValue.of(serverCaps.prompts()), StringValue.of(serverCaps.resources()),
-                                        empty, empty, StringValue.of(serverCaps.tools())),
+                                        StringValue.ofJson(serverCaps.experimental()), StringValue.ofJson(serverCaps.logging()),
+                                        StringValue.ofJson(serverCaps.prompts()), StringValue.ofJson(serverCaps.resources()),
+                                        empty, empty, StringValue.ofJson(serverCaps.tools())),
                                 Row.of(capabilityFields, StringValue.of(STR_CLIENT),
-                                        StringValue.of(clientCaps.experimental()), empty, empty, empty,
-                                        StringValue.of(clientCaps.roots()), StringValue.of(clientCaps.sampling()),
+                                        StringValue.ofJson(clientCaps.experimental()), empty, empty, empty,
+                                        StringValue.ofJson(clientCaps.roots()), StringValue.ofJson(clientCaps.sampling()),
                                         empty));
                         break;
                     case info:
@@ -328,7 +346,7 @@ public final class McpSupport {
                         result = Result.of(promptFields, client.listPrompts().prompts(),
                                 (fields, obj) -> Row.of(fields, StringValue.of(obj.name()),
                                         StringValue.of(obj.description()),
-                                        StringValue.of(obj.arguments())));
+                                        StringValue.ofJson(obj.arguments())));
                         break;
                     case resource:
                         result = Result.of(resourceFields, client.listResources().resources(),
@@ -336,7 +354,7 @@ public final class McpSupport {
                                         StringValue.of(obj.description()),
                                         StringValue.of(obj.uri()),
                                         StringValue.of(obj.mimeType()),
-                                        StringValue.of(obj.annotations())));
+                                        StringValue.ofJson(obj.annotations())));
                         break;
                     case resource_template:
                         result = Result.of(resourceTemplateFields, client.listResourceTemplates().resourceTemplates(),
@@ -344,13 +362,13 @@ public final class McpSupport {
                                         StringValue.of(obj.description()),
                                         StringValue.of(obj.uriTemplate()),
                                         StringValue.of(obj.mimeType()),
-                                        StringValue.of(obj.annotations())));
+                                        StringValue.ofJson(obj.annotations())));
                         break;
                     case tool:
                         result = Result.of(toolFields, client.listTools().tools(),
                                 (fields, obj) -> Row.of(fields, StringValue.of(obj.name()),
                                         StringValue.of(obj.description()),
-                                        StringValue.of(obj.inputSchema().toString())));
+                                        StringValue.ofJson(obj.inputSchema())));
                         break;
                     default:
                         throw new SQLException(Utils.format("Unsupported target [%s], please use [%s] instead", target,

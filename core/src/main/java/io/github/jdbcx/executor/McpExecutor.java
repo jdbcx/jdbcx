@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -37,11 +36,10 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.VariableTag;
 
 public class McpExecutor extends AbstractExecutor {
-    private static final Gson gson = new Gson();
-
     private static final List<Field> dryRunFields = Collections
             .unmodifiableList(Arrays.asList(FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
@@ -106,7 +104,7 @@ public class McpExecutor extends AbstractExecutor {
                 this.defaultServerKey = OPTION_SERVER_KEY.getValue(props);
                 this.defaultServerUrl = OPTION_SERVER_URL.getValue(props);
             } else {
-                JsonObject obj = gson.fromJson(jsonConf, JsonObject.class);
+                JsonObject obj = ValueFactory.fromJson(jsonConf, JsonObject.class);
                 JsonPrimitive e = obj.getAsJsonPrimitive("command");
                 if (e != null) {
                     this.defaultServerCmd = e.getAsString();
