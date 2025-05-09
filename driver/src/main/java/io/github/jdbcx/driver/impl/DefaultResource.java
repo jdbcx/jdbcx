@@ -18,8 +18,8 @@ package io.github.jdbcx.driver.impl;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -33,7 +33,7 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
     protected final AtomicReference<SQLWarning> warning;
 
     protected final DefaultResource parent;
-    protected final List<AutoCloseable> children;
+    protected final Set<AutoCloseable> children;
 
     protected DefaultResource(DefaultResource parent) {
         this.closed = new AtomicBoolean();
@@ -42,7 +42,7 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
         if ((this.parent = parent) != null) {
             parent.add(this);
         }
-        this.children = Collections.synchronizedList(new LinkedList<>());
+        this.children = Collections.synchronizedSet(new LinkedHashSet<>());
     }
 
     protected void ensureOpen() throws SQLException {
@@ -68,9 +68,7 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
-        if (!children.contains(resource)) {
-            children.add(resource);
-        }
+        children.add(resource);
         return resource;
     }
 

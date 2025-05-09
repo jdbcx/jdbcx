@@ -30,10 +30,11 @@ import java.sql.Statement;
 import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
@@ -92,7 +93,7 @@ public class WrappedConnection implements ManagedConnection {
         }
     }
 
-    protected final List<AutoCloseable> resources;
+    protected final Set<AutoCloseable> resources;
     protected final ConnectionManager manager;
 
     private final AtomicReference<SQLWarning> warning;
@@ -102,7 +103,7 @@ public class WrappedConnection implements ManagedConnection {
     }
 
     protected WrappedConnection(DriverInfo info, Connection conn, String url) {
-        this.resources = Collections.synchronizedList(new LinkedList<>());
+        this.resources = Collections.synchronizedSet(new LinkedHashSet<>());
         if (conn instanceof WrappedConnection) { // NOSONAR
             WrappedConnection wrappedConn = (WrappedConnection) conn;
             this.manager = wrappedConn.manager;
@@ -115,7 +116,7 @@ public class WrappedConnection implements ManagedConnection {
     }
 
     protected WrappedConnection(DriverInfo info) throws SQLException {
-        this.resources = Collections.synchronizedList(new LinkedList<>());
+        this.resources = Collections.synchronizedSet(new LinkedHashSet<>());
         this.manager = new ConnectionManager(info);
         this.warning = new AtomicReference<>();
     }
@@ -241,9 +242,7 @@ public class WrappedConnection implements ManagedConnection {
         } catch (SQLException e) {
             throw new IllegalStateException(e);
         }
-        if (!resources.contains(resource)) {
-            resources.add(resource);
-        }
+        resources.add(resource);
         return resource;
     }
 
@@ -276,20 +275,19 @@ public class WrappedConnection implements ManagedConnection {
 
     @Override
     public WrappedStatement createStatement() throws SQLException {
-        return add(new WrappedStatement(this, manager.getConnection().createStatement(), false)); // NOSONAR
+        return new WrappedStatement(this, manager.getConnection().createStatement(), false); // NOSONAR
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query) throws SQLException {
-        return add(
-                new WrappedPreparedStatement(this, query, manager.getConnection().prepareStatement(handleString(query)), // NOSONAR
-                        false));
+        return new WrappedPreparedStatement(this, query, manager.getConnection().prepareStatement(handleString(query)), // NOSONAR
+                false);
     }
 
     @Override
     public WrappedCallableStatement prepareCall(String query) throws SQLException {
-        return add(new WrappedCallableStatement(this, query, manager.getConnection().prepareCall(handleString(query)), // NOSONAR
-                false));
+        return new WrappedCallableStatement(this, query, manager.getConnection().prepareCall(handleString(query)), // NOSONAR
+                false);
     }
 
     @Override
@@ -387,24 +385,23 @@ public class WrappedConnection implements ManagedConnection {
 
     @Override
     public WrappedStatement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-        return add(
-                new WrappedStatement(this, manager.getConnection().createStatement(resultSetType, resultSetConcurrency), // NOSONAR
-                        false));
+        return new WrappedStatement(this, manager.getConnection().createStatement(resultSetType, resultSetConcurrency), // NOSONAR
+                false);
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency)
             throws SQLException {
-        return add(new WrappedPreparedStatement(this, query,
+        return new WrappedPreparedStatement(this, query,
                 manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency), // NOSONAR
-                false));
+                false);
     }
 
     @Override
     public WrappedCallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency)
             throws SQLException {
-        return add(new WrappedCallableStatement(this, query,
-                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency), false)); // NOSONAR
+        return new WrappedCallableStatement(this, query,
+                manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency), false); // NOSONAR
     }
 
     @Override
@@ -450,45 +447,45 @@ public class WrappedConnection implements ManagedConnection {
     @Override
     public WrappedStatement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
-        return add(new WrappedStatement(this,
+        return new WrappedStatement(this,
                 manager.getConnection().createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), // NOSONAR
-                false));
+                false);
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
-        return add(new WrappedPreparedStatement(this, query,
+        return new WrappedPreparedStatement(this, query,
                 manager.getConnection().prepareStatement(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
                         resultSetHoldability),
-                false));
+                false);
     }
 
     @Override
     public WrappedCallableStatement prepareCall(String query, int resultSetType, int resultSetConcurrency,
             int resultSetHoldability) throws SQLException {
-        return add(new WrappedCallableStatement(this, query,
+        return new WrappedCallableStatement(this, query,
                 manager.getConnection().prepareCall(handleString(query), resultSetType, resultSetConcurrency, // NOSONAR
                         resultSetHoldability),
-                false));
+                false);
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query, int autoGeneratedKeys) throws SQLException {
-        return add(new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), autoGeneratedKeys), false)); // NOSONAR
+        return new WrappedPreparedStatement(this, query,
+                manager.getConnection().prepareStatement(handleString(query), autoGeneratedKeys), false); // NOSONAR
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query, int[] columnIndexes) throws SQLException {
-        return add(new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), columnIndexes), false)); // NOSONAR
+        return new WrappedPreparedStatement(this, query,
+                manager.getConnection().prepareStatement(handleString(query), columnIndexes), false); // NOSONAR
     }
 
     @Override
     public WrappedPreparedStatement prepareStatement(String query, String[] columnNames) throws SQLException {
-        return add(new WrappedPreparedStatement(this, query,
-                manager.getConnection().prepareStatement(handleString(query), columnNames), false)); // NOSONAR
+        return new WrappedPreparedStatement(this, query,
+                manager.getConnection().prepareStatement(handleString(query), columnNames), false); // NOSONAR
     }
 
     @Override
