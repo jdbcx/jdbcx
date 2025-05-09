@@ -15,9 +15,6 @@
  */
 package io.github.jdbcx.executor;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.JDBCType;
 import java.sql.ResultSet;
@@ -38,7 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
-import io.github.jdbcx.Compression;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Logger;
@@ -64,31 +60,22 @@ public class QueryExecutor extends AbstractExecutor {
                             Field.of("affected_rows", JDBCType.BIGINT), Field.of("elapsed_ms", JDBCType.BIGINT)));
 
     public static final Option OPTION_PATH = Option.of(new String[] { "path", "File path(s) (supports globbing)" });
+    public static final Option OPTION_RESULT = JdbcExecutor.OPTION_RESULT.update()
+            .defaultValue(JdbcExecutor.RESULT_SUMMARY).build();
 
-    static long[] execute(Connection conn, String query, FileConfiguration conf) throws SQLException {
+    static long[] execute(Connection conn, String query) throws SQLException {
         if (query.isEmpty()) {
             return new long[] { 0L, 0L };
         }
 
         try (Statement stmt = conn.createStatement()) {
             boolean hasResultSet = stmt.execute(query);
-            long affectedRows = !hasResultSet ? Utils.getAffectedRows(stmt) : -1L;
+            long affectedRows = !hasResultSet ? JdbcExecutor.getUpdateCount(stmt) : -1L;
             long reads = 0L;
             long updates = 0L;
             long rows = affectedRows > 0L ? affectedRows : 0L;
             while (true) {
                 if (hasResultSet) {
-                    try (ResultSet rs = stmt.getResultSet()) {
-                        if (conf != null && !conf.name.isEmpty()) {
-                            try (OutputStream out = Compression.getProvider(conf.compressionAlg)
-                                    .compress(new FileOutputStream(conf.name), conf.compressionLevel,
-                                            conf.compressionBuffer)) {
-                                Result.writeTo(Result.of(rs), conf.format, conf.params, out);
-                            }
-                        }
-                    } catch (IOException e) {
-                        throw new SQLException(e);
-                    }
                     reads++;
                 } else {
                     updates++;
@@ -96,7 +83,7 @@ public class QueryExecutor extends AbstractExecutor {
 
                 try {
                     if (!(hasResultSet = stmt.getMoreResults())) { // NOSONAR
-                        if ((affectedRows = Utils.getAffectedRows(stmt)) == -1L) {
+                        if ((affectedRows = JdbcExecutor.getUpdateCount(stmt)) == -1L) {
                             break;
                         } else {
                             rows += affectedRows;
@@ -111,8 +98,8 @@ public class QueryExecutor extends AbstractExecutor {
         }
     }
 
-    static List<Row> executeQueries(List<QueryTask> tasks, Connection conn, FileConfiguration conf,
-            AtomicBoolean failedRef) throws SQLException {
+    static List<Row> executeQueries(List<QueryTask> tasks, Connection conn, AtomicBoolean failedRef)
+            throws SQLException {
         final String thread = Thread.currentThread().getName();
         final int connection = conn.hashCode();
         final List<Row> results = new LinkedList<>();
@@ -123,9 +110,6 @@ public class QueryExecutor extends AbstractExecutor {
             for (QueryTask t : tasks) {
                 currentSource = t.getSource();
                 for (QueryGroup g : t.getGroups()) {
-                    if (g == null) {
-                        continue;
-                    }
                     currentGroup = g;
                     if (failedRef != null && failedRef.get()) {
                         return Collections.emptyList(); // fail fast
@@ -135,7 +119,7 @@ public class QueryExecutor extends AbstractExecutor {
                     log.debug("Executing %s...", queryInfo);
 
                     final long startTime = System.currentTimeMillis();
-                    final long[] rounds = execute(conn, g.getQuery(), conf);
+                    final long[] rounds = execute(conn, g.getQuery());
                     final long reads = rounds[0];
                     final long updates = rounds[1];
                     final long total = reads + updates;
@@ -162,16 +146,22 @@ public class QueryExecutor extends AbstractExecutor {
     }
 
     protected final String defaultPath;
+    protected final String defaultResultType;
 
     public QueryExecutor(VariableTag tag, Properties props) {
         super(tag, props);
 
         this.defaultPath = OPTION_PATH.getValue(props, Constants.EMPTY_STRING);
+        this.defaultResultType = OPTION_RESULT.getValue(props);
     }
 
     public String getPath(Properties props) {
         return Utils.normalizePath(Utils.applyVariables(OPTION_PATH.getValue(props, defaultPath),
                 VariableTag.valueOf(Option.TAG.getValue(props)), props)).trim();
+    }
+
+    public String getResultType(Properties props) {
+        return props != null ? props.getProperty(OPTION_RESULT.getName(), defaultResultType) : defaultResultType;
     }
 
     public Result<?> execute(String query, Supplier<Connection> manager, Properties props) throws SQLException {
@@ -197,9 +187,46 @@ public class QueryExecutor extends AbstractExecutor {
         }
 
         final int parallel = getParallelism(props);
+        final JdbcQueryRequest request = new JdbcQueryRequest(query, getResultType(props), getTimeout(props) / 1000,
+                parallel);
         final List<Row> results;
         if (parallel <= 1) {
-            results = executeQueries(tasks, manager.get(), null, null);
+            final Connection conn = manager.get();
+            if (JdbcExecutor.RESULT_SUMMARY.equals(request.resultType)) {
+                results = executeQueries(tasks, conn, null);
+            } else {
+                final int taskCount = tasks.size();
+                int count = 0;
+                String currentSource = Constants.EMPTY_STRING;
+                QueryGroup currentGroup = null;
+                try {
+                    for (QueryTask t : tasks) {
+                        final int groupCount = t.getGroups().size();
+                        final boolean lastTask = (++count == taskCount);
+                        currentSource = t.getSource();
+                        int index = 0;
+                        for (QueryGroup g : t.getGroups()) {
+                            currentGroup = g;
+                            if (lastTask && (++index == groupCount)) {
+                                Object result = JdbcExecutor.execute(conn,
+                                        request.update().query(g.getQuery()).build());
+                                return result instanceof ResultSet ? Result.of((ResultSet) result) // NOSONAR
+                                        : Result.of((Long) result);
+                            }
+                            final String queryInfo = g.toString(t.getSource());
+                            log.debug("Executing %s...", queryInfo);
+                            final long startTime = System.currentTimeMillis();
+                            final long[] stats = execute(conn, g.getQuery());
+                            log.debug("Completed %s (%,d reads, %,d updates, %,d affected rows) in %,d ms", queryInfo,
+                                    stats[0], stats[1], stats[2], System.currentTimeMillis() - startTime);
+                        }
+                    }
+                } catch (SQLException e) {
+                    throw new SQLException(Utils.format("Failed to execute %s", currentGroup.toString(currentSource)),
+                            e);
+                }
+                throw new SQLException("No valid result");
+            }
         } else {
             final AtomicBoolean failedRef = new AtomicBoolean(false);
             final ExecutorService threadPool = newThreadPool(this, parallel, -1); // NOSONAR
@@ -210,8 +237,7 @@ public class QueryExecutor extends AbstractExecutor {
                 for (QueryTask t : tasks) {
                     futures.add(CompletableFuture.runAsync(() -> {
                         try {
-                            results.addAll(
-                                    executeQueries(Collections.singletonList(t), manager.get(), null, failedRef));
+                            results.addAll(executeQueries(Collections.singletonList(t), manager.get(), failedRef));
                         } catch (Exception e) {
                             throw new IllegalStateException(e);
                         }

@@ -18,13 +18,14 @@ package io.github.jdbcx.executor;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Result;
 
 public final class McpSupport {
     McpSupport(McpExecutor executor) { // NOSONAR
     }
 
-    public Result<?> execute(String query, Properties props) throws SQLException { // NOSONAR
+    public Result<?> execute(String query, Properties props, ResourceManager resourceManager) throws SQLException { // NOSONAR
         throw new SQLException("MCP support is only available in JDK 11+");
     }
 }

@@ -39,13 +39,17 @@ public final class QueryContext implements AutoCloseable, Serializable {
      */
     public static final String KEY_CONFIG = "config";
     /**
+     * Key for {@link ResourceManager}.
+     */
+    public static final String KEY_RESOURCE = "resource";
+    /**
      * Key for function to get {@link java.sql.Connection}.
      */
     public static final String KEY_CONNECTION = "connection";
     /**
-     * Key for function to get JDBCX wrapped {@link java.sql.Connection}.
+     * Key for function to get JDBCX managed {@link java.sql.Connection}.
      */
-    public static final String KEY_WRAPPED_CONNECTION = "wrappedConnection";
+    public static final String KEY_MANAGED_CONNECTION = "managedConnection";
     /**
      * Key for JDBC dialect.
      */

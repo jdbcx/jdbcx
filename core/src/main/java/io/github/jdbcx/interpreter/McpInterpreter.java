@@ -22,6 +22,7 @@ import java.util.Properties;
 
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.executor.McpExecutor;
 
@@ -44,7 +45,7 @@ public class McpInterpreter extends AbstractInterpreter {
     @Override
     public Result<?> interpret(String query, Properties props) {
         try {
-            return executor.execute(query, props);
+            return executor.execute(query, props, (ResourceManager) getContext().get(QueryContext.KEY_RESOURCE));
         } catch (Exception e) {
             return handleError(e, query, props);
         }

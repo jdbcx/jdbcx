@@ -79,4 +79,33 @@ public class ConnectionManagerTest extends BaseIntegrationTest {
                     Utils.format("Product name should start with '%s'", productName));
         }
     }
+
+    @Test(groups = { "integration" })
+    public void testConnectionManagement() throws SQLException {
+        WrappedDriver driver = new WrappedDriver();
+        Properties props = new Properties();
+        final String jdbcUrl = "jdbcx:mysql://root@" + getMySqlServer() + "/mysql";
+        try (Connection conn = driver.connect(jdbcUrl, props)) {
+            Assert.assertTrue(conn instanceof ManagedConnection, "Should return managed connection");
+            ConnectionManager manager = ((ManagedConnection) conn).getManager();
+            Assert.assertNotNull(manager, "Should have non-null connection manager");
+            Assert.assertNotEquals(manager.getConnection(), conn);
+
+            final Connection conn1 = manager.createConnection();
+            final Connection conn2 = manager.createWrappedConnection();
+            Assert.assertFalse(conn1.isClosed(), "Conn1 should be in open state");
+            Assert.assertFalse(conn2.isClosed(), "Conn2 should be in open state");
+            Assert.assertNotEquals(conn1, manager.getConnection());
+            Assert.assertNotEquals(conn2, manager.getConnection());
+            Assert.assertNotEquals(conn2, conn);
+            Assert.assertEquals(conn1.getClass(), manager.getConnection().getClass());
+            Assert.assertEquals(conn2.getClass(), conn.getClass());
+
+            manager.close();
+            Assert.assertTrue(conn.isClosed(), "Conn should have been closed");
+            Assert.assertTrue(conn1.isClosed(), "Conn1 should have been closed");
+            Assert.assertTrue(conn2.isClosed(), "Conn2 should have been closed");
+            Assert.assertTrue(manager.getConnection().isClosed(), "The managed connection should have been closed");
+        }
+    }
 }

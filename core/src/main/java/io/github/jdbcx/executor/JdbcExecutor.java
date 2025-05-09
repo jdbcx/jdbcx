@@ -34,6 +34,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
@@ -65,6 +66,7 @@ public class JdbcExecutor extends AbstractExecutor {
     static final List<Field> SUMMARY_FIELDS = Collections
             .unmodifiableList(Arrays.asList(Field.of("seq", JDBCType.INTEGER, false),
                     Field.of("type", JDBCType.VARCHAR, false), Field.of("rows", JDBCType.BIGINT, false)));
+
     static final String TYPE_QUERY = "query";
     static final String TYPE_UPDATE = "update";
 
@@ -86,49 +88,79 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    static final Object getFirstResult(Statement stmt, String query) throws SQLException {
+    static final Object getFirstResult(Statement stmt, String query, long[] stats) throws SQLException {
         if (stmt.execute(query)) {
+            stats[0]++;
             return stmt.getResultSet();
         } else {
+            stats[1]++;
             try {
-                return getUpdateCount(stmt);
+                long rows = getUpdateCount(stmt);
+                stats[2] += rows;
+                return rows;
             } finally {
                 stmt.close();
             }
         }
     }
 
-    static final ResultSet getFirstQueryResult(Statement stmt, String query) throws SQLException {
+    static final ResultSet getFirstQueryResult(Statement stmt, String query, long[] stats) throws SQLException {
         if (stmt.execute(query)) {
+            stats[0]++;
             return stmt.getResultSet();
         } else {
+            stats[1]++;
+            stats[2] += getUpdateCount(stmt);
             while (true) {
+                final long rows;
                 if (stmt.getMoreResults()) {
+                    stats[0]++;
                     return stmt.getResultSet();
-                } else if (stmt.getUpdateCount() == -1) {
+                } else if ((rows = stmt.getUpdateCount()) == -1) {
                     stmt.close();
                     return new CombinedResultSet();
+                } else {
+                    stats[1]++;
+                    stats[2] += rows;
                 }
             }
         }
     }
 
-    static final long getFirstUpdateCount(Statement stmt, String query) throws SQLException {
+    static final long getFirstUpdateCount(Statement stmt, String query, long[] stats) throws SQLException {
         if (stmt.execute(query)) {
+            stats[0]++;
             while (stmt.getMoreResults()) {
-                // do nothing
+                stats[0]++;
             }
         }
         long count = getUpdateCount(stmt, true);
-        return count < 0L ? 0L : count;
+        if (count < 0L) {
+            return 0L;
+        } else {
+            stats[1]++;
+            stats[2] += count;
+            return count;
+        }
     }
 
-    static final Object getLastResult(Statement stmt, String query) throws SQLException {
-        ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
-        long count = rs == null ? getUpdateCount(stmt) : 0L;
+    static final Object getLastResult(Statement stmt, String query, long[] stats) throws SQLException {
+        ResultSet rs;
+        long count;
+        if (stmt.execute(query)) {
+            stats[0]++;
+            rs = stmt.getResultSet();
+            count = 0L;
+        } else {
+            stats[1]++;
+            rs = null;
+            count = getUpdateCount(stmt);
+        }
 
         while (true) {
             if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                stats[0]++;
+                Utils.closeQuietly(rs);
                 closeResultSet(rs);
                 rs = stmt.getResultSet();
                 count = 0L;
@@ -137,6 +169,8 @@ public class JdbcExecutor extends AbstractExecutor {
                 if (value == -1L) {
                     break;
                 }
+                stats[1]++;
+                stats[2] += value;
                 closeResultSet(rs);
                 rs = null;
                 count = value;
@@ -151,16 +185,28 @@ public class JdbcExecutor extends AbstractExecutor {
         }
     }
 
-    static final ResultSet getLastQueryResult(Statement stmt, String query) throws SQLException {
-        ResultSet rs = stmt.execute(query) ? stmt.getResultSet() : null;
+    static final ResultSet getLastQueryResult(Statement stmt, String query, long[] stats) throws SQLException {
+        ResultSet rs;
+        if (stmt.execute(query)) {
+            stats[0]++;
+            rs = stmt.getResultSet();
+        } else {
+            stats[1]++;
+            rs = null;
+        }
         while (true) {
+            final long rows;
             if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                stats[0]++;
                 if (rs != null) {
                     rs.close();
                 }
                 rs = stmt.getResultSet();
-            } else if (stmt.getUpdateCount() == -1) {
+            } else if ((rows = getUpdateCount(stmt)) == -1L) {
                 break;
+            } else {
+                stats[1]++;
+                stats[2] += rows;
             }
         }
 
@@ -171,15 +217,27 @@ public class JdbcExecutor extends AbstractExecutor {
         return rs;
     }
 
-    static final long getLastUpdateCount(Statement stmt, String query) throws SQLException {
-        long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
+    static final long getLastUpdateCount(Statement stmt, String query, long[] stats) throws SQLException {
+        long count;
+        if (stmt.execute(query)) {
+            stats[0]++;
+            count = 0L;
+        } else {
+            stats[1]++;
+            count = getUpdateCount(stmt);
+            stats[2] += count;
+        }
 
         while (true) {
-            if (!stmt.getMoreResults()) {
+            if (stmt.getMoreResults()) {
+                stats[0]++;
+            } else {
                 long value = getUpdateCount(stmt);
                 if (value == -1L) {
                     break;
                 }
+                stats[1]++;
+                stats[2] += value;
                 count = value;
             }
         }
@@ -188,31 +246,51 @@ public class JdbcExecutor extends AbstractExecutor {
         return count;
     }
 
-    static final ResultSet getMergedQueryResult(Statement stmt, String query) throws SQLException {
+    static final ResultSet getMergedQueryResult(Statement stmt, String query, long[] stats) throws SQLException {
         List<ResultSet> results = new ArrayList<>();
         if (stmt.execute(query)) {
+            stats[0]++;
             results.add(stmt.getResultSet());
+        } else {
+            stats[1]++;
+            stats[2] += getUpdateCount(stmt);
         }
         while (true) {
+            final long rows;
             if (stmt.getMoreResults(Statement.KEEP_CURRENT_RESULT)) {
+                stats[0]++;
                 results.add(stmt.getResultSet());
-            } else if (stmt.getUpdateCount() == -1) {
+            } else if ((rows = getUpdateCount(stmt)) == -1L) {
                 break;
+            } else {
+                stats[1]++;
+                stats[2] += rows;
             }
         }
 
         return new CombinedResultSet(results);
     }
 
-    static final long getMergedUpdateCount(Statement stmt, String query) throws SQLException {
-        long count = stmt.execute(query) ? 0L : getUpdateCount(stmt);
-
+    static final long getMergedUpdateCount(Statement stmt, String query, long[] stats) throws SQLException {
+        long count;
+        if (stmt.execute(query)) {
+            stats[0]++;
+            count = 0L;
+        } else {
+            stats[1]++;
+            count = getUpdateCount(stmt);
+            stats[2] += count;
+        }
         while (true) {
-            if (!stmt.getMoreResults()) {
+            if (stmt.getMoreResults()) {
+                stats[0]++;
+            } else {
                 long value = getUpdateCount(stmt);
                 if (value == -1L) {
                     break;
                 }
+                stats[1]++;
+                stats[2] += value;
                 count += value;
             }
         }
@@ -221,12 +299,13 @@ public class JdbcExecutor extends AbstractExecutor {
         return count;
     }
 
-    static final ResultSet getResultSummary(Statement stmt, String query) throws SQLException {
+    static final ResultSet getResultSummary(Statement stmt, String query, long[] stats) throws SQLException {
         final List<Row> rows = new ArrayList<>();
         final ValueFactory factory = ValueFactory.getInstance();
 
         int seq = 1;
         if (stmt.execute(query)) {
+            stats[0]++;
             try (ResultSet rs = stmt.getResultSet()) {
                 long count = 0L;
                 while (rs.next()) {
@@ -237,13 +316,17 @@ public class JdbcExecutor extends AbstractExecutor {
                         LongValue.of(factory, false, true, count)));
             }
         } else {
+            stats[1]++;
+            long rowCount = getUpdateCount(stmt);
+            stats[2] += rowCount;
             rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
                     StringValue.of(factory, false, 0, TYPE_UPDATE),
-                    LongValue.of(factory, false, true, getUpdateCount(stmt))));
+                    LongValue.of(factory, false, true, rowCount)));
         }
 
         while (true) {
             if (stmt.getMoreResults()) {
+                stats[0]++;
                 try (ResultSet rs = stmt.getResultSet()) {
                     long count = 0L;
                     while (rs.next()) {
@@ -258,14 +341,68 @@ public class JdbcExecutor extends AbstractExecutor {
                 if (value == -1L) {
                     break;
                 }
+                stats[1]++;
+                stats[2] += value;
                 rows.add(Row.of(SUMMARY_FIELDS, LongValue.of(factory, false, true, seq++),
                         StringValue.of(factory, false, 0, TYPE_UPDATE),
-                        LongValue.of(factory, false, true, getUpdateCount(stmt))));
+                        LongValue.of(factory, false, true, value)));
             }
         }
 
         stmt.close();
         return new ReadOnlyResultSet(stmt, Result.of(SUMMARY_FIELDS, rows));
+    }
+
+    static final Object execute(Connection conn, JdbcQueryRequest request) throws SQLException {
+        final Statement stmt = conn.createStatement(); // NOSONAR
+        if (request.queryTimeoutSec > 0) {
+            stmt.setQueryTimeout(request.queryTimeoutSec);
+            log.debug("Set query timeout for [%s] to %d seconds", stmt, request.queryTimeoutSec);
+        }
+
+        final Object result;
+        switch (request.resultType) {
+            case RESULT_FIRST:
+                result = getFirstResult(stmt, request.query, request.stats);
+                break;
+            case RESULT_FIRST_QUERY:
+                result = getFirstQueryResult(stmt, request.query, request.stats);
+                break;
+            case RESULT_FIRST_UPDATE:
+                result = getFirstUpdateCount(stmt, request.query, request.stats);
+                break;
+            case RESULT_LAST:
+                result = getLastResult(stmt, request.query, request.stats);
+                break;
+            case RESULT_LAST_QUERY:
+                result = getLastQueryResult(stmt, request.query, request.stats);
+                break;
+            case RESULT_LAST_UPDATE:
+                result = getLastUpdateCount(stmt, request.query, request.stats);
+                break;
+            case RESULT_MERGED_QUERIES:
+                result = getMergedQueryResult(stmt, request.query, request.stats);
+                break;
+            case RESULT_MERGED_UPDATES:
+                result = getMergedUpdateCount(stmt, request.query, request.stats);
+                break;
+            case RESULT_SUMMARY:
+                result = getResultSummary(stmt, request.query, request.stats);
+                break;
+            default:
+                throw new SQLException("Unsupported parameter result=" + request.resultType);
+        }
+        // if (request.outputFile != null) {
+        // try (ResultSet rs = (result instanceof ResultSet ? (ResultSet) result //
+        // NOSONAR
+        // : new ReadOnlyResultSet(null, Result.of((Long) result)))) {
+        // return new ReadOnlyResultSet(null, writeOutputFile(Result.of(rs),
+        // request.outputFile));
+        // } catch (IOException e) {
+        // throw new SQLException(e);
+        // }
+        // }
+        return result;
     }
 
     public static final long getUpdateCount(Statement stmt) throws SQLException {
@@ -295,47 +432,7 @@ public class JdbcExecutor extends AbstractExecutor {
             return new CombinedResultSet();
         }
 
-        // final int parallelism = getParallelism(props);
-        final int timeoutSec = getTimeout(props) / 1000;
-        final Statement stmt = conn.createStatement(); // NOSONAR
-        if (timeoutSec > 0) {
-            stmt.setQueryTimeout(timeoutSec);
-            log.debug("Set query timeout for [%s] to %d seconds", stmt, timeoutSec);
-        }
-
-        final String resultType = getResultType(props);
-        final Object result;
-        switch (resultType) {
-            case RESULT_FIRST:
-                result = getFirstResult(stmt, query);
-                break;
-            case RESULT_FIRST_QUERY:
-                result = getFirstQueryResult(stmt, query);
-                break;
-            case RESULT_FIRST_UPDATE:
-                result = getFirstUpdateCount(stmt, query);
-                break;
-            case RESULT_LAST:
-                result = getLastResult(stmt, query);
-                break;
-            case RESULT_LAST_QUERY:
-                result = getLastQueryResult(stmt, query);
-                break;
-            case RESULT_LAST_UPDATE:
-                result = getLastUpdateCount(stmt, query);
-                break;
-            case RESULT_MERGED_QUERIES:
-                result = getMergedQueryResult(stmt, query);
-                break;
-            case RESULT_MERGED_UPDATES:
-                result = getMergedUpdateCount(stmt, query);
-                break;
-            case RESULT_SUMMARY:
-                result = getResultSummary(stmt, query);
-                break;
-            default:
-                throw new SQLException("Unsupported parameter result=" + resultType);
-        }
-        return result;
+        return execute(conn,
+                new JdbcQueryRequest(query, getResultType(props), getTimeout(props) / 1000, getParallelism(props)));
     }
 }

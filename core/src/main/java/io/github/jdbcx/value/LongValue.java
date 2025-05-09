@@ -37,6 +37,10 @@ public class LongValue extends AbstractValue {
             super(factory, nullable, value);
         }
 
+        protected UnsignedLongValue(ValueFactory factory, boolean nullable, Long value) {
+            super(factory, nullable, value);
+        }
+
         @Override
         public BigInteger asBigInteger() {
             if (isNull()) {
@@ -91,6 +95,22 @@ public class LongValue extends AbstractValue {
         return signed ? new LongValue(factory, nullable, value) : new UnsignedLongValue(factory, nullable, value);
     }
 
+    public static final LongValue of(long value) {
+        return new LongValue(ValueFactory.getInstance(), false, value);
+    }
+
+    public static final LongValue of(Long value) {
+        return new LongValue(ValueFactory.getInstance(), true, value);
+    }
+
+    public static final LongValue ofUnsigned(long value) {
+        return new UnsignedLongValue(ValueFactory.getInstance(), false, value);
+    }
+
+    public static final LongValue ofUnsigned(Long value) {
+        return new UnsignedLongValue(ValueFactory.getInstance(), true, value);
+    }
+
     private boolean isNull;
     private long value;
 
@@ -104,6 +124,17 @@ public class LongValue extends AbstractValue {
         super(factory, nullable);
         this.isNull = false;
         this.value = value;
+    }
+
+    protected LongValue(ValueFactory factory, boolean nullable, Long value) {
+        super(factory, nullable);
+        if (value == null) {
+            this.isNull = true;
+            this.value = factory.getDefaultLong();
+        } else {
+            this.isNull = false;
+            this.value = value;
+        }
     }
 
     @Override

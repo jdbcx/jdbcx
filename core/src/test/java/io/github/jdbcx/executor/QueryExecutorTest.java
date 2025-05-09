@@ -26,6 +26,8 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Result;
+import io.github.jdbcx.Row;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public class QueryExecutorTest extends BaseIntegrationTest {
@@ -145,6 +147,137 @@ public class QueryExecutorTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getLong("affected_rows"), 6L);
                 Assert.assertTrue(rs.getLong("elapsed_ms") >= 0L);
                 Assert.assertFalse(rs.next());
+            }
+        }
+    }
+
+    Connection newConnection(String jdbcUrl) {
+        try {
+            return DriverManager.getConnection(jdbcUrl);
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetResults() throws SQLException {
+        Properties props = new Properties();
+
+        final String jdbcUrl = "jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true";
+        final String query = "--;; q1\ndrop table if exists test_get_results; select 1";
+        try (Connection conn = DriverManager.getConnection(jdbcUrl)) {
+            QueryExecutor exec = new QueryExecutor(null, props);
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_FIRST);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 0L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_FIRST_QUERY);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 1L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_FIRST_UPDATE);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 0L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_LAST);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 1L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_LAST_QUERY);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 1L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            QueryExecutor.OPTION_RESULT.setValue(props, JdbcExecutor.RESULT_LAST_UPDATE);
+            try (Result<?> rs = exec.execute(query, () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 1);
+                    Assert.assertEquals(r.value(0).asLong(), 0L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            props.clear(); // defaults to summary
+            try (Result<?> rs = exec.execute("--;; q1\ndrop table if exists test_get_results; select 1",
+                    () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 10);
+                    Assert.assertEquals(r.value("query_count").asLong(), 1L);
+                    Assert.assertEquals(r.value("update_count").asLong(), 1L);
+                    Assert.assertEquals(r.value("affected_rows").asLong(), 0L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            try (Result<?> rs = exec.execute("--;; q1\ndrop table if exists test_get_results; select 1",
+                    () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    Assert.assertEquals(r.fields().size(), 10);
+                    Assert.assertEquals(r.value("query_count").asLong(), 1L);
+                    Assert.assertEquals(r.value("update_count").asLong(), 1L);
+                    Assert.assertEquals(r.value("affected_rows").asLong(), 0L);
+                }
+                Assert.assertEquals(count, 1);
+            }
+
+            try (Result<?> rs = exec.execute("--;; q1\nselect 2\n--;; q2\ndrop table if exists test_get_results",
+                    () -> newConnection(jdbcUrl), props)) {
+                int count = 0;
+                for (Row r : rs.rows()) {
+                    count++;
+                    if (count == 1) {
+                        Assert.assertEquals(r.fields().size(), 10);
+                        Assert.assertEquals(r.value("query_count").asLong(), 1L);
+                        Assert.assertEquals(r.value("update_count").asLong(), 0L);
+                        Assert.assertEquals(r.value("affected_rows").asLong(), 0L);
+                    } else {
+                        Assert.assertEquals(r.fields().size(), 10);
+                        Assert.assertEquals(r.value("query_count").asLong(), 0L);
+                        Assert.assertEquals(r.value("update_count").asLong(), 1L);
+                        Assert.assertEquals(r.value("affected_rows").asLong(), 0L);
+                    }
+                }
+                Assert.assertEquals(count, 2);
             }
         }
     }

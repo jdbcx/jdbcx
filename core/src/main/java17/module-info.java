@@ -22,6 +22,7 @@ module io.github.jdbcx.core {
     exports io.github.jdbcx.logging;
 
     requires static java.logging;
+    requires static java.net.http;
     requires static java.sql;
     requires static com.fasterxml.jackson.databind;
     requires static com.google.gson;

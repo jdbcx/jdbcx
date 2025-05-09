@@ -515,7 +515,8 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             // Assert.assertEquals(stmt.getUpdateCount(), 0);
             Properties expected = new Properties();
             expected.load(getClass().getResourceAsStream(prefix + "mapped-basic-types.properties"));
-            try (Result<ResultSet> rs = Result.of(stmt.executeQuery("select * from basic_types"))) {
+            try (ResultSet resultSet = stmt.executeQuery("select * from basic_types");
+                    Result<ResultSet> rs = Result.of(resultSet)) {
                 int counter = 0;
                 for (Field f : rs.fields()) {
                     counter++;

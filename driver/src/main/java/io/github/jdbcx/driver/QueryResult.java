@@ -25,7 +25,7 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 public final class QueryResult implements AutoCloseable {
     private final AtomicReference<ResultSet> generatedKeys;
     private final AtomicReference<ResultSet> resultSet;
-    private final AtomicReference<Integer> updateCount;
+    private final AtomicReference<Long> updateCount;
     private final AtomicReference<SQLWarning> warnings;
 
     protected void resetValues() {
@@ -59,7 +59,7 @@ public final class QueryResult implements AutoCloseable {
         return resultSet.get();
     }
 
-    public Integer getUpdateCount() {
+    public Long getUpdateCount() {
         return updateCount.get();
     }
 
@@ -95,7 +95,7 @@ public final class QueryResult implements AutoCloseable {
         this.resultSet.set(rs);
     }
 
-    public void setUpdateCount(int updateCount) {
+    public void setUpdateCount(long updateCount) {
         resetValues();
 
         this.updateCount.set(updateCount);
@@ -118,7 +118,7 @@ public final class QueryResult implements AutoCloseable {
         }
     }
 
-    public void updateAll(ResultSet keys, ResultSet rs, int affectedRows) throws SQLException {
+    public void updateAll(ResultSet keys, ResultSet rs, long affectedRows) throws SQLException {
         if (!generatedKeys.compareAndSet(null, keys)) {
             throw SqlExceptionUtils.clientError("Conflict when setting generated keys");
         }
@@ -130,7 +130,7 @@ public final class QueryResult implements AutoCloseable {
         }
     }
 
-    public void updateKeys(ResultSet keys, int affectedRows) throws SQLException {
+    public void updateKeys(ResultSet keys, long affectedRows) throws SQLException {
         if (!generatedKeys.compareAndSet(null, keys)) {
             throw SqlExceptionUtils.clientError("Conflict when setting generated keys");
         }

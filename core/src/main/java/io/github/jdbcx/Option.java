@@ -129,14 +129,15 @@ public final class Option implements Serializable {
                     "Path to an input file containing the query text to be executed. Utilizing this property will omit any inline query content.");
     public static final Option INTPUT_FILE_EXIST = Option.ofBool("input.file.exist",
             "Throw error if input does not exist", true);
-    public static final Option OUTPUT_FILE = Option
-            .ofOptional("output.file",
-                    "Path to an output file for writing query results. If the file already exists, it will be overwritten without warning.");
-    public static final Option OUTPUT_FILE_OVERRIDE = Option.ofBool("output.file.override",
-            "Override if the output file already exists", true);
-    public static final Option OUTPUT_FILE_COMPRESS_ALGORITHM = Option
-            .ofEnum("output.file.compress.algorithm", "Compression alogirhtm used for the output file.",
-                    Compression.NONE.name(), Compression.class);
+    public static final Option OUTPUT_FILE = Option.ofOptional("output.file",
+            "Path to an output file for writing query results.");
+    public static final Option OUTPUT_FILE_FORMAT = Option.ofOptional("output.file.format", "Output file format.");
+    public static final Option OUTPUT_FILE_OVERWRITABLE = Option.ofBool("output.file.overwritable",
+            "Whether the output file is overwritable if it exists.", true);
+    public static final Option OUTPUT_FILE_PARAMS = Option.ofOptional("output.file.params",
+            "Comma separated key-value pairs for output file serialization.");
+    public static final Option OUTPUT_FILE_COMPRESS_ALGORITHM = Option.ofOptional("output.file.compress.algorithm",
+            "Compression alogirhtm used for the output file.");
     public static final Option OUTPUT_FILE_COMPRESS_BUFFER = Option.ofInt("output.file.compress.buffer",
             "Buffer size for compression", 0);
     public static final Option OUTPUT_FILE_COMPRESS_LEVEL = Option.ofInt("output.file.compress.level",
@@ -519,7 +520,7 @@ public final class Option implements Serializable {
     }
 
     /**
-     * Gets value from the given properties.
+     * Gets valid value from the given properties.
      *
      * @param props properties, could be {@code null}
      * @return non-null value in properties if it's not null and valid, or same as

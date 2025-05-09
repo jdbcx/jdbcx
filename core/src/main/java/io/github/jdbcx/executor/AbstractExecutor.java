@@ -102,7 +102,7 @@ abstract class AbstractExecutor implements Executor {
             throw new InterruptedIOException(e.getMessage());
         } catch (ExecutionException e) {
             Throwable t = e.getCause();
-            if (t instanceof TimeoutException) {
+            if (t instanceof TimeoutException) { // NOSONAR
                 throw (TimeoutException) t;
             } else {
                 throw new IOException(t);
@@ -175,7 +175,6 @@ abstract class AbstractExecutor implements Executor {
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
     protected final String defaultInputFile;
-    protected final String defaultOutputFile;
     protected final Charset defaultInputCharset;
     protected final Charset defaultOutputCharset;
     protected final int defaultParallelism;
@@ -192,7 +191,6 @@ abstract class AbstractExecutor implements Executor {
         this.defaultDryRun = Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(props));
         this.defaultErrorHandling = Option.EXEC_ERROR.getValue(props);
         this.defaultInputFile = Option.INPUT_FILE.getValue(props);
-        this.defaultOutputFile = Option.OUTPUT_FILE.getValue(props);
         this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
                 : Constants.DEFAULT_CHARSET;
         this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
@@ -277,7 +275,7 @@ abstract class AbstractExecutor implements Executor {
      * @return future object representing the scheduled task, could be {@code null}
      *         when no scheduler available
      */
-    protected final ScheduledFuture<?> schedule(ScheduledFuture<?> current, Runnable task, long interval) {
+    protected final ScheduledFuture<?> schedule(ScheduledFuture<?> current, Runnable task, long interval) { // NOSONAR
         if (scheduler == null || task == null || (current != null && !current.isDone() && !current.isCancelled())) {
             return null;
         }
@@ -295,10 +293,6 @@ abstract class AbstractExecutor implements Executor {
 
     public final Charset getDefaultInputCharset() {
         return defaultInputCharset;
-    }
-
-    public final String getDefaultOutputFile() {
-        return defaultOutputFile;
     }
 
     public final Charset getDefaultOutputCharset() {
@@ -330,11 +324,6 @@ abstract class AbstractExecutor implements Executor {
     public Charset getInputCharset(Properties props) {
         String value = props != null ? props.getProperty(Option.INPUT_CHARSET.getName()) : null;
         return value != null ? Charset.forName(value) : defaultInputCharset;
-    }
-
-    public String getOutputFile(Properties props) {
-        return Utils.normalizePath(Utils.applyVariables(Option.OUTPUT_FILE.getValue(props, defaultOutputFile),
-                VariableTag.valueOf(Option.TAG.getValue(props)), props)).trim();
     }
 
     public Charset getOutputCharset(Properties props) {
