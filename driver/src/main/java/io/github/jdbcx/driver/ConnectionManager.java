@@ -26,11 +26,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,6 +53,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.RequestParameter;
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
@@ -166,6 +169,9 @@ public final class ConnectionManager implements AutoCloseable {
     private final AtomicReference<ConnectionMetaData> metaDataRef;
     private final AtomicReference<JdbcDialect> dialectRef;
 
+    // track the new connections created by this manager instance
+    private final Set<Connection> additionalConns;
+
     JdbcActivityListener createListener(DriverExtension ext, QueryContext context, Connection conn, Properties props) {
         if (ext.requiresBridgeContext()) {
             String key = QueryContext.KEY_BRIDGE;
@@ -228,17 +234,27 @@ public final class ConnectionManager implements AutoCloseable {
 
         this.metaDataRef = new AtomicReference<>();
         this.dialectRef = new AtomicReference<>();
+
+        this.additionalConns = Collections.synchronizedSet(new LinkedHashSet<>());
+        this.additionalConns.add(conn); // ensure this connection won't be added twice
+    }
+
+    protected Connection enlist(Connection newConn) {
+        this.additionalConns.add(newConn);
+        return newConn;
     }
 
     @Override
     public void close() throws SQLException {
+        additionalConns.remove(conn); // prefer to close at the end of execution
+        Utils.closeQuietly(additionalConns, false);
         conn.close();
     }
 
     public Connection createWrappedConnection() {
         try {
             final Connection connection = DriverManager.getConnection(originalJdbcUrl, originalProps);
-            return connection instanceof WrappedConnection ? connection : new WrappedConnection(connection);
+            return enlist(connection instanceof ManagedConnection ? connection : new WrappedConnection(connection));
         } catch (SQLException e) {
             throw new CompletionException(e);
         }
@@ -249,11 +265,11 @@ public final class ConnectionManager implements AutoCloseable {
             if (Utils.startsWith(jdbcUrl, JDBC_PREFIX, true)) {
                 final Driver driver = DriverInfo.findSuitableDriver(jdbcUrl, normalizedProps, classLoader);
                 log.debug("Connecting through driver [%s]...", driver);
-                return driver.connect(jdbcUrl, normalizedProps);
+                return enlist(driver.connect(jdbcUrl, normalizedProps));
             } else {
                 final boolean wrapped = Utils.startsWith(jdbcUrl, JDBCX_PREFIX, true);
                 log.debug("Connecting using DriverManager(wrapped=%s)...", wrapped);
-                return DriverManager.getConnection(jdbcUrl, wrapped ? originalProps : normalizedProps);
+                return enlist(DriverManager.getConnection(jdbcUrl, wrapped ? originalProps : normalizedProps));
             }
         } catch (SQLException e) {
             throw new CompletionException(e);
@@ -266,8 +282,11 @@ public final class ConnectionManager implements AutoCloseable {
         final Supplier<Connection> wrappedConnSupplier = this::createWrappedConnection;
         final Supplier<VariableTag> tagSupplier = this::getVariableTag;
         context.put(QueryContext.KEY_CONFIG, configManager);
+        if (conn instanceof ResourceManager) {
+            context.put(QueryContext.KEY_RESOURCE, conn);
+        }
         context.put(QueryContext.KEY_CONNECTION, connSupplier);
-        context.put(QueryContext.KEY_WRAPPED_CONNECTION, wrappedConnSupplier);
+        context.put(QueryContext.KEY_MANAGED_CONNECTION, wrappedConnSupplier);
         context.put(QueryContext.KEY_TAG, tagSupplier);
         return context;
     }

@@ -19,6 +19,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -50,6 +51,355 @@ public class JdbcExecutorTest extends BaseIntegrationTest {
                 Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getInt(1), 7);
                 Assert.assertFalse(rs.next());
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetFirstResult() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getFirstResult(stmt, "/* nothing to execute */", stats);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertEquals(obj, Long.valueOf(0L));
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getFirstResult(stmt, "drop table if exists get_first_result", stats);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertEquals(obj, Long.valueOf(0L));
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getFirstResult(stmt, "drop table if exists get_first_result;select 1", stats);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertEquals(obj, Long.valueOf(0L));
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getFirstResult(stmt, "select 2", stats);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+                Assert.assertTrue(((ResultSet) obj).next(), "Should return result set");
+                Assert.assertEquals(((ResultSet) obj).getInt(1), 2);
+                Assert.assertFalse(((ResultSet) obj).next(), "Should return only one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getFirstResult(stmt, "select 1; select 2", stats);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+                Assert.assertTrue(((ResultSet) obj).next(), "Should return result set");
+                Assert.assertEquals(((ResultSet) obj).getInt(1), 1);
+                Assert.assertFalse(((ResultSet) obj).next(), "Should return only one result");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetFirstQueryResult() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getFirstQueryResult(stmt, "/* nothing to execute */", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getFirstQueryResult(stmt, "drop table if exists get_first_result",
+                            stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getFirstQueryResult(stmt,
+                            "drop table if exists get_first_result; select 1", stats)) {
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have exact one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getFirstQueryResult(stmt,
+                            "select 1; drop table if exists get_first_result", stats)) {
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have exact one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getFirstQueryResult(stmt,
+                            "drop table if exists get_first_result1; drop table if exists get_first_result2", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 2L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetFirstUpdateCount() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getFirstUpdateCount(stmt, "/* nothing to execute */", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getFirstUpdateCount(stmt, "drop table if exists get_first_result", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getFirstUpdateCount(stmt, "select 1", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getFirstUpdateCount(stmt, "select 1; drop table if exists get_first_result",
+                                stats),
+                        0L);
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetLastResult() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getLastResult(stmt, "/* nothing to execute */", stats);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertEquals(obj, Long.valueOf(0L));
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getLastResult(stmt, "drop table if exists get_first_result", stats);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertEquals(obj, Long.valueOf(0L));
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getLastResult(stmt, "drop table if exists get_first_result;select 1", stats);
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+                Assert.assertTrue(((ResultSet) obj).next(), "Should return result set");
+                Assert.assertEquals(((ResultSet) obj).getInt(1), 1);
+                Assert.assertFalse(((ResultSet) obj).next(), "Should return only one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getLastResult(stmt, "select 2", stats);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+                Assert.assertTrue(((ResultSet) obj).next(), "Should return result set");
+                Assert.assertEquals(((ResultSet) obj).getInt(1), 2);
+                Assert.assertFalse(((ResultSet) obj).next(), "Should return only one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Object obj = JdbcExecutor.getLastResult(stmt, "select 1; select 2", stats);
+                Assert.assertEquals(stats, new long[] { 2L, 0L, 0L });
+                Assert.assertTrue(((ResultSet) obj).next(), "Should return result set");
+                Assert.assertEquals(((ResultSet) obj).getInt(1), 2);
+                Assert.assertFalse(((ResultSet) obj).next(), "Should return only one result");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetLastQueryResult() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getLastQueryResult(stmt, "/* nothing to execute */", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getLastQueryResult(stmt, "drop table if exists get_first_result",
+                            stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getLastQueryResult(stmt,
+                            "drop table if exists get_first_result; select 1", stats)) {
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have exact one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getLastQueryResult(stmt,
+                            "select 1; drop table if exists get_first_result", stats)) {
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have exact one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getLastQueryResult(stmt,
+                            "drop table if exists get_first_result1; drop table if exists get_first_result2", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 2L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetLastUpdateCount() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getLastUpdateCount(stmt, "/* nothing to execute */", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getLastUpdateCount(stmt, "drop table if exists get_first_result", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getLastUpdateCount(stmt, "select 1", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getLastUpdateCount(stmt, "drop table if exists get_first_result; select 1",
+                                stats),
+                        0L);
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetMergedQueryResult() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getMergedQueryResult(stmt, "/* nothing to execute */", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getMergedQueryResult(stmt, "drop table if exists get_first_result",
+                            stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getMergedQueryResult(stmt,
+                            "drop table if exists get_first_result; select 1", stats)) {
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertFalse(rs.next(), "Should have exact one result");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getMergedQueryResult(stmt,
+                            "select 1; drop table if exists get_first_result; select 2", stats)) {
+                Assert.assertEquals(stats, new long[] { 2L, 1L, 0L });
+                Assert.assertTrue(rs.next(), "Should have at least one result");
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertTrue(rs.next(), "Should have one more result");
+                Assert.assertEquals(rs.getInt(1), 2);
+                Assert.assertFalse(rs.next(), "Should have just two results");
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = JdbcExecutor.getMergedQueryResult(stmt,
+                            "drop table if exists get_first_result1; drop table if exists get_first_result2", stats)) {
+                Assert.assertEquals(stats, new long[] { 0L, 2L, 0L });
+                Assert.assertFalse(rs.next(), "Should have no result");
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetMergedUpdateCount() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "/mysql?allowMultiQueries=true")) {
+            long[] stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getMergedUpdateCount(stmt, "/* nothing to execute */", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getMergedUpdateCount(stmt, "drop table if exists get_first_result", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 0L, 1L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getMergedUpdateCount(stmt, "select 1", stats), 0L);
+                Assert.assertEquals(stats, new long[] { 1L, 0L, 0L });
+            }
+
+            stats = new long[] { 0L, 0L, 0L };
+            try (Statement stmt = conn.createStatement()) {
+                Assert.assertEquals(
+                        JdbcExecutor.getMergedUpdateCount(stmt, "drop table if exists get_first_result; select 1",
+                                stats),
+                        0L);
+                Assert.assertEquals(stats, new long[] { 1L, 1L, 0L });
             }
         }
     }

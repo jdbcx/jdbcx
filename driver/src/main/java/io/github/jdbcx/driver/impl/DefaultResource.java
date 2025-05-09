@@ -18,12 +18,13 @@ package io.github.jdbcx.driver.impl;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
@@ -32,13 +33,15 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
     protected final AtomicReference<SQLWarning> warning;
 
     protected final DefaultResource parent;
-    protected final List<DefaultResource> children;
+    protected final List<AutoCloseable> children;
 
     protected DefaultResource(DefaultResource parent) {
         this.closed = new AtomicBoolean();
         this.warning = new AtomicReference<>();
 
-        this.parent = parent;
+        if ((this.parent = parent) != null) {
+            parent.add(this);
+        }
         this.children = Collections.synchronizedList(new LinkedList<>());
     }
 
@@ -48,21 +51,45 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
         }
     }
 
-    protected <T extends DefaultResource> T add(T resource) {
+    protected boolean remove(AutoCloseable resource) {
+        return children.remove(resource);
+    }
+
+    protected void reset() {
+        this.warning.set(null);
+        Utils.closeQuietly(children, true);
+    }
+
+    public <T extends AutoCloseable> T add(T resource) {
+        try {
+            if (isClosed()) {
+                throw new IllegalStateException("Resource has been closed");
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
         if (!children.contains(resource)) {
             children.add(resource);
         }
         return resource;
     }
 
-    protected void remove(DefaultResource resource) {
-        children.remove(resource);
+    public <T extends AutoCloseable> T get(Class<T> clazz) {
+        return get(clazz, null);
     }
 
-    protected void reset() {
-        this.warning.set(null);
-
-        this.children.clear();
+    public <T extends AutoCloseable> T get(Class<T> clazz, Predicate<T> filter) {
+        if (clazz != null) {
+            for (AutoCloseable resource : children) {
+                if (clazz.isInstance(resource)) {
+                    T obj = clazz.cast(resource);
+                    if (filter == null || filter.test(obj)) {
+                        return obj;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     public SQLWarning getWarnings() throws SQLException {
@@ -84,14 +111,6 @@ abstract class DefaultResource extends DefaultWrapper implements AutoCloseable {
         reset();
         if (parent != null) {
             parent.remove(this);
-        }
-
-        for (Iterator<DefaultResource> it = children.iterator(); it.hasNext();) {
-            try {
-                it.next().close();
-            } catch (Exception e) {
-                // log.debug("Failed to close statement %s", stmt, e);
-            }
         }
 
         closed.set(true);

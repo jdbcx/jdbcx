@@ -33,6 +33,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Field;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
@@ -44,7 +45,7 @@ public class McpExecutor extends AbstractExecutor {
             .unmodifiableList(Arrays.asList(FIELD_QUERY, FIELD_TIMEOUT_MS, FIELD_OPTIONS));
 
     public static final Option OPTION_INIT_TIMEOUT = Option.ofInt("init.timeout",
-            "MCP client initialization timeout in seconds", 20);
+            "MCP client initialization timeout in milliseconds.", 20000);
 
     public static final Option OPTION_SERVER_CONF = Option.ofOptional("conf",
             "MCP server configuration represented in a JSON object");
@@ -205,12 +206,12 @@ public class McpExecutor extends AbstractExecutor {
         return value != null ? value : defaultServerUrl;
     }
 
-    public Result<?> execute(String query, Properties props) throws SQLException { // NOSONAR
+    public Result<?> execute(String query, Properties props, ResourceManager resourceManager) throws SQLException { // NOSONAR
         final int timeout = getTimeout(props);
         if (getDryRun(props)) {
             return Result.of(Row.of(dryRunFields, new Object[] { query, timeout, props }));
         }
 
-        return new McpSupport(this).execute(query, props);
+        return new McpSupport(this).execute(query, props, resourceManager);
     }
 }

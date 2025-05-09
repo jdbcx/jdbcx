@@ -43,7 +43,7 @@ public class QueryInterpreter extends AbstractInterpreter {
     @Override
     public Result<?> interpret(String query, Properties props) {
         try {
-            return executor.execute(query, (Supplier<Connection>) getContext().get(QueryContext.KEY_WRAPPED_CONNECTION),
+            return executor.execute(query, (Supplier<Connection>) getContext().get(QueryContext.KEY_MANAGED_CONNECTION),
                     props);
         } catch (Exception e) {
             return handleError(e, query, props);

@@ -17,20 +17,99 @@ package io.github.jdbcx.executor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
+import java.util.function.Predicate;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
 public class McpExecutorTest extends BaseIntegrationTest {
+    static final class ClientManager implements ResourceManager {
+        final List<AutoCloseable> clients;
+
+        ClientManager() {
+            clients = Collections.synchronizedList(new LinkedList<>());
+        }
+
+        @Override
+        public <T extends AutoCloseable> T add(T resource) {
+            if (!clients.contains(resource)) {
+                clients.add(resource);
+            }
+            return resource;
+        }
+
+        @Override
+        public <T extends AutoCloseable> T get(Class<T> clazz) {
+            return get(clazz, null);
+        }
+
+        @Override
+        public <T extends AutoCloseable> T get(Class<T> clazz, Predicate<T> filter) {
+            if (clazz != null) {
+                for (AutoCloseable resource : clients) {
+                    if (clazz.isInstance(resource)) {
+                        T obj = clazz.cast(resource);
+                        if (filter == null || filter.test(obj)) {
+                            return obj;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
     @Test(groups = { "unit" })
     public void testConstructor() {
         Assert.assertNotNull(new McpExecutor(null, null));
         Assert.assertNotNull(new McpExecutor(null, new Properties()));
+    }
+
+    @Test(groups = { "integration" })
+    public void testClientManager() throws Exception {
+        skipTestsIfJdkIsOlderThan(17);
+
+        Properties props = new Properties();
+        McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
+        McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
+        McpExecutor exec = new McpExecutor(null, props);
+
+        ClientManager manager = new ClientManager();
+        Assert.assertEquals(manager.clients, Collections.emptyList());
+        props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "prompt");
+        int count = 0;
+        for (Row row : exec.execute("", props, manager).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        Assert.assertEquals(manager.clients.size(), 1);
+
+        props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "tool");
+        count = 0;
+        for (Row row : exec.execute("", props, manager).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        Assert.assertEquals(manager.clients.size(), 1);
+
+        manager.clients.get(0).close();
+        manager.clients.clear();
+        props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "resource");
+        count = 0;
+        for (Row row : exec.execute("", props, manager).rows()) {
+            count++;
+        }
+        Assert.assertTrue(count > 1, "Should have more than one row");
+        Assert.assertEquals(manager.clients.size(), 1);
     }
 
     @Test(groups = { "integration" })
@@ -45,7 +124,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // list prompts
         props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "prompt");
         int count = 0;
-        for (Row row : exec.execute("", props).rows()) {
+        for (Row row : exec.execute("", props, null).rows()) {
             count++;
         }
         Assert.assertTrue(count > 1, "Should have more than one row");
@@ -53,22 +132,22 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // prompt target
         props.setProperty(McpExecutor.OPTION_SERVER_TARGET.getName(), "prompt");
         // or McpExecutor.OPTION_SERVER_TARGET.setValue(props, "PROMPT")
-        Assert.assertThrows(SQLException.class, () -> exec.execute("{}", props));
-        Assert.assertThrows(SQLException.class, () -> exec.execute("{\"name\":null}", props));
+        Assert.assertThrows(SQLException.class, () -> exec.execute("{}", props, null));
+        Assert.assertThrows(SQLException.class, () -> exec.execute("{\"name\":null}", props, null));
         count = 0;
-        for (Row row : exec.execute("{\"name\": \"simple_prompt\"}", props).rows()) {
+        for (Row row : exec.execute("{\"name\": \"simple_prompt\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
         count = 0;
-        for (Row row : exec.execute("{\"name\": \"complex_prompt\"}", props).rows()) {
+        for (Row row : exec.execute("{\"name\": \"complex_prompt\"}", props, null).rows()) {
             count++;
         }
         Assert.assertTrue(count > 1, "Should have more than one row");
         count = 0;
         for (Row row : exec
                 .execute("{\"name\": \"complex_prompt\", \"arguments\":{\"temperature\":\"0.95\",\"style\":\"json\"}}",
-                        props)
+                        props, null)
                 .rows()) {
             count++;
         }
@@ -78,7 +157,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // prompt in request body
         McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "a");
         count = 0;
-        for (Row row : exec.execute(" simple_prompt ", props).rows()) {
+        for (Row row : exec.execute(" simple_prompt ", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -86,21 +165,21 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // prompt argument
         McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
         count = 0;
-        for (Row row : exec.execute("", props).rows()) {
+        for (Row row : exec.execute("", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
 
         // prompt argument mixed with request body
         McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
-        Assert.assertThrows(SQLException.class, () -> exec.execute(" non-exitsing-prompt", props));
+        Assert.assertThrows(SQLException.class, () -> exec.execute(" non-exitsing-prompt", props, null));
         count = 0;
-        for (Row row : exec.execute("complex_prompt", props).rows()) {
+        for (Row row : exec.execute("complex_prompt", props, null).rows()) {
             count++;
         }
         Assert.assertTrue(count > 1, "Should have more than one row");
         count = 0;
-        for (Row row : exec.execute("{\"a\":\"1\"}", props).rows()) {
+        for (Row row : exec.execute("{\"a\":\"1\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -118,14 +197,14 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // list resources
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource.name());
         int count = 0;
-        for (Row row : exec.execute("", props).rows()) {
+        for (Row row : exec.execute("", props, null).rows()) {
             count++;
         }
         Assert.assertTrue(count > 1, "Should have more than one row");
 
         // resource in request body
         count = 0;
-        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props).rows()) {
+        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -133,16 +212,16 @@ public class McpExecutorTest extends BaseIntegrationTest {
 
         // resource argument
         McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
-        Assert.assertThrows(SQLException.class, () -> exec.execute("", props));
+        Assert.assertThrows(SQLException.class, () -> exec.execute("", props, null));
 
         McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/7");
         count = 0;
-        for (Row row : exec.execute("", props).rows()) {
+        for (Row row : exec.execute("", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
         count = 0;
-        for (Row row : exec.execute("{\"uri\":null}", props).rows()) {
+        for (Row row : exec.execute("{\"uri\":null}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -150,7 +229,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // resource argument mixed with request body
         McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
         count = 0;
-        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props).rows()) {
+        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -165,7 +244,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         McpExecutor.OPTION_SERVER_CMD.setValue(props, "npx");
         McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
         McpExecutor exec = new McpExecutor(null, props);
-        for (Row row : exec.execute("{\"message\":\"hello\"}", props).rows()) {
+        for (Row row : exec.execute("{\"message\":\"hello\"}", props, null).rows()) {
             Assert.assertEquals(row.fields().size(), 5);
             Assert.assertEquals(row.value("contentType"), row.value(0));
             Assert.assertEquals(row.value("mimeType"), row.value(1));
@@ -191,7 +270,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // capabilities
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.capability.name());
         int count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("type"), "Type should not be null");
                 Assert.assertNotNull(rs.getString("experimental"), "Experimental should not be null");
@@ -218,7 +297,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // info
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.info.name());
         count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("type"), "Type should not be null");
                 Assert.assertNotNull(rs.getString("name"), "Name should not be null");
@@ -235,7 +314,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // prompts
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.prompt.name());
         count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
                 Assert.assertNotNull(rs.getString("description"), "Description should not be null");
@@ -252,7 +331,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // resources
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource.name());
         count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
                 Assert.assertNotNull(rs.getString("description"), "Description should not be null");
@@ -273,7 +352,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // resource templates
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.resource_template.name());
         count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
                 Assert.assertNotNull(rs.getString("description"), "Description should not be null");
@@ -294,7 +373,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // tools
         McpExecutor.OPTION_SERVER_TARGET.setValue(props, McpServerTarget.tool.name());
         count = 0;
-        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props))) {
+        try (ResultSet rs = new ReadOnlyResultSet(null, exec.execute(null, props, null))) {
             while (rs.next()) {
                 Assert.assertNotNull(rs.getString("name"), "Tool name should not be null");
                 Assert.assertNotNull(rs.getString("description"), "Description should not be null");

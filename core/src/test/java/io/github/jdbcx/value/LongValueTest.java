@@ -37,6 +37,9 @@ public class LongValueTest extends BaseValueTest {
 
         checkNull(factory, new LongValue(ValueFactory.getInstance(), true, 1L).resetToNull());
         checkNull(factory, new LongValue.UnsignedLongValue(ValueFactory.getInstance(), true, -1L).resetToNull());
+
+        checkNull(factory, LongValue.of(null));
+        checkNull(factory, LongValue.ofUnsigned(null));
     }
 
     @Test(groups = { "unit" })
@@ -117,6 +120,31 @@ public class LongValueTest extends BaseValueTest {
                 "-2", // JSON expression
                 "-2" // SQL Expression
         );
+        checkValue(factory, LongValue.of(-2L),
+                false, // isInfinity
+                false, // isNan
+                false, // isNull
+                true, // boolean
+                (char) -2, // char
+                (byte) -2, // byte
+                (short) -2, // short
+                -2, // int
+                -2L, // long
+                -2F, // float
+                -2D, // double
+                BigInteger.valueOf(-2L), // BigInteger
+                new BigDecimal(-2L), // BigDecimal
+                new BigDecimal(BigInteger.valueOf(-2L), 3), // BigDecimal(3)
+                IllegalArgumentException.class, // Enum(Format)
+                DateTimeParseException.class, // Date
+                DateTimeParseException.class, // Time
+                DateTimeParseException.class, // DateTime
+                DateTimeParseException.class, // DateTime(9)
+                -2L, // Object
+                "-2", // String
+                "-2", // JSON expression
+                "-2" // SQL Expression
+        );
     }
 
     @Test(groups = { "unit" })
@@ -148,6 +176,31 @@ public class LongValueTest extends BaseValueTest {
                 "0" // SQL Expression
         );
         checkValue(factory, new LongValue.UnsignedLongValue(ValueFactory.getInstance(), false, 1L),
+                false, // isInfinity
+                false, // isNan
+                false, // isNull
+                true, // boolean
+                '\1', // char
+                (byte) 1, // byte
+                (short) 1, // short
+                1, // int
+                1L, // long
+                1F, // float
+                1D, // double
+                BigInteger.ONE, // BigInteger
+                new BigDecimal(1), // BigDecimal
+                new BigDecimal(BigInteger.ONE, 3), // BigDecimal(3)
+                Format.TSV, // Enum(Format)
+                DateTimeParseException.class, // Date
+                DateTimeParseException.class, // Time
+                DateTimeParseException.class, // DateTime
+                DateTimeParseException.class, // DateTime(9)
+                UnsignedLong.ONE, // Object
+                "1", // String
+                "1", // JSON expression
+                "1" // SQL Expression
+        );
+        checkValue(factory, LongValue.ofUnsigned(1L),
                 false, // isInfinity
                 false, // isNan
                 false, // isNull

@@ -37,6 +37,7 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
+import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Utils;
@@ -108,6 +109,13 @@ public final class McpSupport {
 
     static final String STR_CLIENT = "client";
     static final String STR_SERVER = "server";
+
+    static final record ManagedSession(String cli, String url, McpSyncClient client) implements AutoCloseable {
+        @Override
+        public void close() {
+            client.close();
+        }
+    }
 
     static final void addContentAsValues(Content obj, List<Value> values) {
         if (obj instanceof TextContent) { // NOSONAR
@@ -258,11 +266,31 @@ public final class McpSupport {
         this.executor = executor;
     }
 
-    public Result<?> execute(String query, Properties props) throws SQLException { // NOSONAR
+    McpSyncClient newClient(McpClientTransport transport, int initTimeout, int timeout) throws SQLException {
+        final McpSyncClient client = McpClient.sync(transport).initializationTimeout(Duration.ofMillis(initTimeout))
+                .requestTimeout(Duration.ofMillis(timeout <= 0 ? initTimeout : timeout)).loggingConsumer(log::debug)
+                .build();
+        InitializeResult initResult = null;
+        try {
+            initResult = client.initialize();
+            log.debug("MCP client (protocol=%s) initialized successfully, server is %s", initResult.protocolVersion(),
+                    initResult.serverInfo());
+        } catch (McpError e) {
+            throw new SQLException(e);
+        } finally {
+            if (initResult == null) {
+                client.close();
+            }
+        }
+        return client;
+    }
+
+    public Result<?> execute(String query, Properties props, ResourceManager resourceManager) throws SQLException { // NOSONAR
         final int timeout = executor.getTimeout(props);
         final McpClientTransport transport;
         final String serverCmd = executor.getServerCommand(props);
         final String serverUrl = executor.getServerUrl(props);
+        final String serverCli;
         if (!Checker.isNullOrEmpty(serverCmd)) {
             String cmd = serverCmd;
             List<String> args = executor.getServerArguments(props);
@@ -283,10 +311,20 @@ public final class McpSupport {
                     args = Collections.unmodifiableList(list);
                 }
             }
+            serverCli = new StringBuilder(cmd).append(' ').append(args.toString()).toString();
             transport = new StdioClientTransport(
                     ServerParameters.builder(cmd).args(args).env(executor.getServerEnvironment(props)).build());
         } else if (!Checker.isNullOrEmpty(serverUrl)) {
-            transport = HttpClientSseClientTransport.builder(serverUrl).build();
+            serverCli = Constants.EMPTY_STRING;
+            final String serverKey = executor.getServerKey(props);
+            if (Checker.isNullOrEmpty(serverKey)) {
+                transport = HttpClientSseClientTransport.builder(serverUrl).build();
+            } else {
+                transport = HttpClientSseClientTransport.builder(serverUrl)
+                        .customizeRequest(b -> b.header(WebExecutor.HEADER_AUTHORIZATION,
+                                WebExecutor.AUTH_SCHEME_BEARER + serverKey))
+                        .build();
+            }
         } else {
             throw new SQLException(
                     Utils.format("Either %s or %s must be specified", McpExecutor.OPTION_SERVER_CMD.getName(),
@@ -298,13 +336,25 @@ public final class McpSupport {
             initTimeout = Integer.parseInt(McpExecutor.OPTION_INIT_TIMEOUT.getDefaultValue());
         }
         final Result<?> result;
-        try (McpSyncClient client = McpClient.sync(transport).initializationTimeout(Duration.ofSeconds(initTimeout))
-                .requestTimeout(Duration.ofSeconds(timeout <= 0 ? initTimeout : timeout)).loggingConsumer(log::debug)
-                .build()) {
-            final InitializeResult initResult = client.initialize();
-            log.debug("MCP client (protocol=%s) initialized successfully, server is %s", initResult.protocolVersion(),
-                    initResult.serverInfo());
-
+        final McpSyncClient client;
+        final ManagedSession session;
+        if (resourceManager != null) {
+            final ManagedSession initialized = resourceManager.get(ManagedSession.class,
+                    s -> serverCli.equals(s.cli) || serverUrl.equals(s.url));
+            if (initialized != null) {
+                client = initialized.client();
+                session = initialized;
+            } else {
+                client = newClient(transport, initTimeout, timeout);
+                final ManagedSession newSession = resourceManager
+                        .add(new ManagedSession(serverCli, serverUrl, client));
+                session = resourceManager.get(ManagedSession.class, r -> r == newSession);
+            }
+        } else {
+            client = newClient(transport, initTimeout, timeout);
+            session = null;
+        }
+        try {
             final McpServerTarget target = executor.getServerTarget(props);
             final String prompt = executor.getServerPrompt(props);
             final String resource = executor.getServerResource(props);
@@ -323,16 +373,18 @@ public final class McpSupport {
                     case capability:
                         final ServerCapabilities serverCaps = client.getServerCapabilities();
                         final ClientCapabilities clientCaps = client.getClientCapabilities();
-                        final Value empty = StringValue.of(Constants.EMPTY_STRING);
+                        final Value nullValue = StringValue.of(null);
                         result = Result.of(capabilityFields,
                                 Row.of(capabilityFields, StringValue.of(STR_SERVER),
-                                        StringValue.ofJson(serverCaps.experimental()), StringValue.ofJson(serverCaps.logging()),
-                                        StringValue.ofJson(serverCaps.prompts()), StringValue.ofJson(serverCaps.resources()),
-                                        empty, empty, StringValue.ofJson(serverCaps.tools())),
+                                        StringValue.ofJson(serverCaps.experimental()),
+                                        StringValue.ofJson(serverCaps.logging()),
+                                        StringValue.ofJson(serverCaps.prompts()),
+                                        StringValue.ofJson(serverCaps.resources()), nullValue, nullValue,
+                                        StringValue.ofJson(serverCaps.tools())),
                                 Row.of(capabilityFields, StringValue.of(STR_CLIENT),
-                                        StringValue.ofJson(clientCaps.experimental()), empty, empty, empty,
-                                        StringValue.ofJson(clientCaps.roots()), StringValue.ofJson(clientCaps.sampling()),
-                                        empty));
+                                        StringValue.ofJson(clientCaps.experimental()), nullValue, nullValue, nullValue,
+                                        StringValue.ofJson(clientCaps.roots()),
+                                        StringValue.ofJson(clientCaps.sampling()), nullValue));
                         break;
                     case info:
                         final Implementation serverInfo = client.getServerInfo();
@@ -375,9 +427,12 @@ public final class McpSupport {
                                 Arrays.toString(McpServerTarget.values())));
                 }
             }
-            client.closeGracefully();
         } catch (McpError e) {
             throw new SQLException(e);
+        } finally {
+            if (session == null) { // unmanaged
+                client.closeGracefully();
+            }
         }
         return result;
     }

@@ -49,6 +49,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -1319,6 +1320,26 @@ public final class Utils {
                 resource = more[i];
             }
         } while (i++ < len);
+    }
+
+    public static void closeQuietly(Collection<? extends AutoCloseable> resources, boolean removeAll) {
+        if (resources == null || resources.isEmpty()) {
+            return;
+        }
+
+        final List<AutoCloseable> list = new ArrayList<>(resources);
+        if (removeAll) {
+            resources.clear();
+        }
+        for (AutoCloseable resource : list) {
+            if (resource != null) {
+                try {
+                    resource.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
     }
 
     /**

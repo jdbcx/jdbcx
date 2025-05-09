@@ -241,7 +241,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
         try {
             conn = getConnection(props);
             final Object result = executor.execute(query, conn, props);
-            if (result instanceof ResultSet) {
+            if (result instanceof ResultSet) { // NOSONAR
                 return Result.of((ResultSet) result);
             }
 

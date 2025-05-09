@@ -37,7 +37,7 @@ public final class QueryGroup {
      * @return non-null list of query groups
      */
     public static List<QueryGroup> of(String query) {
-        if (Checker.isNullOrEmpty(query)) {
+        if (Checker.isNullOrBlank(query)) {
             return Collections.emptyList();
         }
 

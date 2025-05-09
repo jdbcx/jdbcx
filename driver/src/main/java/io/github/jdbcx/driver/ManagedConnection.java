@@ -18,8 +18,12 @@ package io.github.jdbcx.driver;
 import java.sql.Connection;
 
 import io.github.jdbcx.JdbcDialect;
+import io.github.jdbcx.ResourceManager;
 
-public interface ManagedConnection extends Connection {
+/**
+ * This interface defines a JDBCX managed connection.
+ */
+public interface ManagedConnection extends Connection, ResourceManager {
     /**
      * Gets connection manager.
      *

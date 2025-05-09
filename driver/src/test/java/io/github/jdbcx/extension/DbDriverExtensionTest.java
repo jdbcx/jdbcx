@@ -15,6 +15,10 @@
  */
 package io.github.jdbcx.extension;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -27,7 +31,11 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Compression;
+import io.github.jdbcx.Format;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
+import io.github.jdbcx.executor.Stream;
 
 public class DbDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })
@@ -175,6 +183,32 @@ public class DbDriverExtensionTest extends BaseIntegrationTest {
             Assert.assertTrue(rs.next(), "Should have at least one row");
             Assert.assertEquals(rs.getInt(1), 1);
             Assert.assertFalse(rs.next(), "Should have only one row");
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testWriteOutputFile() throws IOException, SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        WrappedDriver driver = new WrappedDriver();
+        final String url = "jdbcx:ch://" + getClickHouseServer();
+        final String file = Utils.createTempFile() + ".csv.gz";
+        try (Connection conn = driver.connect(url, props); Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format("{{ db(output.file=%s): select 1}}", file))) {
+                Assert.assertTrue(rs.next(), "Should have one result");
+                Assert.assertEquals(rs.getString("file"), file);
+                Assert.assertEquals(rs.getString("format"), Format.CSV.name());
+                Assert.assertEquals(rs.getString("compress_algorithm"), Compression.GZIP.name());
+                Assert.assertEquals(rs.getInt("compress_level"), -1);
+                Assert.assertEquals(rs.getInt("compress_buffer"), 0);
+                Assert.assertEquals(rs.getLong("size"), Files.size(new File(file).toPath()));
+                Assert.assertFalse(rs.next(), "Should have only one result");
+            }
+            Assert.assertEquals(
+                    Stream.readAllAsString(
+                            Compression.getProvider(Compression.GZIP).decompress(new FileInputStream(file), -1, 0)),
+                    "1\n1");
         }
     }
 }
