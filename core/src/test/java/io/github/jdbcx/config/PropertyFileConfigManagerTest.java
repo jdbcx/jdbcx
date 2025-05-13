@@ -18,6 +18,7 @@ package io.github.jdbcx.config;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -42,6 +43,7 @@ public class PropertyFileConfigManagerTest {
         Properties config = new Properties();
         PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(config, "target/test-classes/config");
         final ConfigManager manager = ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, config);
+        Assert.assertEquals(manager.getMatchedIDs("db", "my*"), Collections.singletonList("my-sqlite"));
         try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "my-sqlite"), null);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 5")) {

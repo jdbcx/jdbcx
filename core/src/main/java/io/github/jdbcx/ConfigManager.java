@@ -22,9 +22,12 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -45,6 +48,15 @@ import java.util.Properties;
  */
 public abstract class ConfigManager {
     private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
+
+    private static final Option OPTION_CACHE_SIZE = Option.of("globpattern.cache.size", "Glob pattern cache size",
+            "100");
+    private static final Option OPTION_CACHE_EXPTIME = Option.of("globpattern.cache.exptime",
+            "Glob pattern cache expiration time in second", "0");
+    private static final Cache<String, Pattern> cache = Cache.create(
+            Integer.parseInt(OPTION_CACHE_SIZE.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)),
+            Integer.parseInt(OPTION_CACHE_EXPTIME.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)),
+            ConfigManager::parseGlobPattern);
 
     public static final String PROPERTY_FILE_PROVIDER = ConfigManager.class.getPackage().getName()
             + ".config.PropertyFile" + ConfigManager.class.getSimpleName();
@@ -102,6 +114,78 @@ public abstract class ConfigManager {
         return Utils.newInstance(ConfigManager.class, provider, props);
     }
 
+    public static final Pattern parseGlobPattern(String str) {
+        if (Checker.isNullOrEmpty(str)) {
+            return null;
+        }
+
+        final int len = str.length();
+        StringBuilder builder = new StringBuilder(len + 4);
+        boolean inCharClass = false;
+
+        for (int i = 0; i < len; i++) {
+            char ch = str.charAt(i);
+            switch (ch) {
+                case '*':
+                    if (inCharClass) {
+                        builder.append(ch);
+                    } else {
+                        builder.append(".*");
+                    }
+                    break;
+                case '?':
+                    if (inCharClass) {
+                        builder.append(ch);
+                    } else {
+                        builder.append('.');
+                    }
+                    break;
+                case '[':
+                    inCharClass = true;
+                    builder.append(ch);
+                    // Handle negated character class
+                    if (i + 1 < len && str.charAt(i + 1) == '!') {
+                        builder.append('^');
+                        i++;
+                    }
+                    break;
+                case ']':
+                    inCharClass = false;
+                    builder.append(ch);
+                    break;
+                case '\\':
+                    if (i + 1 < len) {
+                        builder.append('\\').append(str.charAt(++i));
+                    } else {
+                        builder.append('\\');
+                    }
+                    break;
+                case '-':
+                    if (!inCharClass) {
+                        builder.append('\\').append(ch);
+                    } else {
+                        builder.append(ch);
+                    }
+                    break;
+                // Escape regex special characters
+                case '.':
+                case '^':
+                case '$':
+                case '+':
+                case '{':
+                case '}':
+                case '(':
+                case ')':
+                case '|': // NOSONAR
+                    builder.append('\\').append(ch);
+                    break;
+                default:
+                    builder.append(ch);
+            }
+        }
+        return Pattern.compile(builder.toString());
+    }
+
     protected final String getUniqueId(String category, String id) {
         if (category == null) {
             category = Constants.EMPTY_STRING;
@@ -120,7 +204,22 @@ public abstract class ConfigManager {
         return Collections.emptyList();
     }
 
-    public boolean hasConfig(String category, String id) {
+    public List<String> getMatchedIDs(String category, String globPattern) {
+        final Pattern pattern = cache.get(globPattern);
+        if (pattern == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> ids = new LinkedList<>();
+        for (String id : getAllIDs(category)) {
+            if (pattern.matcher(globPattern).find()) {
+                ids.add(id);
+            }
+        }
+        return ids.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(ids));
+    }
+
+    public boolean hasConfig(String category, String id) { // NOSONAR
         return false;
     }
 

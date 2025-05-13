@@ -179,12 +179,79 @@ public class QueryParserTest {
 
     @Test(groups = { "unit" })
     public void testIndexOf() {
+        Assert.assertThrows(NullPointerException.class, () -> QueryParser.indexOf(null, 1, ' ', '\\'));
+        Assert.assertThrows(NullPointerException.class, () -> QueryParser.indexOf(null, 1, "", '\\'));
+
         String str;
+        Assert.assertEquals(QueryParser.indexOf(str = "", 0, "{{", '\\'), -1);
         Assert.assertEquals(QueryParser.indexOf(str = "{{}}", 0, "{{", '\\'), 2);
         Assert.assertEquals(QueryParser.indexOf(str = "{{}}", 0, "}}", '\\'), str.length());
         Assert.assertEquals(QueryParser.indexOf(str = "{{}} ", 0, "}}", '\\'), str.length() - 1);
+        Assert.assertEquals(QueryParser.indexOf(str = "{{}} ", 10, "}}", '\\'), -1);
         Assert.assertEquals(QueryParser.indexOf(str = "{{\\}}", 0, "}}", '\\'), -1);
         Assert.assertEquals(QueryParser.indexOf(str = "{{\\}}}", 0, "}}", '\\'), str.length());
+
+        Assert.assertEquals(QueryParser.indexOf(str = "", 0, ')', '\\'), -1);
+        Assert.assertEquals(QueryParser.indexOf(str = ")", 0, ')', '\\'), 1);
+        Assert.assertEquals(QueryParser.indexOf(str = ")", 5, ')', '\\'), -1);
+        Assert.assertEquals(QueryParser.indexOf(str = "\\)", 0, ')', '\\'), -1);
+        Assert.assertEquals(QueryParser.indexOf(str = "a(a=1\\))", 0, ')', '\\'), str.length());
+        Assert.assertEquals(QueryParser.indexOf(str = "a(a=1\\)", 0, ')', '\\'), -1);
+    }
+
+    @Test(groups = { "unit" })
+    public void testParseIndentifier() {
+        Properties props = new Properties();
+
+        String str;
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "", 0, 0, VariableTag.BRACE, props),
+                new int[] { 0, 0, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "");
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.?", 2, 3, VariableTag.BRACE, props),
+                new int[] { 3, 3, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "?");
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.?:", 2, 4, VariableTag.BRACE, props),
+                new int[] { 2, 3, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "?");
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.?()", 2, 5, VariableTag.BRACE, props),
+                new int[] { 2, 3, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "?");
+        props.clear();
+
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 1, 2, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "");
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.b(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 2, 3, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "b");
+
+        Assert.assertEquals(QueryParser.parseIdentifier(str = "a.b?(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 3, 4, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "b?");
+
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.\\b\\?(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 5, 6, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "\\b\\?");
+
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.[a-b.*]c(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 9, 10, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "[a-b.*]c");
+
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.[a-b.*]\\c(x=1)", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 10, 11, 1 });
+        Assert.assertEquals(Option.ID.getValue(props), "[a-b.*]\\c");
+
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.a[a-b.*]", 2, str.length(), VariableTag.SQUARE_BRACKET, props),
+                new int[] { 10, 10, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "a[a-b.*]");
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.a[a-b.*]:", 2, str.length(), VariableTag.SQUARE_BRACKET, props),
+                new int[] { 9, 10, 0 });
+        Assert.assertEquals(Option.ID.getValue(props), "a[a-b.*]");
     }
 
     @Test(groups = { "unit" })
@@ -197,43 +264,43 @@ public class QueryParserTest {
 
         String str;
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "", VariableTag.BRACE, props),
-                new String[] { "", "" });
+                new String[] { "", "", "" });
         Assert.assertEquals(props, expected);
 
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "script", VariableTag.BRACE, props),
-                new String[] { "script", "" });
+                new String[] { "script", "", "" });
         Assert.assertEquals(props, expected);
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "select 1", VariableTag.BRACE, props),
-                new String[] { "", "select 1" });
+                new String[] { "", "select 1", "" });
         Assert.assertEquals(props, expected);
 
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "prql()", VariableTag.BRACE, props),
-                new String[] { "prql", "" });
+                new String[] { "prql", "", "" });
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "prql ( ) ", VariableTag.BRACE, props),
-                new String[] { "prql", "" });
+                new String[] { "prql", "", "" });
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "prql ( ) : ", VariableTag.BRACE, props),
-                new String[] { "prql", "" });
+                new String[] { "prql", "", "" });
         Assert.assertEquals(QueryParser.parseExecutableBlock(str = "prql():", VariableTag.BRACE, props),
-                new String[] { "prql", "" });
+                new String[] { "prql", "", "" });
 
         expected.setProperty("custom.classpath", "/usr/local/lib");
         expected.setProperty("cli.timeout", "1500");
         expected.setProperty("cli.path", "~/.cargo/bin/prqlc");
         Assert.assertEquals(QueryParser.parseExecutableBlock(
                 str = "prql(custom.classpath=/usr/local/lib,cli.timeout=1500, cli.path='~/.cargo/bin/prqlc')",
-                VariableTag.BRACE, props), new String[] { "prql", "" });
+                VariableTag.BRACE, props), new String[] { "prql", "", "" });
         Assert.assertEquals(props, expected);
 
         props.clear();
         Assert.assertEquals(QueryParser.parseExecutableBlock(
                 str = "prql(custom.classpath=/usr/local/lib,cli.timeout=1500, cli.path='~/.cargo/bin/prqlc'): from `test.test1` | take 10",
-                VariableTag.BRACE, props), new String[] { "prql", "from `test.test1` | take 10" });
+                VariableTag.BRACE, props), new String[] { "prql", "from `test.test1` | take 10", "" });
         Assert.assertEquals(props, expected);
 
         props.clear();
         Assert.assertEquals(QueryParser.parseExecutableBlock(
                 str = " prql\r\n\t(\ncustom.classpath = /usr/local/lib, cli.timeout =1500,\r\ncli.path= '~/.cargo/bin/prqlc' ) :\nfrom `test.test1` | take 10 ",
-                VariableTag.BRACE, props), new String[] { "prql", "from `test.test1` | take 10 " });
+                VariableTag.BRACE, props), new String[] { "prql", "from `test.test1` | take 10 ", "" });
         Assert.assertEquals(props, expected);
 
         props.clear();
@@ -244,7 +311,7 @@ public class QueryParserTest {
         expected.setProperty("result.string.trim", Constants.TRUE_EXPR);
         Assert.assertEquals(QueryParser.parseExecutableBlock(
                 str = " shell\r\n\t(\nresult.string.${my.option} = '${my.preference}' ) :\nfrom `test.test1` | take 10 ",
-                VariableTag.BRACE, props), new String[] { "shell", "from `test.test1` | take 10 " });
+                VariableTag.BRACE, props), new String[] { "shell", "from `test.test1` | take 10 ", "" });
         Assert.assertEquals(props, expected);
     }
 
@@ -398,6 +465,12 @@ public class QueryParserTest {
                 new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
         Assert.assertEquals(QueryParser.parse(str = "{{ web. }}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));
+
+        Properties newProps = new Properties();
+        Option.ID.setValue(newProps, "a?*[!x]c");
+        Assert.assertEquals(QueryParser.parse(str = "{{ web.a?*[!x]c() }}", VariableTag.BRACE, props),
+                new ParsedQuery(Arrays.asList("", ""),
+                        Arrays.asList(new ExecutableBlock(1, "web", newProps, "", true))));
 
         Assert.assertEquals(QueryParser.parse(str = "{{web.()}}", VariableTag.BRACE, props),
                 new ParsedQuery(Arrays.asList("", ""), Arrays.asList(new ExecutableBlock(1, "web", props, "", true))));

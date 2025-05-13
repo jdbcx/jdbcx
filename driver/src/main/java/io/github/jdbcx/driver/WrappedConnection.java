@@ -124,7 +124,7 @@ public class WrappedConnection implements ManagedConnection {
     protected List<String> handleResults(String query, WrappedStatement stmt) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables(), manager.getConfigManager());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, stmt.queryResult);
             final List<String> queries = builder.build();
             if (queries.isEmpty()) {
@@ -175,7 +175,7 @@ public class WrappedConnection implements ManagedConnection {
         SQLWarning w = null;
         final VariableTag tag = manager.getVariableTag();
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, tag, context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, tag, context.getVariables(), manager.getConfigManager());
             final String[] parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
             DriverExtension defaultExtension = manager.getDefaultExtension();
             Properties props = manager.getExtensionProperties();

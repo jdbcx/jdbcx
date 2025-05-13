@@ -35,4 +35,24 @@ public class ConfigManagerTest {
         Assert.assertEquals(ConfigManager.newInstance(TestConfigManager.class.getName(), null).getClass(),
                 TestConfigManager.class);
     }
+
+    @Test(groups = { "unit" })
+    public void testParseGlobPattern() {
+        String str;
+        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a*").matcher("b").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a*").matcher("a").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a*").matcher("a1").find());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a?").matcher("a").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a?").matcher("a2").find());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a?*").matcher("a").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a?*").matcher("a123").find());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("b").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("a").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher(".").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("*").find());
+        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[ab-d]").matcher("c").find());
+    }
 }
