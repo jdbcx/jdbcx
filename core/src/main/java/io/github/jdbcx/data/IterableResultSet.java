@@ -118,9 +118,6 @@ public final class IterableResultSet implements Iterable<Row> {
             try {
                 final boolean b = rs.next();
                 state = b ? 1 : 2;
-                if (!b) {
-                    rs.close();
-                }
                 return b;
             } catch (SQLException e) {
                 throw new IllegalStateException(e);
