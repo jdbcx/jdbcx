@@ -22,7 +22,7 @@ num
 $ docker run --rm -it jdbcx/jdbcx 'jdbcx:duckdb:' 'select {{script:1+1}} as num'
 num
 2
-$ docker run --rm -it jdbcx/jdbcx 'jdbcx:' '{{ db.ch-[ap]*: select ''${_.id}'' db, version() ver }}'
+$ docker run --rm -it jdbcx/jdbcx:nightly 'jdbcx:' "{{ db.ch-[ap]*: select '\${_.id}' db, version() ver }}"
 db	ver
 ch-play	25.5.1.664
 ch-altinity	25.3.3.42
