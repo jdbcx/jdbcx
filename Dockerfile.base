@@ -52,7 +52,7 @@ RUN if [ -f jdbcx-server-*.jar ]; then echo "Skip downloading"; \
 RUN chmod +x /*.sh \
     && ln -s jdbcx-server-*.jar jdbcx.jar \
     && tar -zxvf jdbcx-server-*-dependencies.tar.gz --strip 1 -C lib/ \
-    && wget -nv -O ./lib/rhino.LICENSE https://raw.githubusercontent.com/mozilla/rhino/master/LICENSE.txt \
+    && wget -nv -O ./lib/rhino.LICENSE https://raw.githubusercontent.com/mozilla/rhino/refs/heads/master/LICENSE.txt \
     && mkdir -p drivers/clickhouse drivers/duckdb drivers/mysql drivers/opensearch drivers/postgres drivers/sqlite \
     && wget -nv -P ./drivers/clickhouse/ \
         https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/${CLICKHOUSE_DRIVER_VERSION}/clickhouse-jdbc-${CLICKHOUSE_DRIVER_VERSION}-http.jar \
