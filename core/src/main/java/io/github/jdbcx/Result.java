@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -38,6 +39,7 @@ import io.github.jdbcx.data.IterableArray;
 import io.github.jdbcx.data.IterableInputStream;
 import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
+import io.github.jdbcx.data.IterableRow;
 import io.github.jdbcx.data.IterableWrapper;
 import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
@@ -365,6 +367,39 @@ public final class Result<T> implements AutoCloseable {
                 new IterableReader(fields, reader, delimiter));
     }
 
+    public static Result<?> of(Result<?> first, Result<?>... more) { // NOSONAR
+        List<Result<?>> list = new LinkedList<>();
+        list.add(first);
+        if (more != null) {
+            for (Result<?> v : more) {
+                list.add(v);
+            }
+        }
+        return merge(list);
+    }
+
+    public static Result<?> merge(Collection<Result<?>> results) { // NOSONAR
+        List<Field> fields = null;
+        List<Result<?>> list = new LinkedList<>();
+        List<DeferredValue<Iterable<Row>>> values = new LinkedList<>();
+        if (results != null) {
+            for (Result<?> v : results) {
+                if (v != null) {
+                    list.add(v);
+                    if (fields == null) {
+                        fields = v.fields;
+                    }
+                    values.add(v.rows);
+                }
+            }
+        }
+        if (fields == null) {
+            fields = DEFAULT_FIELDS;
+        }
+        return new Result<>(fields, list, Result.class,
+                list.isEmpty() ? Collections.emptyList() : new IterableRow(fields, values));
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -522,12 +557,30 @@ public final class Result<T> implements AutoCloseable {
     @Override
     public void close() {
         if (AutoCloseable.class.isAssignableFrom(valueType)) {
-            try {
-                ((AutoCloseable) rawValue).close();
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
+            if (rawValue instanceof Iterable) {
+                Exception firstException = null;
+                for (Object obj : ((Iterable<?>) rawValue)) {
+                    try {
+                        ((AutoCloseable) obj).close();
+                    } catch (Exception e) {
+                        if (firstException == null) {
+                            firstException = e;
+                        }
+                    }
+                }
+                if (firstException instanceof RuntimeException) { // NOSONAR
+                    throw ((RuntimeException) firstException);
+                } else if (firstException != null) {
+                    throw new IllegalStateException(firstException);
+                }
+            } else {
+                try {
+                    ((AutoCloseable) rawValue).close();
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
             }
         }
         active.compareAndSet(true, false);

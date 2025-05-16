@@ -15,6 +15,9 @@
  */
 package io.github.jdbcx.driver;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Properties;
@@ -94,30 +97,44 @@ public final class ExecutableBlock {
 
     private final int index;
     private final String extension;
+    private final VariableTag tag;
     private final Properties props;
     private final String content;
     private final boolean output;
+    private final List<String> ids;
 
-    ExecutableBlock(int index, String extension, VariableTag tag, Properties props, String content, boolean output) {
+    ExecutableBlock(int index, String extension, VariableTag tag, Properties props, String content, boolean output,
+            List<String> ids) {
+        if (extension == null || tag == null || content == null || props == null) {
+            throw new IllegalArgumentException("Non-null extension, tag, props and content are required");
+        }
         this.index = index;
         this.extension = extension;
+        this.tag = tag;
         this.props = props;
-        if (!KEY_BRIDGE.equals(extension) && !isForBridge(extension) && hasBuiltInVariable(content, tag)) {
-            Properties vars = new Properties();
-            vars.setProperty(BUILTIN_VAR, extension);
-            for (Entry<Object, Object> entry : props.entrySet()) {
-                vars.put(BUILTIN_VAR_PREFIX + entry.getKey(), entry.getValue());
-            }
-            this.content = Utils.applyVariablesWithDefault(content, tag, vars);
-        } else {
-            this.content = content;
-        }
+        this.content = content;
         this.output = output;
+        if (ids == null || ids.isEmpty()) {
+            this.ids = Collections.emptyList();
+        } else if (ids.size() == 1) {
+            Option.ID.setValue(props, ids.get(0));
+            this.ids = Collections.emptyList();
+        } else {
+            this.ids = Collections.unmodifiableList(new ArrayList<>(ids));
+        }
+    }
+
+    ExecutableBlock(int index, String extension, VariableTag tag, Properties props, String content, boolean output) {
+        this(index, extension, tag, props, content, output, null);
     }
 
     // mainly for testing
     ExecutableBlock(int index, String extension, Properties props, String content, boolean output) {
-        this(index, extension, VariableTag.BRACE, props, content, output);
+        this(index, extension, VariableTag.BRACE, props, content, output, null);
+    }
+
+    public List<String> getIds() {
+        return ids.isEmpty() ? Collections.singletonList(Option.ID.getValue(props)) : ids;
     }
 
     public int getIndex() {
@@ -136,6 +153,25 @@ public final class ExecutableBlock {
         return content;
     }
 
+    public String getSubstitutedContent() {
+        return getSubstitutedContent(props);
+    }
+
+    public String getSubstitutedContent(Properties props) {
+        if (!KEY_BRIDGE.equals(extension) && !isForBridge(extension) && hasBuiltInVariable(content, tag)) {
+            Properties vars = new Properties();
+            vars.setProperty(BUILTIN_VAR, extension);
+            if (props == null) {
+                props = this.props;
+            }
+            for (Entry<Object, Object> entry : props.entrySet()) {
+                vars.put(BUILTIN_VAR_PREFIX + entry.getKey(), entry.getValue());
+            }
+            return Utils.applyVariablesWithDefault(content, tag, vars);
+        }
+        return content;
+    }
+
     public boolean sameAs(ExecutableBlock block) {
         if (this == block) {
             return true;
@@ -145,6 +181,10 @@ public final class ExecutableBlock {
 
         return output == block.output && extension.equals(block.extension) && content.equals(block.content)
                 && Objects.equals(Option.ID.getValue(props), Option.ID.getValue(block.props));
+    }
+
+    public boolean hasMultipleIds() {
+        return ids.size() > 1;
     }
 
     public boolean hasNoArguments() {

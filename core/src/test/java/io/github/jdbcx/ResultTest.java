@@ -341,4 +341,98 @@ public class ResultTest {
             Assert.assertEquals(result.get(String.class), "1\n2\n3");
         }
     }
+
+    @Test(groups = "unit")
+    public void testMerge() {
+        Result<?> r = Result.of(Result.of(Collections.emptyList()));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        int count = 0;
+        for (Row row : r.rows()) {
+            count++;
+            Assert.fail("Should not have any row");
+        }
+        Assert.assertEquals(count, 0);
+
+        r = Result.of(Result.of(1L), Result.of("2"));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.values().size(), 1);
+            Assert.assertEquals(row.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+
+        r = Result.of(Result.of(Collections.emptyList()), Result.of(1L), Result.of(Collections.emptyList()),
+                Result.of(Collections.emptyList()), Result.of("2"), Result.of(Collections.emptyList()),
+                Result.of(Collections.emptyList()), Result.of(Collections.emptyList()));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.values().size(), 1);
+            Assert.assertEquals(row.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+
+        List<Field> fields = Arrays.asList(Field.of("a"), Field.of("b"));
+        r = Result.of(Result.of(1L), Result.of(fields, Row.of(fields, new String[] { "2", "3" })));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+
+        r = Result
+                .merge(Arrays.asList(Result.of(Collections.emptyList()), Result.of(1L),
+                        Result.of(Collections.emptyList()), Result.of(Collections.emptyList()), Result.of("2"),
+                        Result.of(Collections.emptyList()), Result.of(Collections.emptyList()),
+                        Result.of(Collections.emptyList())));
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.values().size(), 1);
+            Assert.assertEquals(row.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+    }
+
+    @Test(groups = "unit")
+    public void testClose() {
+        final Result<?> r0 = Result.of(Collections.emptyList());
+        final Result<?> r1 = Result.of(1L);
+        final Result<?> r2 = Result.of("2");
+        final Result<?> r = Result.of(r0, r1, r0, r2, r0, r0);
+        Assert.assertFalse(r0.isActive());
+        Assert.assertFalse(r1.isActive());
+        Assert.assertFalse(r2.isActive());
+        Assert.assertFalse(r.isActive());
+
+        Assert.assertEquals(r0.get(), Collections.emptyList());
+        Assert.assertEquals(r1.get(), 1L);
+        Assert.assertEquals(r2.get(), "2");
+        Assert.assertEquals(r.get(), Arrays.asList(r0, r1, r0, r2, r0, r0));
+
+        Assert.assertTrue(r0.isActive());
+        Assert.assertTrue(r1.isActive());
+        Assert.assertTrue(r2.isActive());
+        Assert.assertTrue(r.isActive());
+
+        Assert.assertEquals(r.fields(), Result.DEFAULT_FIELDS);
+        int count = 0;
+        for (Row row : r.rows()) {
+            Assert.assertEquals(row.value(0).asInt(), ++count);
+        }
+        Assert.assertEquals(count, 2);
+
+        Assert.assertTrue(r0.isActive());
+        Assert.assertTrue(r1.isActive());
+        Assert.assertTrue(r2.isActive());
+        Assert.assertTrue(r.isActive());
+
+        r.close();
+        Assert.assertFalse(r0.isActive());
+        Assert.assertFalse(r1.isActive());
+        Assert.assertFalse(r2.isActive());
+        Assert.assertFalse(r.isActive());
+    }
 }

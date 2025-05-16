@@ -416,26 +416,18 @@ public final class QueryParser {
         return new String[] { extension, script, pattern };
     }
 
-    static List<ExecutableBlock> buildExecutableBlocks(int id, String[] parsed, VariableTag tag, Properties props,
+    static ExecutableBlock buildExecutableBlocks(int id, String[] parsed, VariableTag tag, Properties props,
             boolean output, ConfigManager manager) {
+        final String extension = parsed[0];
         final String globPattern = parsed[2];
         if (!Checker.isNullOrEmpty(globPattern) && manager != null) {
-            List<String> matchedIds = manager.getMatchedIDs(parsed[0], globPattern);
-            if (!matchedIds.isEmpty()) {
-                List<ExecutableBlock> list = new ArrayList<>(matchedIds.size());
-                for (String matched : matchedIds) {
-                    Properties newProps = new Properties(props);
-                    newProps.putAll(props);
-                    Option.ID.setValue(newProps, matched);
-                    list.add(new ExecutableBlock(id++, parsed[0], tag, newProps, parsed[1], output));
-                }
-                return Collections.unmodifiableList(list);
-            }
+            return new ExecutableBlock(id, extension, tag, props, parsed[1], output,
+                    manager.getMatchedIDs(extension, globPattern));
         }
-        return Collections.singletonList(new ExecutableBlock(id, parsed[0], tag, props, parsed[1], output));
+        return new ExecutableBlock(id, extension, tag, props, parsed[1], output);
     }
 
-    static List<ExecutableBlock> parseDependentExecutableBlock(int id, String executableBlock, VariableTag tag,
+    static ExecutableBlock parseDependentExecutableBlock(int id, String executableBlock, VariableTag tag,
             Properties vars, ConfigManager manager) {
         Properties props = new Properties();
         if (vars != null) {
@@ -459,20 +451,14 @@ public final class QueryParser {
         String preQuery = (String) props.remove(Option.PRE_QUERY.getName());
         String postQuery = (String) props.remove(Option.POST_QUERY.getName());
         if (!Checker.isNullOrEmpty(preQuery)) {
-            for (ExecutableBlock eb : parseDependentExecutableBlock(parts.size(), preQuery, tag, vars, config)) {
-                blocks.add(eb);
-                parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
-            }
+            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, tag, vars, config));
+            parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
         }
-        for (ExecutableBlock eb : buildExecutableBlocks(parts.size(), parsed, tag, props, output, config)) {
-            blocks.add(eb);
-            parts.add(Constants.EMPTY_STRING); // placeholder of current query
-        }
+        blocks.add(buildExecutableBlocks(parts.size(), parsed, tag, props, output, config));
+        parts.add(Constants.EMPTY_STRING); // placeholder of current query
         if (!Checker.isNullOrEmpty(postQuery)) {
-            for (ExecutableBlock eb : parseDependentExecutableBlock(parts.size(), postQuery, tag, vars, config)) {
-                blocks.add(eb);
-                parts.add(Constants.EMPTY_STRING); // placeholder of post-query
-            }
+            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars, config));
+            parts.add(Constants.EMPTY_STRING); // placeholder of post-query
         }
     }
 

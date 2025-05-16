@@ -57,6 +57,6 @@ public class WebDriverExtension implements DriverExtension {
 
     @Override
     public String getUsage() {
-        return "{{ web(base.url='https://explorer@play.clickhouse.com'): select 5 }}";
+        return "{{ web(base.url='https://bing.com') }}";
     }
 }

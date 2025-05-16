@@ -38,21 +38,23 @@ public class ConfigManagerTest {
 
     @Test(groups = { "unit" })
     public void testParseGlobPattern() {
-        String str;
-        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a*").matcher("b").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a*").matcher("a").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a*").matcher("a1").find());
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a*").matcher("b").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a*").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a*").matcher("a1").matches());
 
-        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a?").matcher("a").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a?").matcher("a2").find());
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a?").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a?").matcher("a2").matches());
 
-        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "a?*").matcher("a").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "a?*").matcher("a123").find());
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a?*").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a?*").matcher("a123").matches());
 
-        Assert.assertFalse(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("b").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("a").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher(".").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[a.*]").matcher("*").find());
-        Assert.assertTrue(ConfigManager.parseGlobPattern(str = "[ab-d]").matcher("c").find());
+        Assert.assertFalse(ConfigManager.parseGlobPattern("[a.*]").matcher("b").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher(".").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher("*").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[ab-d]").matcher("c").matches());
+
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-bb").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-cdb").matches());
     }
 }

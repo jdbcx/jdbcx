@@ -586,9 +586,25 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                 Assert.assertFalse(rs.next());
             }
 
+            try (ResultSet rs = stmt.executeQuery("{{db.my-duck*: select '${_.id}'}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "my-duckdb");
+                Assert.assertFalse(rs.next());
+            }
+
             try (ResultSet rs = stmt.executeQuery("{{db.my*: select 123}}")) {
                 Assert.assertTrue(rs.next());
-                Assert.assertEquals(rs.getString(1), "123123");
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{{db.my-[sd]*: select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
                 Assert.assertFalse(rs.next());
             }
 
@@ -600,12 +616,16 @@ public class WrappedDriverTest extends BaseIntegrationTest {
 
             try (ResultSet rs = stmt.executeQuery("select {{db.my*: select 123}}")) {
                 Assert.assertTrue(rs.next());
-                Assert.assertEquals(rs.getString(1), "select 123123");
+                Assert.assertEquals(rs.getString(1), "select 123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 123");
                 Assert.assertFalse(rs.next());
             }
             try (ResultSet rs = stmt.executeQuery("select {{db.my*(result=summary): select 123}}")) {
                 Assert.assertTrue(rs.next());
-                Assert.assertEquals(rs.getString(1), "select 11");
+                Assert.assertEquals(rs.getString(1), "select 1");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 1");
                 Assert.assertFalse(rs.next());
             }
         }

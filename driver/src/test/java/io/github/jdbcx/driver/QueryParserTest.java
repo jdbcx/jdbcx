@@ -252,6 +252,11 @@ public class QueryParserTest {
                 QueryParser.parseIdentifier(str = "a.a[a-b.*]:", 2, str.length(), VariableTag.SQUARE_BRACKET, props),
                 new int[] { 9, 10, 0 });
         Assert.assertEquals(Option.ID.getValue(props), "a[a-b.*]");
+
+        Assert.assertEquals(
+                QueryParser.parseIdentifier(str = "a.ch-[ap]*:", 2, str.length(), VariableTag.BRACE, props),
+                new int[] { 9, 10, 2 });
+        Assert.assertEquals(Option.ID.getValue(props), "ch-[ap]*");
     }
 
     @Test(groups = { "unit" })

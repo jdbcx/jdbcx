@@ -212,7 +212,7 @@ public abstract class ConfigManager {
 
         List<String> ids = new LinkedList<>();
         for (String id : getAllIDs(category)) {
-            if (pattern.matcher(globPattern).find()) {
+            if (pattern.matcher(id).matches()) {
                 ids.add(id);
             }
         }
