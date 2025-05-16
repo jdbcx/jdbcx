@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
@@ -40,6 +41,7 @@ public final class QueryParser {
     private static final Logger log = LoggerFactory.getLogger(QueryParser.class);
 
     static final String QUERY_DELIMITER = "--;; ";
+    static final String GLOB_PATTERN = "?*[";
 
     public static final class Part {
         public final int endPosition;
@@ -75,6 +77,18 @@ public final class QueryParser {
             return new StringBuilder(Part.class.getSimpleName()).append('(').append(endPosition).append(',')
                     .append(escaped).append(')').toString();
         }
+    }
+
+    static int indexOf(String str, int startIndex, char ch, char escapeChar) {
+        int index = startIndex;
+        while ((index = str.indexOf(ch, index)) != -1) {
+            if (index == 0 || str.charAt(index - 1) != escapeChar) {
+                return index + 1;
+            } else {
+                index++;
+            }
+        }
+        return -1;
     }
 
     static int indexOf(String str, int startIndex, String pattern, char escapeChar) {
@@ -246,16 +260,61 @@ public final class QueryParser {
                 break;
             }
         }
-        return new String[] { extension, block.substring(beginIndex) };
+        return new String[] { extension, block.substring(beginIndex), Constants.EMPTY_STRING };
+    }
+
+    static int[] parseIdentifier(String block, int beginIndex, int length, VariableTag tag, Properties props) {
+        final char escapeChar = tag.escapeChar();
+        final char leftChar = tag.leftChar();
+        final char rightChar = tag.rightChar();
+        final String unclosedError = "Missing '%c' for '%c' found at %d";
+        int i = beginIndex;
+        int j = i;
+        int pattern = 0;
+        for (; j < length; j++) {
+            char ch = block.charAt(j);
+            if (ch == escapeChar) {
+                j++;
+                i = j;
+            } else if (ch == '?' || ch == '*') {
+                pattern++;
+                i = j + 1;
+            } else if (ch == leftChar) {
+                i = indexOf(block, j + 1, rightChar, escapeChar);
+                if (i == -1) {
+                    throw new IllegalArgumentException(Utils.format(unclosedError, rightChar, leftChar, j));
+                }
+                j = i - 1;
+            } else if (ch == '[') {
+                pattern++;
+                i = indexOf(block, j + 1, ']', escapeChar);
+                if (i == -1) {
+                    throw new IllegalArgumentException(Utils.format(unclosedError, '[', ']', j));
+                }
+                j = i - 1;
+            } else if (ch != '-' && !Character.isJavaIdentifierPart(ch)) {
+                i = j - 1;
+                break;
+            }
+        }
+        if (j > beginIndex) {
+            Option.ID.setValue(props, block.substring(beginIndex, j));
+        }
+        if (j >= length) {
+            i = j;
+        }
+        return new int[] {
+                i, // last index
+                j, // begin index
+                pattern // whether the ID contains glob pattern
+        };
     }
 
     static String[] parseExecutableBlock(String block, VariableTag tag, Properties props) {
-        final char leftChar = tag.leftChar();
-        final char rightChar = tag.rightChar();
-
         int beginIndex = 0;
         int scope = -1;
         String extension = Constants.EMPTY_STRING;
+        String pattern = Constants.EMPTY_STRING;
         String script = null;
         for (int i = 0, len = block.length(); i < len; i++) {
             char ch = block.charAt(i);
@@ -273,28 +332,12 @@ public final class QueryParser {
                     if (parts.length > 0) {
                         return parts;
                     }
-                    beginIndex = i;
-                    int j = i;
-                    for (; j < len; j++) {
-                        ch = block.charAt(j);
-                        if (ch == leftChar) {
-                            j = block.indexOf(rightChar, j + 1);
-                            if (j == -1) {
-                                throw new IllegalArgumentException("Unclosed tag found at " + j);
-                            }
-                            i = j + 1;
-                        } else if (ch != '-' && !Character.isJavaIdentifierPart(ch)) {
-                            i = j - 1;
-                            break;
-                        }
+                    int[] arr = parseIdentifier(block, i, len, tag, props);
+                    i = arr[0];
+                    beginIndex = arr[1];
+                    if (arr[2] > 0) {
+                        pattern = Option.ID.getValue(props);
                     }
-                    if (j > beginIndex) {
-                        Option.ID.setValue(props, block.substring(beginIndex, j));
-                    }
-                    if (j >= len) {
-                        i = j;
-                    }
-                    beginIndex = j;
                     scope = 1;
                 } else if (ch == '(') {
                     extension = block.substring(beginIndex, i).trim();
@@ -330,7 +373,7 @@ public final class QueryParser {
                     if (j == len) {
                         extension = block.substring(beginIndex, i);
                         if (ExecutableBlock.isForBridge(extension)) {
-                            return new String[] { extension, Constants.EMPTY_STRING };
+                            return new String[] { extension, Constants.EMPTY_STRING, pattern };
                         }
                         script = Constants.EMPTY_STRING;
                         break;
@@ -363,28 +406,39 @@ public final class QueryParser {
             if (scope == 0) {
                 extension = block.substring(beginIndex);
                 if (ExecutableBlock.isForBridge(extension)) {
-                    return new String[] { extension, Constants.EMPTY_STRING };
+                    return new String[] { extension, Constants.EMPTY_STRING, pattern };
                 }
                 script = Constants.EMPTY_STRING;
             } else {
                 script = block.substring(beginIndex);
             }
         }
-        return new String[] { extension, script };
+        return new String[] { extension, script, pattern };
+    }
+
+    static ExecutableBlock buildExecutableBlocks(int id, String[] parsed, VariableTag tag, Properties props,
+            boolean output, ConfigManager manager) {
+        final String extension = parsed[0];
+        final String globPattern = parsed[2];
+        if (!Checker.isNullOrEmpty(globPattern) && manager != null) {
+            return new ExecutableBlock(id, extension, tag, props, parsed[1], output,
+                    manager.getMatchedIDs(extension, globPattern));
+        }
+        return new ExecutableBlock(id, extension, tag, props, parsed[1], output);
     }
 
     static ExecutableBlock parseDependentExecutableBlock(int id, String executableBlock, VariableTag tag,
-            Properties vars) {
+            Properties vars, ConfigManager manager) {
         Properties props = new Properties();
         if (vars != null) {
             props.putAll(vars);
         }
         String[] parsed = parseExecutableBlock(Utils.applyVariables(executableBlock, tag, vars), tag, props);
-        return new ExecutableBlock(id, parsed[0], tag, props, parsed[1], false);
+        return buildExecutableBlocks(id, parsed, tag, props, false, manager);
     }
 
     static void addExecutableBlock(StringBuilder builder, String executableBlock, VariableTag tag, Properties vars,
-            boolean output, List<String> parts, List<ExecutableBlock> blocks) {
+            boolean output, List<String> parts, List<ExecutableBlock> blocks, ConfigManager config) {
         parts.add(Utils.applyVariables(builder, tag, vars));
         builder.setLength(0);
 
@@ -397,13 +451,13 @@ public final class QueryParser {
         String preQuery = (String) props.remove(Option.PRE_QUERY.getName());
         String postQuery = (String) props.remove(Option.POST_QUERY.getName());
         if (!Checker.isNullOrEmpty(preQuery)) {
-            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, tag, vars));
+            blocks.add(parseDependentExecutableBlock(parts.size(), preQuery, tag, vars, config));
             parts.add(Constants.EMPTY_STRING); // placeholder of pre-query
         }
-        blocks.add(new ExecutableBlock(parts.size(), parsed[0], tag, props, parsed[1], output));
+        blocks.add(buildExecutableBlocks(parts.size(), parsed, tag, props, output, config));
         parts.add(Constants.EMPTY_STRING); // placeholder of current query
         if (!Checker.isNullOrEmpty(postQuery)) {
-            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars));
+            blocks.add(parseDependentExecutableBlock(parts.size(), postQuery, tag, vars, config));
             parts.add(Constants.EMPTY_STRING); // placeholder of post-query
         }
     }
@@ -470,15 +524,20 @@ public final class QueryParser {
         return Collections.unmodifiableList(new ArrayList<>(list));
     }
 
+    public static ParsedQuery parse(String query, VariableTag tag, Properties vars) {
+        return parse(query, tag, vars, null);
+    }
+
     /**
      * Parses the given query string.
      *
-     * @param query the query string to parse
-     * @param tag   non-null variable tag used for parsing
-     * @param vars  optional variables for substitution
+     * @param query  the query string to parse
+     * @param tag    non-null variable tag used for parsing
+     * @param vars   optional variables for substitution
+     * @param config optional configuration manager
      * @return non-null parsed query
      */
-    public static ParsedQuery parse(String query, VariableTag tag, Properties vars) {
+    public static ParsedQuery parse(String query, VariableTag tag, Properties vars, ConfigManager config) {
         if (Checker.isNullOrEmpty(query)) {
             return ParsedQuery.EMPTY;
         } else if (tag == null) {
@@ -535,7 +594,7 @@ public final class QueryParser {
                                 }
                             }
                             addExecutableBlock(builder, query.substring(i + 1, endIndex), tag, vars, true, parts,
-                                    blocks);
+                                    blocks, config);
                         }
                         i = index - 1;
                     } else {
@@ -558,7 +617,7 @@ public final class QueryParser {
                                 }
                             }
                             addExecutableBlock(builder, query.substring(i + 1, endIndex), tag, vars, false, parts,
-                                    blocks);
+                                    blocks, config);
                         }
                         i = index - 1;
                     } else {

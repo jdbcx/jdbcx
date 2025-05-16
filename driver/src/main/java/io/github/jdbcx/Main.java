@@ -245,7 +245,7 @@ public final class Main {
         println("  -  %s 'jdbcx:duckdb:' 'select 1'",
                 index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
                         : (execFile + " -Dverbose=true"));
-        println("  -  %s 'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true' '@*.js'", execFile);
+        println("  -  %s 'jdbcx:script:ch://localhost' '@*.js'", execFile);
         println("  -  %s 'jdbcx:sqlite::memory:' 'select 1' 'select 2'",
                 index > 0
                         ? (execFile.substring(0, index)

@@ -536,7 +536,7 @@ public class WrappedDriverTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
-    public void testFederatedQuery() throws IOException, SQLException {
+    public void testFederatedQuery() throws SQLException {
         Properties props = new Properties();
         props.setProperty("jdbcx.base.dir", "target/test-classes/config");
         WrappedDriver d = new WrappedDriver();
@@ -569,6 +569,65 @@ public class WrappedDriverTest extends BaseIntegrationTest {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getInt(1), 999);
             Assert.assertFalse(rs.next());
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGlobPattern() throws SQLException {
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        WrappedDriver d = new WrappedDriver();
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement()) {
+            try (ResultSet rs = stmt.executeQuery("{{db.my-sqlite(result=summary): select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getInt(1), 1);
+                Assert.assertEquals(rs.getString(2), "query");
+                Assert.assertEquals(rs.getInt(3), 1);
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{{db.my-duck*: select '${_.id}'}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "my-duckdb");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{{db.my*: select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{{db.my-[sd]*: select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "123");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("{%db.my*: select 123%}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery("select {{db.my*: select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 123");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 123");
+                Assert.assertFalse(rs.next());
+            }
+            try (ResultSet rs = stmt.executeQuery("select {{db.my*(result=summary): select 123}}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 1");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "select 1");
+                Assert.assertFalse(rs.next());
+            }
         }
     }
 

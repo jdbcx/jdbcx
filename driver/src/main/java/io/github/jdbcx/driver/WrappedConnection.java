@@ -47,6 +47,7 @@ import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
@@ -124,7 +125,8 @@ public class WrappedConnection implements ManagedConnection {
     protected List<String> handleResults(String query, WrappedStatement stmt) throws SQLException {
         SQLWarning w = null;
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, manager.getVariableTag(), context.getVariables(),
+                    manager.getConfigManager());
             final QueryBuilder builder = new QueryBuilder(context, pq, manager, stmt.queryResult);
             final List<String> queries = builder.build();
             if (queries.isEmpty()) {
@@ -175,7 +177,7 @@ public class WrappedConnection implements ManagedConnection {
         SQLWarning w = null;
         final VariableTag tag = manager.getVariableTag();
         try (QueryContext context = manager.createContext()) {
-            final ParsedQuery pq = QueryParser.parse(query, tag, context.getVariables());
+            final ParsedQuery pq = QueryParser.parse(query, tag, context.getVariables(), manager.getConfigManager());
             final String[] parts = pq.getStaticParts().toArray(Constants.EMPTY_STRING_ARRAY);
             DriverExtension defaultExtension = manager.getDefaultExtension();
             Properties props = manager.getExtensionProperties();
@@ -200,18 +202,22 @@ public class WrappedConnection implements ManagedConnection {
                     String val = Utils.applyVariables(entry.getValue().toString(), tag, p);
                     p.setProperty(key, val);
                 }
+
                 JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p); // NOSONAR
                 if (block.hasOutput()) {
                     try {
                         parts[block.getIndex()] = ConnectionManager.normalize(ConnectionManager.convertTo(
-                                cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables())),
+                                cl.onQuery(Utils.applyVariables(block.getContent(), tag,
+                                        context.getVariables())),
                                 String.class), tag, p);
                     } catch (SQLWarning e) {
                         ref.set(w = SqlExceptionUtils.consolidate(w, e));
                         parts[block.getIndex()] = block.getContent();
                     }
                 } else {
-                    cl.onQuery(block.getContent());
+                    try (Result<?> result = cl.onQuery(block.getContent())) {
+                        // ignore
+                    }
                 }
             }
 

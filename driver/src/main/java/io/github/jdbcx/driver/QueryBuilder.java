@@ -55,6 +55,46 @@ public final class QueryBuilder {
 
     private SQLWarning lastWarning;
 
+    static Result<?> execute(DriverExtension ext, ConnectionManager manager, QueryContext context, VariableTag tag, // NOSONAR
+            ExecutableBlock block, Properties p) throws SQLException {
+        final boolean output = block.hasOutput();
+        final Result<?> r;
+        if (block.hasMultipleIds()) {
+            List<String> ids = block.getIds();
+            List<Result<?>> list = new LinkedList<>();
+            for (String id : ids) {
+                Properties props = new Properties(p);
+                props.putAll(p);
+                Option.ID.setValue(props, id);
+                JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), props);
+                if (output) {
+                    list.add(cl
+                            .onQuery(Utils.applyVariables(block.getSubstitutedContent(props), tag,
+                                    context.getVariables())));
+                } else {
+                    try (Result<?> result = cl
+                            .onQuery(
+                                    Utils.applyVariables(block.getSubstitutedContent(props), tag,
+                                            context.getVariables()))) {
+                        // do nothing
+                    }
+                }
+            }
+            r = output ? Result.merge(list) : Result.of(Constants.EMPTY_STRING);
+        } else {
+            JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p);
+            if (output) {
+                r = cl.onQuery(Utils.applyVariables(block.getSubstitutedContent(), tag, context.getVariables()));
+            } else {
+                try (Result<?> result = cl
+                        .onQuery(Utils.applyVariables(block.getSubstitutedContent(), tag, context.getVariables()))) {
+                    r = Result.of(Constants.EMPTY_STRING);
+                }
+            }
+        }
+        return r;
+    }
+
     public QueryBuilder(QueryContext context, ParsedQuery pq, ConnectionManager manager, QueryResult queryResult) {
         this.context = context;
 
@@ -133,8 +173,7 @@ public final class QueryBuilder {
                         return Collections.emptyList();
                     }
 
-                    JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p);
-                    Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()));
+                    final Result<?> r = execute(ext, manager, context, tag, block, p);
                     if (directQuery
                             && (ext.supportsDirectQuery() || Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(p)))) {
                         queryResult.setResultSet(ConnectionManager.convertTo(r, ResultSet.class));
@@ -144,13 +183,10 @@ public final class QueryBuilder {
                     }
                 } catch (SQLWarning e) {
                     queryResult.setWarnings(lastWarning = SqlExceptionUtils.consolidate(lastWarning, e));
-                    results[i] = Result.of(block.getContent());
+                    results[i] = Result.of(block.getSubstitutedContent());
                 }
             } else {
-                JdbcActivityListener cl = manager.createListener(ext, context, manager.getConnection(), p);
-                try (Result<?> r = cl.onQuery(Utils.applyVariables(block.getContent(), tag, context.getVariables()))) {
-                    results[i] = Result.of(Constants.EMPTY_STRING);
-                }
+                results[i] = execute(ext, manager, context, tag, block, p);
             }
         }
 

@@ -35,4 +35,26 @@ public class ConfigManagerTest {
         Assert.assertEquals(ConfigManager.newInstance(TestConfigManager.class.getName(), null).getClass(),
                 TestConfigManager.class);
     }
+
+    @Test(groups = { "unit" })
+    public void testParseGlobPattern() {
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a*").matcher("b").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a*").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a*").matcher("a1").matches());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a?").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a?").matcher("a2").matches());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern("a?*").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a?*").matcher("a123").matches());
+
+        Assert.assertFalse(ConfigManager.parseGlobPattern("[a.*]").matcher("b").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher("a").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher(".").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[a.*]").matcher("*").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("[ab-d]").matcher("c").matches());
+
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-bb").matches());
+        Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-cdb").matches());
+    }
 }

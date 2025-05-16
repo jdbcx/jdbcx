@@ -60,17 +60,17 @@ public class ExecutableBlockTest {
 
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, null, null, null, false));
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, "", null, null, null, false));
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, "", null, new Properties(), null, false));
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, null, new Properties(), null, false));
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, null, new Properties(), "", false));
-        Assert.assertThrows(NullPointerException.class,
+        Assert.assertThrows(IllegalArgumentException.class,
                 () -> new ExecutableBlock(0, null, null, null, "", false));
 
         ExecutableBlock block = new ExecutableBlock(-1, "ex", VariableTag.BRACE, new Properties(), "...", true);
@@ -91,18 +91,22 @@ public class ExecutableBlockTest {
     public void testConstructorWithBuiltInVariables() {
         Properties props = new Properties();
         ExecutableBlock block = new ExecutableBlock(1, "x", VariableTag.BRACE, props, "${_}", false);
-        Assert.assertEquals(block, new ExecutableBlock(1, "x", VariableTag.BRACE, props, "x", false));
+        Assert.assertEquals(block.getSubstitutedContent(), "x");
 
         props.setProperty("id", "duckdb1");
         block = new ExecutableBlock(2, "db", VariableTag.ANGLE_BRACKET, props, "$<_>.$<_.id> ($<_.name:unknown>)",
                 true);
-        Assert.assertEquals(block,
-                new ExecutableBlock(2, "db", VariableTag.ANGLE_BRACKET, props, "db.duckdb1 (unknown)", true));
+        Assert.assertEquals(block.getSubstitutedContent(), "db.duckdb1 (unknown)");
 
         block = new ExecutableBlock(3, "bridge", VariableTag.SQUARE_BRACKET, props, "select '$[_.id]'", true);
         Assert.assertEquals(block.getContent(), "select '$[_.id]'");
         block = new ExecutableBlock(4, "Bridge", VariableTag.SQUARE_BRACKET, props, "select '$[_.id]'", true);
-        Assert.assertEquals(block.getContent(), "select 'duckdb1'");
+        Assert.assertEquals(block.getSubstitutedContent(), "select 'duckdb1'");
+
+        Properties newProps = new Properties(block.getProperties());
+        newProps.putAll(block.getProperties());
+        Option.ID.setValue(newProps, "y");
+        Assert.assertEquals(block.getSubstitutedContent(newProps), "select 'y'");
     }
 
     @Test(groups = { "unit" })

@@ -22,6 +22,10 @@ num
 $ docker run --rm -it jdbcx/jdbcx 'jdbcx:duckdb:' 'select {{script:1+1}} as num'
 num
 2
+$ docker run --rm -it jdbcx/jdbcx 'jdbcx:' '{{ db.ch-[ap]*: select ''${_.id}'' db, version() ver }}'
+db	ver
+ch-play	25.5.1.664
+ch-altinity	25.3.3.42
 
 # Using JDBCX as a bridge server (HTTP API for data access)
 $ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx server
