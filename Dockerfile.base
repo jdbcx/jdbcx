@@ -8,7 +8,7 @@ FROM ubuntu:noble
 LABEL maintainer="zhicwu@gmail.com"
 
 ARG PRQLC_VERSION=0.13.4
-ARG JDBCX_VERSION=0.7.0
+ARG JDBCX_VERSION=0.8.0
 
 # Environment variables
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8" TERM=xterm \
