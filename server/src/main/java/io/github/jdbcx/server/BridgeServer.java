@@ -368,9 +368,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 return;
             }
 
-            writer.write(',');
             ConfigManager manager = managedConn.getManager().getConfigManager();
             Properties props = manager.getConfig(extension, name);
+            writer.write(',');
             writer.write(JSON_PROP_ID);
             writer.write(JsonHelper.encode(name));
             String str = ConfigManager.OPTION_ALIAS.getJdbcxValue(props);
@@ -388,19 +388,22 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
             if (DB_EXTENSIONS.contains(extension)) {
                 try (Connection c = JdbcInterpreter.getConnectionByConfig(props, null)) {
-                    writer.write(',');
                     final DatabaseMetaData metaData = c.getMetaData();
                     str = JdbcInterpreter.getDatabaseProduct(metaData);
                     if (!Checker.isNullOrEmpty(str)) {
-                        writer.write(str);
                         writer.write(',');
+                        writer.write(str);
                     }
-                    writer.write(JdbcInterpreter.getDatabaseCatalogs(metaData, name,
-                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES));
+                    str = JdbcInterpreter.getDatabaseCatalogs(metaData, name,
+                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES);
+                    if (!Checker.isNullOrEmpty(str)) {
+                        writer.write(',');
+                        writer.write(str);
+                    }
                 }
             }
-        } catch (SQLException e) {
-            throw new IOException(e);
+        } catch (Exception e) {
+            log.warn("Failed to inspect datasource [%s].[%s]", extension, name, e);
         }
         writer.write('}');
     }
