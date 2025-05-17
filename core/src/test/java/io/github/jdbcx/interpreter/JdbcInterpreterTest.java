@@ -15,14 +15,19 @@
  */
 package io.github.jdbcx.interpreter;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.clickhouse.jdbc.ClickHouseDriver;
 
-public class JdbcInterpreterTest {
+import io.github.jdbcx.BaseIntegrationTest;
+
+public class JdbcInterpreterTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
     public void testGetDriverByClass() throws SQLException {
         Assert.assertThrows(SQLException.class, () -> JdbcInterpreter.getDriverByClass(null, null));
@@ -47,5 +52,39 @@ public class JdbcInterpreterTest {
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", null), "Should have driver");
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", getClass().getClassLoader()),
                 "Should have driver");
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetDatabaseProduct() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "?allowMultiQueries=true")) {
+            Assert.assertTrue(JdbcInterpreter.getDatabaseProduct(conn.getMetaData()).contains("MySQL "));
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetDatabaseCatalogs() throws SQLException {
+        Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props)) {
+            String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-ch", null, null);
+            Assert.assertTrue(schema.startsWith("\"databases\""), "Should start with catalogs");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
+            String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-duckdb", null, null);
+            Assert.assertTrue(schema.startsWith("\"catalogs\""), "Should start with catalogs");
+            Assert.assertTrue(schema.contains("\"schemas\""), "Should contain schemas");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-sqlite", null, null);
+            Assert.assertTrue(schema.startsWith("\"tables\""), "Should start with tables");
+        }
+
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "?allowMultiQueries=true")) {
+            String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-mysql", null, null);
+            Assert.assertTrue(schema.startsWith("\"databases\""), "Should start with databases");
+        }
     }
 }
