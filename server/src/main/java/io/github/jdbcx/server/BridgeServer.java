@@ -23,11 +23,13 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -66,6 +68,7 @@ import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.WebExecutor;
+import io.github.jdbcx.interpreter.JdbcInterpreter;
 import io.github.jdbcx.interpreter.JsonHelper;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
@@ -84,9 +87,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final String METHOD_HEAD = "HEAD";
 
+    public static final List<String> DB_EXTENSIONS = Collections.unmodifiableList(Arrays.asList("db", "sql"));
+
     public static final String JSON_PROP_ID = "\"id\":";
     public static final String JSON_PROP_ALIASES = "\"aliases\":";
     public static final String JSON_PROP_DESC = "\"description\":";
+    public static final String JSON_PROP_TYPE = "\"type\":";
+
+    // information_schema
 
     public static final String PATH_CONFIG = "config";
     public static final String PATH_ERROR = "error/";
@@ -354,21 +362,48 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         writer.write('{');
         try (Connection conn = datasource.getConnection()) {
             ManagedConnection managedConn = conn.unwrap(ManagedConnection.class);
-            if (managedConn != null) {
-                ConfigManager manager = managedConn.getManager().getConfigManager();
-                Properties props = manager.getConfig(extension, name);
-                writer.write(JSON_PROP_ID);
-                writer.write(JsonHelper.encode(name));
+            writer.write(JSON_PROP_TYPE);
+            writer.write(JsonHelper.encode(extension));
+            if (managedConn == null) {
+                return;
+            }
+
+            ConfigManager manager = managedConn.getManager().getConfigManager();
+            Properties props = manager.getConfig(extension, name);
+            writer.write(',');
+            writer.write(JSON_PROP_ID);
+            writer.write(JsonHelper.encode(name));
+            String str = ConfigManager.OPTION_ALIAS.getJdbcxValue(props);
+            if (!Checker.isNullOrEmpty(str)) {
                 writer.write(',');
                 writer.write(JSON_PROP_ALIASES);
-                writer.write(JsonHelper
-                        .encode(Utils.split(ConfigManager.OPTION_ALIAS.getJdbcxValue(props), ',', true, true, true)));
+                writer.write(JsonHelper.encode(Utils.split(str, ',', true, true, true)));
+            }
+            str = Option.DESCRIPTION.getJdbcxValue(props);
+            if (!Checker.isNullOrEmpty(str)) {
                 writer.write(',');
                 writer.write(JSON_PROP_DESC);
-                writer.write(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)));
+                writer.write(JsonHelper.encode(str));
+            }
+
+            if (DB_EXTENSIONS.contains(extension)) {
+                try (Connection c = JdbcInterpreter.getConnectionByConfig(props, null)) {
+                    final DatabaseMetaData metaData = c.getMetaData();
+                    str = JdbcInterpreter.getDatabaseProduct(metaData);
+                    if (!Checker.isNullOrEmpty(str)) {
+                        writer.write(',');
+                        writer.write(str);
+                    }
+                    str = JdbcInterpreter.getDatabaseCatalogs(metaData, name,
+                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES);
+                    if (!Checker.isNullOrEmpty(str)) {
+                        writer.write(',');
+                        writer.write(str);
+                    }
+                }
             }
         } catch (Exception e) {
-            // ignore
+            log.warn("Failed to inspect datasource [%s].[%s]", extension, name, e);
         }
         writer.write('}');
     }

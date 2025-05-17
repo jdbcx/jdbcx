@@ -751,7 +751,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         try {
             conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/nonexist"), config, headers);
             Assert.assertEquals(conn.getResponseCode(), 200);
-            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "{}");
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "{\"type\":\"db\"}");
         } finally {
             if (conn != null) {
                 conn.disconnect();
@@ -761,8 +761,8 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         try {
             conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/my-sqlite"), config, headers);
             Assert.assertEquals(conn.getResponseCode(), 200);
-            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()),
-                    "{\"id\":\"my-sqlite\",\"aliases\":[\"local-sqlite\",\"private-sqlite\"],\"description\":\"SQLite for local development\"}");
+            Assert.assertTrue(Stream.readAllAsString(conn.getInputStream()).startsWith(
+                    "{\"type\":\"db\",\"id\":\"my-sqlite\",\"aliases\":[\"local-sqlite\",\"private-sqlite\"],\"description\":\"SQLite for local development\","));
         } finally {
             if (conn != null) {
                 conn.disconnect();

@@ -16,15 +16,18 @@
 package io.github.jdbcx.interpreter;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -33,6 +36,7 @@ import java.util.function.Supplier;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.ConfigManager;
+import io.github.jdbcx.Constants;
 import io.github.jdbcx.ExpandedUrlClassLoader;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
@@ -43,6 +47,14 @@ import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public class JdbcInterpreter extends AbstractInterpreter {
+    private static final String JSON_ARRAY_PREFIX = ":[";
+    private static final String JSON_PROP_NAME = "\"name\":";
+    private static final String JSON_PROP_PRODUCT = "\"product\":";
+    private static final String JSON_PROP_TABLES = "\"tables\":";
+
+    public static final String DEFAULT_TABLE_PATTERN = "%";
+    public static final String DEFAULT_TABLE_TYPES = "TABLE,VIEW";
+
     public static final Option OPTION_CONFIG_PATH = Option
             .of(new String[] { "config.path", "Path to configuration file" });
     public static final Option OPTION_PROPERTIES = Option
@@ -72,6 +84,122 @@ public class JdbcInterpreter extends AbstractInterpreter {
             throw SqlExceptionUtils
                     .clientError(Utils.format("Failed to load driver [%s] due to: %s", driver, e.getMessage()), e);
         }
+    }
+
+    static final String getDatabaseTables(DatabaseMetaData metaData, String catalog, String schema, String pattern,
+            String[] types) throws SQLException {
+        StringBuilder builder = new StringBuilder(JSON_PROP_TABLES).append('[');
+        boolean first = true;
+        try (ResultSet rs = metaData.getTables(catalog, schema, pattern, types)) {
+            while (rs.next()) {
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(',');
+                }
+                builder.append(JsonHelper.encode(rs.getString(3)));
+            }
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+            // ignore
+        }
+        return builder.append(']').toString();
+    }
+
+    static final String getDatabaseSchemas(DatabaseMetaData metaData, String catalog, String tablePattern,
+            String[] tableTypes) throws SQLException {
+        String term = metaData.getSchemaTerm();
+        if (Checker.isNullOrEmpty(term)) {
+            return getDatabaseTables(metaData, catalog, null, tablePattern, tableTypes);
+        } else {
+            term = new StringBuilder(term.toLowerCase(Locale.ROOT)).append('s').toString();
+        }
+
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        try (ResultSet rs = metaData.getSchemas(catalog, DEFAULT_TABLE_PATTERN)) {
+            while (rs.next()) {
+                if (first) {
+                    builder.append(JsonHelper.encode(term));
+                    builder.append(JSON_ARRAY_PREFIX);
+                    first = false;
+                } else {
+                    builder.append(',');
+                }
+                String schema = rs.getString(1);
+                builder.append('{');
+                builder.append(JSON_PROP_NAME);
+                builder.append(JsonHelper.encode(schema));
+                builder.append(',');
+                builder.append(getDatabaseTables(metaData, catalog, schema, tablePattern, tableTypes));
+                builder.append('}');
+            }
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+            // ignore
+        }
+        return first ? getDatabaseTables(metaData, catalog, null, tablePattern, tableTypes)
+                : builder.append(']').toString();
+    }
+
+    static final String getDatabaseCatalogs(DatabaseMetaData metaData, String tablePattern, String[] tableTypes)
+            throws SQLException {
+        String term = metaData.getCatalogTerm();
+        if (Checker.isNullOrEmpty(term)) {
+            return getDatabaseSchemas(metaData, null, tablePattern, tableTypes);
+        } else {
+            term = new StringBuilder(term.toLowerCase(Locale.ROOT)).append('s').toString();
+        }
+
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        try (ResultSet rs = metaData.getCatalogs()) {
+            while (rs.next()) {
+                if (first) {
+                    builder.append(JsonHelper.encode(term));
+                    builder.append(JSON_ARRAY_PREFIX);
+                    first = false;
+                } else {
+                    builder.append(',');
+                }
+                String catalog = rs.getString(1);
+                builder.append('{');
+                builder.append(JSON_PROP_NAME);
+                builder.append(JsonHelper.encode(catalog));
+                builder.append(',');
+                builder.append(getDatabaseSchemas(metaData, catalog, tablePattern, tableTypes));
+                builder.append('}');
+            }
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+            // ignore
+        }
+
+        return first ? getDatabaseSchemas(metaData, null, tablePattern, tableTypes) : builder.append(']').toString();
+    }
+
+    public static final String getDatabaseCatalogs(DatabaseMetaData metaData, String id, String tablePattern, // NOSONAR
+            String tableTypes) throws SQLException {
+        if (Checker.isNullOrEmpty(tablePattern)) {
+            tablePattern = DEFAULT_TABLE_PATTERN;
+        }
+        final String[] types;
+        List<String> list = Utils.split(tableTypes, ',', true, true, true);
+        if (list.isEmpty()) {
+            types = null;
+        } else {
+            types = list.toArray(Constants.EMPTY_STRING_ARRAY);
+        }
+        return getDatabaseCatalogs(metaData, tablePattern, types);
+    }
+
+    public static final String getDatabaseProduct(DatabaseMetaData metaData) throws SQLException {
+        String str = metaData.getDatabaseProductName();
+        if (Checker.isNullOrEmpty(str)) {
+            return Constants.EMPTY_STRING;
+        }
+        String ver = metaData.getDatabaseProductVersion();
+        if (!Checker.isNullOrEmpty(ver)) {
+            str = new StringBuilder(str).append(' ').append(ver).toString();
+        }
+        return new StringBuilder(JSON_PROP_PRODUCT).append(JsonHelper.encode(str)).toString();
     }
 
     public static final Driver getDriverByUrl(String url, ClassLoader classLoader) throws SQLException {

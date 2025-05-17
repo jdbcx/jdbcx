@@ -113,7 +113,7 @@ helper.format(
 )
 EOF
 java -Djdbcx.custom.classpath=`pwd` -jar jdbcx.jar \
-    'jdbcx:script:ch://explorer@play.clickhouse.com:443?ssl=true&compress=0' @my.js
+    'jdbcx:script:ch://localhost?ssl=true&compress=0' @my.js
 ```
 
 
