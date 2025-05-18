@@ -171,7 +171,7 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
             }
 
             try (OutputStream out = Compression.getProvider(conf.compressionAlg).compress(
-                    new FileOutputStream(conf.name), conf.compressionLevel, conf.compressionBuffer)) {
+                    new FileOutputStream(filePath.toFile()), conf.compressionLevel, conf.compressionBuffer)) {
                 Result.writeTo(result, conf.format, conf.params, out);
             }
         } catch (IOException e) {

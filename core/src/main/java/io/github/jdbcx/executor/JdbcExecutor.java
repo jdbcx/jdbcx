@@ -392,16 +392,6 @@ public class JdbcExecutor extends AbstractExecutor {
             default:
                 throw new SQLException("Unsupported parameter result=" + request.resultType);
         }
-        // if (request.outputFile != null) {
-        // try (ResultSet rs = (result instanceof ResultSet ? (ResultSet) result //
-        // NOSONAR
-        // : new ReadOnlyResultSet(null, Result.of((Long) result)))) {
-        // return new ReadOnlyResultSet(null, writeOutputFile(Result.of(rs),
-        // request.outputFile));
-        // } catch (IOException e) {
-        // throw new SQLException(e);
-        // }
-        // }
         return result;
     }
 
