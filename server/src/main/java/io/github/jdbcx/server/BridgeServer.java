@@ -527,7 +527,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             throw e;
         } finally {
             if (rs != null || stmt != null || conn != null) {
-                info.setResources(rs, stmt, conn);
+                Utils.closeQuietly(rs, stmt, conn);
                 log.debug("Invalidated query [%s] due to error", info.qid);
                 queries.invalidate(info.qid);
             }
