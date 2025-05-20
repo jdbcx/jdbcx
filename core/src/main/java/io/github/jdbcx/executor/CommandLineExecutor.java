@@ -75,7 +75,7 @@ public class CommandLineExecutor extends AbstractExecutor {
             "Arguments to pass to the command line to validate correctness and existence.", "");
     public static final Option OPTION_DOCKER_PATH = Option.of("docker.path",
             "Path to the Docker or Podman command line executable.", "");
-    public static final Option OPTION_DOCKER_IMAGE = Option.of("docker_image",
+    public static final Option OPTION_DOCKER_IMAGE = Option.of("docker.image",
             "Docker image name to use for running the container. Leave empty if you do not want to run in a Docker or Podman container.",
             "");
 
