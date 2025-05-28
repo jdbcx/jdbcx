@@ -73,6 +73,8 @@ import java.util.stream.Stream;
  * methods.
  */
 public final class Utils {
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
     static final String PATTERN_GLOB = "glob:";
     static final String PATTERN_REGEX = "regex:";
 
@@ -1169,6 +1171,20 @@ public final class Utils {
         return Collections.unmodifiableList(list);
     }
 
+    public static String[] splitUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return new String[] { Constants.EMPTY_STRING, Constants.EMPTY_STRING };
+        }
+
+        int index = url.lastIndexOf('/');
+        int refIndex = url.indexOf(Constants.PROTOCOL_DELIMITER);
+        if (refIndex != -1 && index < refIndex + Constants.PROTOCOL_DELIMITER.length()) {
+            index = -1;
+        }
+        return index > 0 ? new String[] { url.substring(0, index), url.substring(index) }
+                : new String[] { url, Constants.EMPTY_STRING };
+    }
+
     public static boolean startsWith(String str, String test, boolean ignoreCase) {
         if (str == null || test == null) {
             return false;
@@ -1379,6 +1395,34 @@ public final class Utils {
         return label;
     }
 
+    public static String removeTrailingChar(String str, char ch) {
+        final int len;
+        if (str == null || (len = str.length()) == 0) {
+            return Constants.EMPTY_STRING;
+        }
+        return str.charAt(len - 1) == ch ? str.substring(0, len - 1) : str;
+    }
+
+    public static byte[] fromBase64(String str) {
+        return fromBase64(str, null);
+    }
+
+    public static byte[] fromBase64(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
+            return Constants.EMPTY_BYTE_ARRAY;
+        }
+        return Base64.getDecoder().decode(bytes);
+    }
+
+    public static byte[] fromBase64(String str, Charset charset) {
+        if (str == null) {
+            return Constants.EMPTY_BYTE_ARRAY;
+        } else if (charset == null) {
+            charset = Constants.DEFAULT_CHARSET;
+        }
+        return Base64.getDecoder().decode(str.getBytes(charset));
+    }
+
     public static String toBase64(String str) {
         return toBase64(str, null);
     }
@@ -1403,6 +1447,23 @@ public final class Utils {
             charset = Constants.DEFAULT_CHARSET;
         }
         return new String(Base64.getEncoder().encode(bytes), charset);
+    }
+
+    public static String toHex(byte[] bytes) {
+        final int len;
+        if (bytes == null || (len = bytes.length) == 0) {
+            return Constants.EMPTY_STRING;
+        }
+
+        char[] hexChars = new char[len * 2];
+        for (int i = 0; i < len; i++) {
+            int v = bytes[i] & 0xFF;
+            int j = i * 2;
+            hexChars[j++] = HEX_ARRAY[v >>> 4];
+            hexChars[j] = HEX_ARRAY[v & 0x0F];
+        }
+
+        return new String(hexChars);
     }
 
     private Utils() {

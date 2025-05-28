@@ -317,12 +317,15 @@ public final class McpSupport {
         } else if (!Checker.isNullOrEmpty(serverUrl)) {
             serverCli = Constants.EMPTY_STRING;
             final String serverKey = executor.getServerKey(props);
+            final String[] parts = Utils.splitUrl(serverUrl); // base url + sse path
+            final HttpClientSseClientTransport.Builder builder = (!parts[1].isEmpty()
+                    ? HttpClientSseClientTransport.builder(parts[0]).sseEndpoint(parts[1])
+                    : HttpClientSseClientTransport.builder(serverUrl));
             if (Checker.isNullOrEmpty(serverKey)) {
-                transport = HttpClientSseClientTransport.builder(serverUrl).build();
+                transport = builder.build();
             } else {
-                transport = HttpClientSseClientTransport.builder(serverUrl)
-                        .customizeRequest(b -> b.header(WebExecutor.HEADER_AUTHORIZATION,
-                                WebExecutor.AUTH_SCHEME_BEARER + serverKey))
+                transport = builder.customizeRequest(b -> b.header(WebExecutor.HEADER_AUTHORIZATION,
+                        WebExecutor.AUTH_SCHEME_BEARER + serverKey))
                         .build();
             }
         } else {

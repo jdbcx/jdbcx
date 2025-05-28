@@ -50,7 +50,6 @@ import io.github.jdbcx.security.SslContextProvider;
 public class WebExecutor extends AbstractExecutor {
     private static final Logger log = LoggerFactory.getLogger(WebExecutor.class);
 
-    static final String PROTOCOL_DELIMITER = "://";
     static final Proxy.Type DEFAULT_PROXY_TYPE = Proxy.Type.HTTP;
     static final String DEFAULT_PROXY_HOST = "localhost";
     static final int DEFAULT_PROXY_PORT = 1080;
@@ -124,9 +123,9 @@ public class WebExecutor extends AbstractExecutor {
             if (proxy.charAt(0) == ':') {
                 proxy = DEFAULT_PROXY_HOST.concat(proxy);
             }
-            if (proxy.indexOf(PROTOCOL_DELIMITER) == -1) {
-                proxy = new StringBuilder(DEFAULT_PROXY_TYPE.name().toLowerCase(Locale.ROOT)).append(PROTOCOL_DELIMITER)
-                        .append(proxy).toString();
+            if (proxy.indexOf(Constants.PROTOCOL_DELIMITER) == -1) {
+                proxy = new StringBuilder(DEFAULT_PROXY_TYPE.name().toLowerCase(Locale.ROOT))
+                        .append(Constants.PROTOCOL_DELIMITER).append(proxy).toString();
             }
             URI uri;
             try {

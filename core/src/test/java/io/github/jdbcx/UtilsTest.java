@@ -377,6 +377,24 @@ public class UtilsTest {
     }
 
     @Test(groups = { "unit" })
+    public void testSplitUrl() {
+        Assert.assertEquals(Utils.splitUrl(null), new String[] { "", "" });
+        Assert.assertEquals(Utils.splitUrl(""), new String[] { "", "" });
+
+        Assert.assertEquals(Utils.splitUrl("/"), new String[] { "/", "" });
+        Assert.assertEquals(Utils.splitUrl("/test/"), new String[] { "/test", "/" });
+
+        Assert.assertEquals(Utils.splitUrl("://"), new String[] { "://", "" });
+        Assert.assertEquals(Utils.splitUrl(":///"), new String[] { "://", "/" });
+        Assert.assertEquals(Utils.splitUrl(":////"), new String[] { ":///", "/" });
+
+        Assert.assertEquals(Utils.splitUrl("http://localhost"), new String[] { "http://localhost", "" });
+        Assert.assertEquals(Utils.splitUrl("http://localhost/"), new String[] { "http://localhost", "/" });
+        Assert.assertEquals(Utils.splitUrl("http://localhost/a"), new String[] { "http://localhost", "/a" });
+        Assert.assertEquals(Utils.splitUrl("http://localhost/a/b"), new String[] { "http://localhost/a", "/b" });
+    }
+
+    @Test(groups = { "unit" })
     public void testStartsWith() {
         Assert.assertEquals(Utils.startsWith(null, null, true), false);
         Assert.assertEquals(Utils.startsWith(null, null, false), false);
@@ -512,6 +530,33 @@ public class UtilsTest {
     }
 
     @Test(groups = { "unit" })
+    public void testRemoveTrainlingChar() {
+        Assert.assertEquals(Utils.removeTrailingChar(null, '\0'), "");
+        Assert.assertEquals(Utils.removeTrailingChar("", '\0'), "");
+
+        Assert.assertEquals(Utils.removeTrailingChar("\0", '\0'), "");
+        Assert.assertEquals(Utils.removeTrailingChar("1\0", '\0'), "1");
+    }
+
+    @Test(groups = { "unit" })
+    public void testFromBase64() {
+        Assert.assertEquals(Utils.fromBase64((String) null), new byte[0]);
+        Assert.assertEquals(Utils.fromBase64(null, null), new byte[0]);
+        Assert.assertEquals(Utils.fromBase64((byte[]) null), new byte[0]);
+        Assert.assertEquals(Utils.fromBase64(new byte[0]), new byte[0]);
+
+        for (String str : new String[] { "", "12345Abcde", "壮壮哒💪123" }) {
+            Assert.assertEquals(Utils.fromBase64(Utils.toBase64(str)), str.getBytes(Constants.DEFAULT_CHARSET));
+            Assert.assertEquals(
+                    Utils.fromBase64(Utils.toBase64(str, Constants.DEFAULT_CHARSET), Constants.DEFAULT_CHARSET),
+                    str.getBytes(Constants.DEFAULT_CHARSET));
+        }
+
+        Assert.assertNotEquals(Utils.fromBase64(Utils.toBase64("壮壮哒💪123")),
+                "壮壮哒💪123".getBytes(StandardCharsets.ISO_8859_1));
+    }
+
+    @Test(groups = { "unit" })
     public void testToBase64() {
         Assert.assertEquals(Utils.toBase64((byte[]) null), "");
         Assert.assertEquals(Utils.toBase64((String) null), "");
@@ -525,5 +570,25 @@ public class UtilsTest {
         }
 
         Assert.assertNotEquals(Utils.toBase64("壮壮哒💪123", StandardCharsets.ISO_8859_1), Utils.toBase64("壮壮哒💪123"));
+    }
+
+    @Test(groups = { "unit" })
+    public void testToHex() {
+        Assert.assertEquals(Utils.toHex(null), "");
+        Assert.assertEquals(Utils.toHex(new byte[0]), "");
+
+        char[] chars = "0123456789ABCDEF".toCharArray();
+        for (int i = 0; i < 16; i++) {
+            int index = i * 16;
+            for (char ch : chars) {
+                Assert.assertEquals(Utils.toHex(new byte[] { (byte) index++ }),
+                        new String(new char[] { chars[i], ch }));
+            }
+        }
+
+        Assert.assertEquals(Utils.toHex(new byte[1]), "00");
+        Assert.assertEquals(Utils.toHex(new byte[2]), "0000");
+        Assert.assertEquals(Utils.toHex(new byte[3]), "000000");
+        Assert.assertEquals(Utils.toHex(new byte[4]), "00000000");
     }
 }
