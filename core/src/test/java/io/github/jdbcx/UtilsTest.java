@@ -382,16 +382,17 @@ public class UtilsTest {
         Assert.assertEquals(Utils.splitUrl(""), new String[] { "", "" });
 
         Assert.assertEquals(Utils.splitUrl("/"), new String[] { "/", "" });
-        Assert.assertEquals(Utils.splitUrl("/test/"), new String[] { "/test", "/" });
+        Assert.assertEquals(Utils.splitUrl("/test/"), new String[] { "/test/", "" });
+        Assert.assertEquals(Utils.splitUrl("test/"), new String[] { "test", "/" });
 
         Assert.assertEquals(Utils.splitUrl("://"), new String[] { "://", "" });
         Assert.assertEquals(Utils.splitUrl(":///"), new String[] { "://", "/" });
-        Assert.assertEquals(Utils.splitUrl(":////"), new String[] { ":///", "/" });
+        Assert.assertEquals(Utils.splitUrl(":////"), new String[] { "://", "//" });
 
         Assert.assertEquals(Utils.splitUrl("http://localhost"), new String[] { "http://localhost", "" });
         Assert.assertEquals(Utils.splitUrl("http://localhost/"), new String[] { "http://localhost", "/" });
         Assert.assertEquals(Utils.splitUrl("http://localhost/a"), new String[] { "http://localhost", "/a" });
-        Assert.assertEquals(Utils.splitUrl("http://localhost/a/b"), new String[] { "http://localhost/a", "/b" });
+        Assert.assertEquals(Utils.splitUrl("http://localhost/a/b"), new String[] { "http://localhost", "/a/b" });
     }
 
     @Test(groups = { "unit" })

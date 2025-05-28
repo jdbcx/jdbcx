@@ -1172,16 +1172,15 @@ public final class Utils {
     }
 
     public static String[] splitUrl(String url) {
-        if (url == null || url.isEmpty()) {
+        final int len;
+        if (url == null || (len = url.length()) == 0) {
             return new String[] { Constants.EMPTY_STRING, Constants.EMPTY_STRING };
         }
 
-        int index = url.lastIndexOf('/');
         int refIndex = url.indexOf(Constants.PROTOCOL_DELIMITER);
-        if (refIndex != -1 && index < refIndex + Constants.PROTOCOL_DELIMITER.length()) {
-            index = -1;
-        }
-        return index > 0 ? new String[] { url.substring(0, index), url.substring(index) }
+        int index = refIndex == -1 ? url.indexOf('/')
+                : url.indexOf('/', refIndex + Constants.PROTOCOL_DELIMITER.length());
+        return index > 0 && index < len ? new String[] { url.substring(0, index), url.substring(index) }
                 : new String[] { url, Constants.EMPTY_STRING };
     }
 
