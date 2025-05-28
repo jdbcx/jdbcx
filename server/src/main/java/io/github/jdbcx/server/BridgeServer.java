@@ -209,7 +209,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             context = path;
             baseUrl = Utils.format("http://%s:%d%s", Checker.isNullOrEmpty(host) ? "127.0.0.1" : host, port, context);
         } else {
-            int index = url.indexOf("://");
+            int index = url.indexOf(Constants.PROTOCOL_DELIMITER);
             if (index == -1) {
                 throw new IllegalArgumentException(Utils.format("Invalid %s [%s]", Option.SERVER_URL.getName(), url));
             }

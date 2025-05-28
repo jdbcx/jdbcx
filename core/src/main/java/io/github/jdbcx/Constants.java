@@ -82,6 +82,8 @@ public final class Constants {
 
     public static final String NULL_STR = "null";
 
+    public static final String PROTOCOL_DELIMITER = "://";
+
     public static final int MIN_TIME_SCALE = 0;
     public static final int MAX_TIME_SCALE = 9;
 
