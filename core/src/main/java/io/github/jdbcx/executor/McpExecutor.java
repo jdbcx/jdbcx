@@ -103,7 +103,7 @@ public class McpExecutor extends AbstractExecutor {
                 this.defaultServerArgs = Utils.split(OPTION_SERVER_ARGS.getValue(props), ' ', true, true, false);
                 this.defaultServerEnv = Utils.toKeyValuePairs(OPTION_SERVER_ENV.getValue(props), ';', false);
                 this.defaultServerKey = OPTION_SERVER_KEY.getValue(props);
-                this.defaultServerUrl = Utils.removeTrailingChar(OPTION_SERVER_URL.getValue(props), '/');
+                this.defaultServerUrl = OPTION_SERVER_URL.getValue(props);
             } else {
                 JsonObject obj = ValueFactory.fromJson(jsonConf, JsonObject.class);
                 JsonPrimitive e = obj.getAsJsonPrimitive("command");
@@ -144,7 +144,7 @@ public class McpExecutor extends AbstractExecutor {
                         throw new IllegalArgumentException(
                                 "Either command or url must be specified in MCP server configuration");
                     } else {
-                        this.defaultServerUrl = Utils.removeTrailingChar(e.getAsString(), '/');
+                        this.defaultServerUrl = e.getAsString();
                         this.defaultServerCmd = Constants.EMPTY_STRING;
                         this.defaultServerArgs = Collections.emptyList();
                         this.defaultServerEnv = Collections.emptyMap();
@@ -203,7 +203,7 @@ public class McpExecutor extends AbstractExecutor {
 
     public String getServerUrl(Properties props) {
         String value = props != null ? props.getProperty(OPTION_SERVER_URL.getName()) : null;
-        return value != null ? Utils.removeTrailingChar(value, '/') : defaultServerUrl;
+        return value != null ? value : defaultServerUrl;
     }
 
     public Result<?> execute(String query, Properties props, ResourceManager resourceManager) throws SQLException { // NOSONAR
