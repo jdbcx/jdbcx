@@ -39,6 +39,11 @@ jobs:
             8
             21
           cache: "maven"
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_CENTRAL_TOKEN
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
       - name: Setup Toolchain
         shell: bash
         run: |
@@ -64,14 +69,11 @@ jobs:
             -e 's|${parent.groupId}|io.github.jdbcx|g' -e 's|${project.parent.groupId}|io.github.jdbcx|g' '{}' \;
           find . -type f -name "simplelogger.*" -exec rm -fv '{}' \;
       - name: Release Snapshot
-        uses: samuelmeuli/action-maven-publish@v1
-        with:
-          maven_profiles: release
-          maven_args: -q --batch-mode
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          nexus_username: ${{ secrets.SONATYPE_USER }}
-          nexus_password: ${{ secrets.SONATYPE_PASSWD }}
+        run: mvn -q --batch-mode deploy -Prelease
+        env:
+          MAVEN_USERNAME: ${{ secrets.SONATYPE_USER }}
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.SONATYPE_PASSWD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       - name: Prepare libraries
         run: |
           mv -fv server/target/jdbcx-server-*-SNAPSHOT.jar \
