@@ -1,12 +1,12 @@
 # JDBCX
 
-[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/jdbcx/jdbcx?style=plastic&include_prereleases&label=Latest%20Release)](https://github.com/jdbcx/jdbcx/releases/) [![GitHub release (by tag)](https://img.shields.io/github/downloads/jdbcx/jdbcx/latest/total?style=plastic)](https://github.com/jdbcx/jdbcx/releases/) [![Docker Pulls](https://img.shields.io/docker/pulls/jdbcx/jdbcx?style=plastic)](https://hub.docker.com/r/jdbcx/jdbcx) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jdbcx_jdbcx&metric=coverage)](https://sonarcloud.io/summary/new_code?id=jdbcx_jdbcx) [![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/io.github.jdbcx/jdbcx?style=plastic&label=Nightly%20Build&server=https%3A%2F%2Fs01.oss.sonatype.org)](https://s01.oss.sonatype.org/content/repositories/snapshots/io/github/jdbcx/) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jdbcx/jdbcx)
+[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/jdbcx/jdbcx?style=plastic&include_prereleases&label=Latest%20Release)](https://github.com/jdbcx/jdbcx/releases/) [![GitHub release (by tag)](https://img.shields.io/github/downloads/jdbcx/jdbcx/latest/total?style=plastic)](https://github.com/jdbcx/jdbcx/releases/) [![Docker Pulls](https://img.shields.io/docker/pulls/jdbcx/jdbcx?style=plastic)](https://hub.docker.com/r/jdbcx/jdbcx) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jdbcx_jdbcx&metric=coverage)](https://sonarcloud.io/summary/new_code?id=jdbcx_jdbcx) [![Sonatype Nexus (Snapshots)](https://img.shields.io/badge/Nightly%20Build-v0.8.0--SNAPSHOT-blue?link=https%3A%2F%2Fcentral.sonatype.com%2Fservice%2Frest%2Frepository%2Fbrowse%2Fmaven-snapshots%2Fio%2Fgithub%2Fjdbcx%2F)](https://central.sonatype.com/service/rest/repository/browse/maven-snapshots/io/github/jdbcx/) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jdbcx/jdbcx)
 
 <img align="right" width="96" height="96" src="https://avatars.githubusercontent.com/u/137983508">
 
 JDBCX extends JDBC with enhanced data format and compression support, object mapping, advanced type conversion, and multi-language query capabilities. It simplifies federated queries through dynamic embedding and offers a remote bridge for seamless multi-source connectivity.
 
-![image](https://user-images.githubusercontent.com/4270380/257034477-a5e1fe1a-bb1c-4478-addc-43fbdf4e4d07.png)
+![image](https://github.com/user-attachments/assets/db3d3e7a-1fa3-4f71-adc6-0af9f0df2b6c)
 
 ## Quick Start
 
@@ -28,7 +28,7 @@ ch-play	25.5.1.664
 ch-altinity	25.3.3.42
 
 # Using JDBCX as a bridge server (HTTP API for data access)
-$ docker run --rm -d --name jdbcx-bridge -p8080:8080 jdbcx/jdbcx server
+$ docker run --rm -d --name bridge -p8080:8080 jdbcx/jdbcx:full server
 $ curl -s -d 'select 2 as num' 'http://localhost:8080/query'
 num
 2
@@ -37,9 +37,19 @@ num
 2
 
 # Combining JDBCX driver features with the bridge server for federated querying
-$ curl -s -d 'select * from {{ table.db.duckdb-local: select 2 as num }}' 'http://localhost:8080/query'
-num
-2
+$ curl -s -d "select * from {{ table.mcp.everything(target=prompt) }}
+where name like 'simple%'" 'http://localhost:8080/query'
+name,description,arguments
+simple_prompt,A prompt without arguments,
+$ curl -s -d 'select c.name
+from {{ table.db.ch-play: show databases }} c
+left outer join {{ table.db.ch-altinity: show databases }} a
+  on c.name = a.name
+where a.name is null' 'http://localhost:8080/query'
+name
+blogs
+git_clickhouse
+mgbench
 ```
 
 ## Features
