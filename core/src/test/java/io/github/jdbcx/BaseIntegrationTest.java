@@ -81,6 +81,7 @@ public class BaseIntegrationTest {
     private static final ServiceConfig FLIGHTSQL;
     private static final ServiceConfig MARIADB;
     private static final ServiceConfig MYSQL;
+    private static final ServiceConfig NEO4J;
     private static final ServiceConfig POSTGRESQL;
     private static final ServiceConfig PROXY; // control port
 
@@ -102,6 +103,7 @@ public class BaseIntegrationTest {
         list.add(FLIGHTSQL = new ServiceConfig("flightsql", 31337, props));
         list.add(MARIADB = new ServiceConfig("mariadb", 3306, props));
         list.add(MYSQL = new ServiceConfig("mysql", 3306, props));
+        list.add(NEO4J = new ServiceConfig("neo4j", 7687, props));
         list.add(POSTGRESQL = new ServiceConfig("postgresql", 5432, props));
         list.add(PROXY = new ServiceConfig("toxiproxy", 8474, props)); // control port
         services = Collections.unmodifiableList(new ArrayList<>(list));
@@ -163,6 +165,10 @@ public class BaseIntegrationTest {
 
     public static String getMySqlServer() {
         return MYSQL.getAddress(containers);
+    }
+
+    public static String getNeo4JServer() {
+        return NEO4J.getAddress(containers);
     }
 
     public static String getPostgreSqlServer() {

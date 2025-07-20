@@ -16,6 +16,8 @@
 package io.github.jdbcx.driver;
 
 import java.sql.DriverPropertyInfo;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -79,6 +81,22 @@ public class DriverInfoTest {
     public void testActualUrl() {
         Assert.assertEquals(new DriverInfo("jdbcx:mysql:localhost", null).actualUrl, "jdbc:mysql:localhost");
         Assert.assertEquals(new DriverInfo("jdbcx:web:mysql:localhost", null).actualUrl, "jdbc:mysql:localhost");
+    }
+
+    @Test(groups = { "unit" })
+    public void testExtensionWhitelist() {
+        Assert.assertEquals(new DriverInfo("jdbcx:mysql:localhost", null).whitelist, Collections.emptyList());
+
+        Properties props = new Properties();
+        Option.EXTENSION_WHITELIST.setJdbcxValue(props, "");
+        Assert.assertEquals(new DriverInfo("jdbcx:web:mysql:localhost", props).whitelist, Collections.emptyList());
+
+        Option.EXTENSION_WHITELIST.setJdbcxValue(props, ",,,");
+        Assert.assertEquals(new DriverInfo("jdbcx:web:mysql:localhost", props).whitelist, Collections.emptyList());
+
+        Option.EXTENSION_WHITELIST.setJdbcxValue(props, "db,db,DB");
+        Assert.assertEquals(new DriverInfo("jdbcx:web:mysql:localhost", props).whitelist,
+                Arrays.asList(new String[] { "db", "DB" }));
     }
 
     @Test(groups = { "unit" })

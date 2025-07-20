@@ -231,4 +231,26 @@ public class MainTest {
                 Main.process(new String[] { DEFAULT_CONNECTION_URL, "@target/test-classes/test-queries/parallel" }),
                 0);
     }
+
+    @Test(groups = { "unit" })
+    public void testProcess() throws Exception {
+        Assert.assertEquals(Main.process(null), 0);
+        Assert.assertEquals(Main.process(new String[0]), 0);
+        Assert.assertEquals(Main.process(new String[] { "-h" }), 0);
+        Assert.assertEquals(Main.process(new String[] { "--help" }), 0);
+        Assert.assertEquals(Main.process(new String[] { "help" }), 0);
+
+        Assert.assertEquals(Main.process(new String[] { "keygen" }), 0);
+
+        System.setProperty(ConfigManager.OPTION_SECRET_FILE.getName(), "target/test-classes/test.key");
+        Assert.assertEquals(Main.process(new String[] { "decrypt", "zFjzko6vtUk8KRN3GSL1dyFIV4K6ffG5zGl/+tIuLw==" }),
+                0);
+        Assert.assertEquals(Main.process(new String[] { "encrypt", "123" }), 0);
+
+        Assert.assertEquals(Main.process(new String[] { "encrypt", "123", "me" }), 0);
+        Assert.assertEquals(
+                Main.process(new String[] { "decrypt", "hs2/iUATM4TNnj1dz5ZBTTlqHNGDEg032N6DS2pxcg==", "me" }), 0);
+
+        Assert.assertEquals(Main.process(new String[] { "jdbcx:", "{{ script: 1}}" }), 0);
+    }
 }

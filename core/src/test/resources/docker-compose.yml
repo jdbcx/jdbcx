@@ -15,6 +15,14 @@ mysql:
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
+neo4j:
+  image: neo4j:2025.06.2
+  environment:
+    NEO4J_AUTH: none
+    NEO4J_dbms_usage__report_enabled: "false"
+    NEO4J_client_allow__telemetry: "false"
+    NEO4J_initial_dbms_default__database: "neo4j"
+
 # https://hub.docker.com/_/postgres
 postgresql:
   image: postgres:17
@@ -28,6 +36,7 @@ clickhouse:
   image: clickhouse/clickhouse-server:23.8
   links:
     - mysql
+    - neo4j
     - postgresql
 
 # https://hub.docker.com/r/voltrondata/flight-sql

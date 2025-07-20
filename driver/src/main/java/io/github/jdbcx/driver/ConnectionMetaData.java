@@ -58,6 +58,7 @@ public final class ConnectionMetaData {
         }
         this.productName = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
 
+        value = null;
         try {
             value = new StringBuilder().append(metaData.getDatabaseMajorVersion()).append('.')
                     .append(metaData.getDatabaseMinorVersion()).toString();
@@ -70,6 +71,7 @@ public final class ConnectionMetaData {
         }
         this.productVersion = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
 
+        value = null;
         try {
             value = metaData.getDriverName();
         } catch (Exception e) {
@@ -77,6 +79,7 @@ public final class ConnectionMetaData {
         }
         this.driverName = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
 
+        value = null;
         try {
             value = new StringBuilder().append(metaData.getDriverMajorVersion()).append('.')
                     .append(metaData.getDriverMinorVersion()).toString();
@@ -89,6 +92,7 @@ public final class ConnectionMetaData {
         }
         this.driverVersion = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
 
+        value = null;
         try {
             value = metaData.getUserName();
         } catch (Exception e) {
@@ -96,6 +100,7 @@ public final class ConnectionMetaData {
         }
         this.userName = Checker.isNullOrEmpty(value) ? Constants.EMPTY_STRING : value;
 
+        value = null;
         try {
             value = metaData.getURL();
         } catch (Exception e) {
