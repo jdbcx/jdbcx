@@ -53,16 +53,18 @@ public class ConfigManagerTest {
         Assert.assertEquals(manager.decrypt(manager.encrypt(plainText, associatedData, StandardCharsets.ISO_8859_1),
                 associatedData, StandardCharsets.ISO_8859_1), plainText);
 
-        secretFile = "target/test-classes/secret.chacha";
-        props = new Properties();
-        ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(props, secretFile);
-        ConfigManager.OPTION_ALGORITHM.setJdbcxValue(props, ConfigManager.ALGORITHM_CHACHA20_POLY1305);
-        manager = new TestConfigManager(props);
-        Assert.assertEquals(Utils.toBase64(manager.loadKey().getEncoded()),
-                Stream.readAllAsString(new FileInputStream(secretFile)));
-        Assert.assertEquals(manager.decrypt(manager.encrypt(plainText)), plainText);
-        Assert.assertEquals(manager.decrypt(manager.encrypt(plainText, associatedData, StandardCharsets.ISO_8859_1),
-                associatedData, StandardCharsets.ISO_8859_1), plainText);
+        if (Constants.JAVA_MAJOR_VERSION >= 17) {
+            secretFile = "target/test-classes/secret.chacha";
+            props = new Properties();
+            ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(props, secretFile);
+            ConfigManager.OPTION_ALGORITHM.setJdbcxValue(props, ConfigManager.ALGORITHM_CHACHA20_POLY1305);
+            manager = new TestConfigManager(props);
+            Assert.assertEquals(Utils.toBase64(manager.loadKey().getEncoded()),
+                    Stream.readAllAsString(new FileInputStream(secretFile)));
+            Assert.assertEquals(manager.decrypt(manager.encrypt(plainText)), plainText);
+            Assert.assertEquals(manager.decrypt(manager.encrypt(plainText, associatedData, StandardCharsets.ISO_8859_1),
+                    associatedData, StandardCharsets.ISO_8859_1), plainText);
+        }
     }
 
     @Test(groups = { "unit" })

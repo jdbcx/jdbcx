@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -653,6 +654,10 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
 
     @Test(groups = { "integration" })
     public void testNeo4JQueries() throws SQLException {
+        if (Constants.JAVA_MAJOR_VERSION < 17) {
+            throw new SkipException("Skip neo4j testing");
+        }
+
         Properties props = new Properties();
         props.setProperty("jdbcx.base.dir", "target/test-classes/config");
 

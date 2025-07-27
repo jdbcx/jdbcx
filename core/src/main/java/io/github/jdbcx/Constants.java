@@ -108,6 +108,8 @@ public final class Constants {
 
     public static final int MIN_CORE_THREADS = 4;
 
+    public static final int JAVA_MAJOR_VERSION;
+
     public static final boolean IS_UNIX;
     public static final boolean IS_WINDOWS;
 
@@ -129,6 +131,29 @@ public final class Constants {
     }
 
     static {
+        final String javaVersion = System.getProperty("java.version");
+        if (javaVersion != null && !javaVersion.isEmpty()) {
+            int version = -1;
+            try {
+                if (javaVersion.startsWith("1.")) { // Java 8 and earlier
+                    int index = javaVersion.indexOf('.', 2);
+                    if (index != -1) {
+                        version = Integer.parseInt(javaVersion.substring(2, index));
+                    }
+                } else { // Java 9 and later
+                    int index = javaVersion.indexOf('.');
+                    if (index > 0) {
+                        version = Integer.parseInt(javaVersion.substring(0, index));
+                    }
+                }
+            } catch (NumberFormatException e) {
+                // Could not parse Java version string
+            }
+            JAVA_MAJOR_VERSION = version;
+        } else {
+            JAVA_MAJOR_VERSION = -1;
+        }
+
         final String osName = System.getProperty("os.name", "");
 
         // https://github.com/apache/commons-lang/blob/5a3904c8678574a4ddb8502ebbc606be1091fb3f/src/main/java/org/apache/commons/lang3/SystemUtils.java#L1370
