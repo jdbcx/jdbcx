@@ -21,7 +21,6 @@ import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.sql.JDBCType;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -91,10 +90,10 @@ public class WebInterpreter extends AbstractInterpreter {
         } else { // less secure
             token = OPTION_AUTH_BASIC_USER.getValue(config);
             if (!Checker.isNullOrBlank(token)) {
-                headers.put(WebExecutor.HEADER_AUTHORIZATION, WebExecutor.AUTH_SCHEME_BASIC.concat(Base64.getEncoder()
-                        .encodeToString(new StringBuilder(token).append(':')
-                                .append(OPTION_AUTH_BASIC_PASSWORD.getValue(config)).toString()
-                                .getBytes(Constants.DEFAULT_CHARSET))));
+                headers.put(WebExecutor.HEADER_AUTHORIZATION,
+                        WebExecutor.AUTH_SCHEME_BASIC.concat(Utils.toBase64(new StringBuilder(token).append(':')
+                                .append(OPTION_AUTH_BASIC_PASSWORD.getValue(config)).toString(),
+                                Constants.DEFAULT_CHARSET)));
             }
         }
         return headers;
