@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -634,6 +635,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     public void testDuckDBQueries(String query) throws SQLException {
         Properties props = new Properties();
         props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        props.setProperty("force_download", "true"); // required since v1.3.1.0
 
         final int count = 100000;
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
@@ -647,6 +649,22 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getString(2), rs.getString(3), query);
             }
             Assert.assertFalse(rs.next(), "Should NOT have more records from query: " + query);
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testNeo4JQueries() throws SQLException {
+        if (Constants.JAVA_MAJOR_VERSION < 17) {
+            throw new SkipException("Skip neo4j testing");
+        }
+
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:neo4j://" + getNeo4JServer() + "/neo4j", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("MATCH (n) RETURN n")) {
+            Assert.assertFalse(rs.next());
         }
     }
 

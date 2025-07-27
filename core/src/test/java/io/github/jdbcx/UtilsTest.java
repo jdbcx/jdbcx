@@ -358,6 +358,14 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, false, true),
                 Arrays.asList("", "x", "y", "Bcd"));
         Assert.assertEquals(Utils.split(",,,x ,y ,x,Bcd,, ", ',', true, true, true), Arrays.asList("x", "y", "Bcd"));
+
+        Assert.assertEquals(Utils.split(",", ',', true, false, true), Collections.singletonList(""));
+        Assert.assertEquals(Utils.split(",", ',', false, false, true), Collections.singletonList(""));
+        Assert.assertEquals(Utils.split(",", ',', true, true, true), Collections.emptyList());
+        Assert.assertEquals(Utils.split(",,,", ',', true, true, true), Collections.emptyList());
+        Assert.assertEquals(Utils.split(",,, ", ',', true, true, true), Collections.emptyList());
+        Assert.assertEquals(Utils.split(",,,a", ',', true, true, true), Collections.singletonList("a"));
+        Assert.assertEquals(Utils.split(",, a , ,", ',', true, true, true), Collections.singletonList("a"));
     }
 
     @Test(groups = { "unit" })

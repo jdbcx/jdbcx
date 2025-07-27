@@ -84,6 +84,7 @@ This project includes:
   micrometer-observation under The Apache Software License, Version 2.0
   micrometer-registry-prometheus under The Apache Software License, Version 2.0
   MySQL Connector/J under The GNU General Public License, v2 with Universal FOSS Exception, v1.0
+  Neo4j JDBC Driver (Bundle) under The Apache Software License, Version 2.0
   Non-Blocking Reactive Foundation for the JVM under Apache License, Version 2.0
   org.brotli:dec under MIT License
   PostgreSQL JDBC Driver under BSD-2-Clause

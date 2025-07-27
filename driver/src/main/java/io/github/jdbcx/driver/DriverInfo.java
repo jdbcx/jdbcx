@@ -54,6 +54,7 @@ final class DriverInfo {
     final Properties normalizedInfo; // properties without "jdbcx." prefix
 
     final ClassLoader customClassLoader;
+    final List<String> whitelist;
     final String actualUrl;
     final DriverExtension extension;
     final Properties extensionProps;
@@ -169,6 +170,11 @@ final class DriverInfo {
                     if (className.endsWith(suffix)) {
                         final String name = className.substring(0, className.length() - suffix.length())
                                 .toLowerCase(Locale.ROOT);
+                        if (!whitelist.isEmpty() && !whitelist.contains(name)) {
+                            log.warn("Discard extension [%s] (%s) was discarded; it's not on the whitelist.", name,
+                                    ext);
+                            continue;
+                        }
                         log.debug("Adding extension [%s]: %s", name, ext);
                         map.put(name, ext);
                         counter++;
@@ -267,6 +273,9 @@ final class DriverInfo {
         final String customClassPath = Utils.normalizePath(info.getProperty(Option.CUSTOM_CLASSPATH.getJdbcxName(),
                 Option.CUSTOM_CLASSPATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)));
         this.customClassLoader = getCustomClassLoader(customClassPath);
+        this.whitelist = Utils.split(info.getProperty(Option.EXTENSION_WHITELIST.getJdbcxName(),
+                Option.EXTENSION_WHITELIST.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)), ',', true, true, true);
+        log.debug("Extension whitelist: %s", this.whitelist);
         this.extension = getDriverExtension(this.normalizedUrl, getExtensions());
         this.actualUrl = normalizeUrl(this.extension, this.normalizedUrl);
         this.extensionProps = DriverExtension.extractProperties(this.extension, info);

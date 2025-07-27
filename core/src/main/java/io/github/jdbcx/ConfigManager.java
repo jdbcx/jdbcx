@@ -20,14 +20,30 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
+import io.github.jdbcx.executor.Stream;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -49,6 +65,8 @@ import java.util.regex.Pattern;
 public abstract class ConfigManager {
     private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
 
+    private static final SecureRandom random = new SecureRandom();
+
     private static final Option OPTION_CACHE_SIZE = Option.of("globpattern.cache.size", "Glob pattern cache size",
             "100");
     private static final Option OPTION_CACHE_EXPTIME = Option.of("globpattern.cache.exptime",
@@ -58,6 +76,24 @@ public abstract class ConfigManager {
             Integer.parseInt(OPTION_CACHE_EXPTIME.getEffectiveDefaultValue(Option.PROPERTY_PREFIX)),
             ConfigManager::parseGlobPattern);
 
+    private static final String ALGORITHM_AES = "AES";
+    private static final String ALGORITHM_CHACHA20 = "ChaCha20";
+
+    static final String ALGORITHM_AES_GCM_NOPADDING = ALGORITHM_AES + "/GCM/NoPadding";
+    static final String ALGORITHM_CHACHA20_POLY1305 = ALGORITHM_CHACHA20 + "-Poly1305";
+
+    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file",
+            Constants.CONF_DIR + "/secret.key");
+    static final Option OPTION_KEY_SIZE_BITS = Option
+            .ofInt("encryption.key.bits", "Key size in bits", 256); // 32 bytes
+    static final Option OPTION_IV_LENGTH_BYTES = Option
+            .ofInt("encryption.iv.bytes", "Recommended IV length in bytes", 12); // 96 bits
+    static final Option OPTION_TAG_LENGTH_BITS = Option
+            .ofInt("encryption.tag.bits", "Authentication tag length in bits", 128); // 16 bytes
+    static final Option OPTION_ALGORITHM = Option.of("encryption.algorithm", "Encryption algorithm.",
+            ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_CHACHA20_POLY1305);
+
+    public static final String PROPERTY_ENCRYPTED_SUFFIX = ".encrypted";
     public static final String PROPERTY_FILE_PROVIDER = ConfigManager.class.getPackage().getName()
             + ".config.PropertyFile" + ConfigManager.class.getSimpleName();
 
@@ -186,6 +222,180 @@ public abstract class ConfigManager {
         return Pattern.compile(builder.toString());
     }
 
+    static byte[] concatenate(byte[] arr1, byte[] arr2) {
+        final int len1;
+        final int len2;
+        if (arr1 == null || (len1 = arr1.length) == 0) {
+            return arr2 == null ? Constants.EMPTY_BYTE_ARRAY : arr2;
+        } else if (arr2 == null || (len2 = arr2.length) == 0) {
+            return arr1;
+        }
+
+        byte[] bytes = new byte[len1 + len2];
+        System.arraycopy(arr1, 0, bytes, 0, len1);
+        System.arraycopy(arr2, 0, bytes, len1, len2);
+        return bytes;
+    }
+
+    private final Path secretKeyFile;
+    private final int keySizeBits;
+    private final int ivLengthBytes;
+    private final int tagLengthBits;
+    private final String transformationNames;
+    private final String algorithmName;
+    private final Function<byte[], AlgorithmParameterSpec> paramSpecFunc;
+
+    protected ConfigManager(Properties props) {
+        this.secretKeyFile = Utils.getPath(OPTION_SECRET_FILE.getJdbcxValue(props), true);
+        this.keySizeBits = Integer.parseInt(OPTION_KEY_SIZE_BITS.getJdbcxValue(props));
+        this.ivLengthBytes = Integer.parseInt(OPTION_IV_LENGTH_BYTES.getJdbcxValue(props));
+        this.tagLengthBits = Integer.parseInt(OPTION_TAG_LENGTH_BITS.getJdbcxValue(props));
+
+        this.transformationNames = OPTION_ALGORITHM.getJdbcxValue(props).trim();
+
+        switch (transformationNames) {
+            case ALGORITHM_AES_GCM_NOPADDING:
+                this.algorithmName = ALGORITHM_AES;
+                this.paramSpecFunc = iv -> new GCMParameterSpec(tagLengthBits, iv);
+                break;
+            case ALGORITHM_CHACHA20_POLY1305:
+                this.algorithmName = ALGORITHM_CHACHA20;
+                this.paramSpecFunc = IvParameterSpec::new;
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        Utils.format("Unsupported algorithm [%s], please use either %s or %s.", transformationNames,
+                                ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_CHACHA20_POLY1305));
+        }
+    }
+
+    protected final Key loadKey(Path keyFile, String algorithm) {
+        if (keyFile == null) {
+            keyFile = secretKeyFile;
+        }
+        if (Files.exists(keyFile)) {
+            if (Checker.isNullOrEmpty(algorithm)) {
+                algorithm = algorithmName;
+            }
+            try {
+                return new SecretKeySpec(Utils.fromBase64(Stream.readAllBytes(new FileInputStream(keyFile.toFile()))),
+                        algorithm);
+            } catch (IOException e) {
+                throw new IllegalArgumentException(Utils.format("Failed to load secret file [%s]", keyFile), e);
+            }
+        } else {
+            throw new IllegalArgumentException(Utils.format("Missing secret file [%s]", keyFile));
+        }
+    }
+
+    protected Key generateKeySpec(String algorithm, int keyBits) {
+        if (Checker.isNullOrEmpty(algorithm)) {
+            algorithm = algorithmName;
+        }
+
+        if (keyBits <= 0) {
+            keyBits = keySizeBits;
+        }
+
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance(algorithm);
+            keyGen.init(keyBits, random);
+            return keyGen.generateKey();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    protected final Key loadKey() {
+        return loadKey(secretKeyFile, algorithmName);
+    }
+
+    protected final String generateKey() {
+        return generateKey(algorithmName, keySizeBits);
+    }
+
+    protected final Cipher getCipherForDecryption(Key key, AlgorithmParameterSpec params)
+            throws GeneralSecurityException {
+        return getCipher(Cipher.DECRYPT_MODE, transformationNames, key, params);
+    }
+
+    protected final Cipher getCipherForEncyption(Key key, AlgorithmParameterSpec params)
+            throws GeneralSecurityException {
+        return getCipher(Cipher.ENCRYPT_MODE, transformationNames, key, params);
+    }
+
+    protected Cipher getCipher(int opmode, String algTransformationNames, Key key, AlgorithmParameterSpec params)
+            throws GeneralSecurityException {
+        if (Checker.isNullOrEmpty(algTransformationNames)) {
+            algTransformationNames = transformationNames;
+        }
+        if (params == null) {
+            byte[] iv = new byte[ivLengthBytes];
+            random.nextBytes(iv); // Generate a unique IV for each encryption
+            params = paramSpecFunc.apply(iv);
+        }
+        Cipher cipher = Cipher.getInstance(algTransformationNames);
+        cipher.init(opmode, key != null ? key : loadKey(), params);
+        return cipher;
+    }
+
+    protected String encrypt(Key key, String text, String associatedData, Charset charset) {
+        if (charset == null) {
+            charset = Constants.DEFAULT_CHARSET;
+        }
+
+        try {
+            Cipher cipher = getCipherForEncyption(key, null);
+            if (!Checker.isNullOrEmpty(associatedData)) {
+                cipher.updateAAD(associatedData.getBytes(charset));
+            }
+            return Utils.toBase64(concatenate(cipher.getIV(), cipher.doFinal(text.getBytes(charset))));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    protected String decrypt(Key key, String encryptedText, String associatedData, Charset charset) {
+        if (charset == null) {
+            charset = Constants.DEFAULT_CHARSET;
+        }
+
+        byte[] decodedBytes = Utils.fromBase64(encryptedText, charset);
+
+        byte[] iv = new byte[ivLengthBytes];
+        System.arraycopy(decodedBytes, 0, iv, 0, ivLengthBytes);
+
+        byte[] ciphertextWithTag = new byte[decodedBytes.length - ivLengthBytes];
+        System.arraycopy(decodedBytes, ivLengthBytes, ciphertextWithTag, 0, ciphertextWithTag.length);
+
+        try {
+            Cipher cipher = getCipherForDecryption(key, paramSpecFunc.apply(iv));
+            if (!Checker.isNullOrEmpty(associatedData)) {
+                cipher.updateAAD(associatedData.getBytes(charset));
+            }
+            return new String(cipher.doFinal(ciphertextWithTag), charset);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    protected final void decrypt(Key key, Properties props, String associatedData, Charset charset) {
+        if (props == null || props.isEmpty()) {
+            return;
+        }
+
+        for (String name : props.stringPropertyNames()) {
+            if (name != null && name.endsWith(PROPERTY_ENCRYPTED_SUFFIX)) {
+                Object value = props.remove(name);
+                if (value == null) {
+                    continue;
+                }
+                props.setProperty(name.substring(0, name.length() - PROPERTY_ENCRYPTED_SUFFIX.length()),
+                        decrypt(key, (String) value, associatedData, charset));
+            }
+        }
+    }
+
     protected final String getUniqueId(String category, String id) {
         if (category == null) {
             category = Constants.EMPTY_STRING;
@@ -195,9 +405,6 @@ public abstract class ConfigManager {
         }
         return new StringBuilder(category.length() + id.length() + 1).append(category).append('/').append(id)
                 .toString();
-    }
-
-    protected ConfigManager(Properties props) {
     }
 
     public List<String> getAllIDs(String category) { // NOSONAR
@@ -228,5 +435,29 @@ public abstract class ConfigManager {
     }
 
     public void reload(Properties props) {
+    }
+
+    public final String generateKey(String algorithm, int keyBits) {
+        return Utils.toBase64(generateKeySpec(algorithm, keyBits).getEncoded());
+    }
+
+    public final String encrypt(String text) {
+        return encrypt(text, null, null);
+    }
+
+    public final String encrypt(String text, String associatedData, Charset charset) {
+        return encrypt(null, text, associatedData, charset);
+    }
+
+    public final String decrypt(String encryptedText) {
+        return decrypt(encryptedText, null, null);
+    }
+
+    public final String decrypt(String encryptedText, String associatedData, Charset charset) {
+        return decrypt(null, encryptedText, associatedData, charset);
+    }
+
+    public final void decrypt(Properties props, String associatedData) {
+        decrypt(null, props, associatedData, null);
     }
 }

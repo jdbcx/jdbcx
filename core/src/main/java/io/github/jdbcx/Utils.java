@@ -1115,10 +1115,7 @@ public final class Utils {
         for (int i = 0, len = str.length(); i < len; i++) {
             char ch = str.charAt(i);
             if (ch == delimiter) {
-                String v = builder.toString();
-                if (trim) {
-                    v = v.trim();
-                }
+                String v = trim ? builder.toString().trim() : builder.toString();
                 builder.setLength(0);
                 if ((ignoreEmpty && v.isEmpty()) || (dedup && list.contains(v))) {
                     continue;
@@ -1129,16 +1126,11 @@ public final class Utils {
             }
         }
 
+        String v = trim ? builder.toString().trim() : builder.toString();
         if (list.isEmpty()) {
-            return ignoreEmpty && str.isEmpty() ? Collections.emptyList() : Collections.singletonList(str);
-        } else if (builder.length() > 0 || str.charAt(str.length() - 1) == delimiter) {
-            String v = builder.toString();
-            if (trim) {
-                v = v.trim();
-            }
-            if (!(ignoreEmpty && v.isEmpty()) && !(dedup && list.contains(v))) {
-                list.add(v);
-            }
+            return ignoreEmpty && v.isEmpty() ? Collections.emptyList() : Collections.singletonList(v);
+        } else if (!(ignoreEmpty && v.isEmpty()) && !(dedup && list.contains(v))) {
+            list.add(v);
         }
         return Collections.unmodifiableList(list);
     }

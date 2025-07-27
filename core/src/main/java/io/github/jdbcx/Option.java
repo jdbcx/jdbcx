@@ -86,11 +86,16 @@ public final class Option implements Serializable {
      */
     public static final Option CONFIG_PATH = Option
             .of(new String[] { "config.path", "The path to the configuration file to load at startup.",
-                    "~/.jdbcx/config.properties" });
+                    Constants.CONF_DIR + "/config.properties" });
     /**
      * Custom classpath for {@link ExpandedUrlClassLoader} to load classes.
      */
     public static final Option CUSTOM_CLASSPATH = Option.of(new String[] { "custom.classpath", "Custom classpath" });
+    /**
+     * Comma separated list of extensions that are allowed to access.
+     */
+    public static final Option EXTENSION_WHITELIST = Option.of(
+            new String[] { "extension.whitelist", "Comma separated list of extensions that are allowed to access" });
 
     /**
      * Whether to perform a dry run.

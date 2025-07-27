@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.Manifest;
 
+import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.driver.QueryParser;
 import io.github.jdbcx.executor.Stream;
 
@@ -193,7 +194,7 @@ public final class Main {
         }
     }
 
-    private static void printUsage() {
+    private static int printUsage() {
         String execFile = "jdbcx-bin";
         try {
             File file = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI())
@@ -220,10 +221,19 @@ public final class Main {
         }
 
         final int index = execFile.indexOf(' ');
-        println("Usage: %s URL [@FILE or QUERY...]",
+        final String cliTemplate = index > 0 ? (execFile.substring(0, index) + " %s" + execFile.substring(index))
+                : (execFile + " %s");
+        println("Usage: %s COMMAND",
                 index > 0 ? (execFile.substring(0, index) + " [PROPERTIES]" + execFile.substring(index))
                         : (execFile + " [PROPERTIES]"));
         println("Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments.");
+        println();
+        println("Commands:");
+        println("  help, -h, --help          Display this help and exit");
+        println("  decrypt [ENCRYPTED TEXT]  Decrypt the text from standard input or command-line argument");
+        println("  encrypt [ORIGINAL TEXT]   Encrypt the text from standard input or command-line argument");
+        println("  keygen                    Generate secure key for encryption");
+        println("  URL [@FILE or QUERY...]   Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
         println("  connectionProps   Comma separated connection properties (e.g. 'ssl=true,sslmode=none')");
@@ -242,16 +252,13 @@ public final class Main {
         println("  verbose           Whether to show logs, defaults to false");
         println();
         println("Examples:");
-        println("  -  %s 'jdbcx:duckdb:' 'select 1'",
-                index > 0 ? (execFile.substring(0, index) + " -Dverbose=true" + execFile.substring(index))
-                        : (execFile + " -Dverbose=true"));
+        println("  -  %s keygen", execFile);
+        println("  -  %s encrypt 'plain text to encrypt'", Utils.format(cliTemplate, " -Dverbose=true"));
+        println("  -  %s 'jdbcx:duckdb:' 'select 1'", Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://localhost' '@*.js'", execFile);
         println("  -  %s 'jdbcx:sqlite::memory:' 'select 1' 'select 2'",
-                index > 0
-                        ? (execFile.substring(0, index)
-                                + " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"
-                                + execFile.substring(index))
-                        : (execFile + " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"));
+                Utils.format(cliTemplate, " -DconnectionProps=secure_delete=true,transaction_mode=EXCLUSIVE"));
+        return 0;
     }
 
     static Connection getOrCreateConnection(String url, Properties props, Connection conn, int validationTimeout,
@@ -385,18 +392,91 @@ public final class Main {
         return Collections.unmodifiableList(splittedTasks);
     }
 
+    static ConfigManager getConfigManager() throws SQLException {
+        try (Connection conn = DriverManager
+                .getConnection(new StringBuilder(Option.PROPERTY_JDBCX).append(':').toString())) {
+            if (conn instanceof ManagedConnection) { // NOSONAR
+                return ((ManagedConnection) conn).getManager().getConfigManager();
+            }
+            throw new SQLFeatureNotSupportedException("Only JDBCX managed connection is supported but we got: " + conn);
+        }
+    }
+
+    static String getAlgorithmName(Properties props) {
+        return Utils.split(ConfigManager.OPTION_ALGORITHM.getValue(props), '/', true, true, false).get(0);
+    }
+
+    static int generateKey(boolean verbose) throws SQLException {
+        Properties props = System.getProperties();
+        ConfigManager manager = getConfigManager();
+        String algorithm = getAlgorithmName(props);
+        String keyBits = ConfigManager.OPTION_KEY_SIZE_BITS.getValue(props);
+        if (verbose) {
+            println(Utils.format("* Generating key(algorithm=%s, keyBits=%s)...", algorithm, keyBits));
+        }
+        println(manager.generateKey(algorithm, Integer.parseInt(keyBits)));
+        return 0;
+    }
+
+    static int decryptText(String text, String associatedData, boolean verbose) throws SQLException {
+        Properties props = System.getProperties();
+        ConfigManager manager = getConfigManager();
+        String algorithm = getAlgorithmName(props);
+        String keyFile = ConfigManager.OPTION_SECRET_FILE.getValue(props);
+        if (verbose) {
+            println(Utils.format("* Decrypting text(algorithm=%s, keyFile=%s)...", algorithm, keyFile));
+        }
+        println(manager.decrypt(manager.loadKey(Utils.getPath(keyFile, true), algorithm), text, associatedData,
+                Constants.DEFAULT_CHARSET));
+        return 0;
+    }
+
+    static int encryptText(String text, String associatedData, boolean verbose) throws SQLException {
+        Properties props = System.getProperties();
+        ConfigManager manager = getConfigManager();
+        String algorithm = getAlgorithmName(props);
+        String keyFile = ConfigManager.OPTION_SECRET_FILE.getValue(props);
+        if (verbose) {
+            println(Utils.format("* Encrypting text(algorithm=%s, keyFile=%s)...", algorithm, keyFile));
+        }
+        println(manager.encrypt(manager.loadKey(Utils.getPath(keyFile, true), algorithm), text, associatedData,
+                Constants.DEFAULT_CHARSET));
+        return 0;
+    }
+
     static int process(String[] arguments) throws InterruptedException, IOException, SQLException {
         if ((arguments == null || arguments.length < 1)) {
-            printUsage();
-            return 0;
+            return printUsage();
         } else if (arguments.length == 1) {
-            if (Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()))) {
-                println("* Enter your query and press Ctrl+D to execute:");
+            final boolean verbose = Boolean.parseBoolean(System.getProperty("verbose", Boolean.FALSE.toString()));
+            final String command = arguments[0].toLowerCase();
+            String prompt = "* Enter your query and press Ctrl+D to execute.";
+            switch (command) {
+                case "help":
+                case "-h":
+                case "--help": // NOSONAR
+                    return printUsage();
+                case "decrypt":
+                case "encrypt": // NOSONAR
+                    prompt = Utils.format("* Enter the text you'd like to %s. Press Ctrl+D to finish.", command);
+                    break;
+                case "keygen":
+                    return generateKey(verbose);
+                default:
+                    break;
+            }
+            if (verbose) {
+                println(prompt);
             }
             arguments = new String[] { arguments[0], Stream.readAllAsString(System.in) };
         }
 
         final Arguments args = new Arguments(arguments);
+        if ("decrypt".equals(args.url)) {
+            return decryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
+        } else if ("encrypt".equals(args.url)) {
+            return encryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
+        }
         if (args.queries.isEmpty()) {
             if (args.verbose) {
                 println("* No query to execute.");
