@@ -48,6 +48,7 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -1394,24 +1395,50 @@ public final class Utils {
         return str.charAt(len - 1) == ch ? str.substring(0, len - 1) : str;
     }
 
-    public static byte[] fromBase64(String str) {
-        return fromBase64(str, null);
+    public static byte[] fromBase64(byte[] bytes) {
+        return fromBase64(bytes, false);
     }
 
-    public static byte[] fromBase64(byte[] bytes) {
+    public static byte[] fromBase64(byte[] bytes, boolean stopAtWhitespace) {
         if (bytes == null || bytes.length == 0) {
             return Constants.EMPTY_BYTE_ARRAY;
+        }
+
+        if (stopAtWhitespace) {
+            for (int i = 0, l = bytes.length; i < l; i++) {
+                if (Character.isWhitespace(bytes[i])) {
+                    bytes = Arrays.copyOf(bytes, i);
+                    break;
+                }
+            }
         }
         return Base64.getDecoder().decode(bytes);
     }
 
-    public static byte[] fromBase64(String str, Charset charset) {
+    public static byte[] fromBase64(String str) {
+        return fromBase64(str, null, false);
+    }
+
+    public static byte[] fromBase64(String str, boolean stopAtWhitespace) {
+        return fromBase64(str, null, stopAtWhitespace);
+    }
+
+    public static byte[] fromBase64(String str, Charset charset, boolean stopAtWhitespace) {
         if (str == null) {
             return Constants.EMPTY_BYTE_ARRAY;
         } else if (charset == null) {
             charset = Constants.DEFAULT_CHARSET;
         }
-        return Base64.getDecoder().decode(str.getBytes(charset));
+        byte[] bytes = str.getBytes(charset);
+        if (stopAtWhitespace) {
+            for (int i = 0, l = bytes.length; i < l; i++) {
+                if (Character.isWhitespace(bytes[i])) {
+                    bytes = Arrays.copyOf(bytes, i);
+                    break;
+                }
+            }
+        }
+        return Base64.getDecoder().decode(bytes);
     }
 
     public static String toBase64(String str) {

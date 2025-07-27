@@ -278,7 +278,8 @@ public abstract class ConfigManager {
                 algorithm = algorithmName;
             }
             try {
-                return new SecretKeySpec(Utils.fromBase64(Stream.readAllBytes(new FileInputStream(keyFile.toFile()))),
+                return new SecretKeySpec(
+                        Utils.fromBase64(Stream.readAllBytes(new FileInputStream(keyFile.toFile())), true),
                         algorithm);
             } catch (IOException e) {
                 throw new IllegalArgumentException(Utils.format("Failed to load secret file [%s]", keyFile), e);
@@ -360,7 +361,7 @@ public abstract class ConfigManager {
             charset = Constants.DEFAULT_CHARSET;
         }
 
-        byte[] decodedBytes = Utils.fromBase64(encryptedText, charset);
+        byte[] decodedBytes = Utils.fromBase64(encryptedText, charset, true);
 
         byte[] iv = new byte[ivLengthBytes];
         System.arraycopy(decodedBytes, 0, iv, 0, ivLengthBytes);

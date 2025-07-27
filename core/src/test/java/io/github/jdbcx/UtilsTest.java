@@ -550,15 +550,25 @@ public class UtilsTest {
     @Test(groups = { "unit" })
     public void testFromBase64() {
         Assert.assertEquals(Utils.fromBase64((String) null), new byte[0]);
-        Assert.assertEquals(Utils.fromBase64(null, null), new byte[0]);
+        Assert.assertEquals(Utils.fromBase64(null, null, false), new byte[0]);
         Assert.assertEquals(Utils.fromBase64((byte[]) null), new byte[0]);
         Assert.assertEquals(Utils.fromBase64(new byte[0]), new byte[0]);
 
         for (String str : new String[] { "", "12345Abcde", "壮壮哒💪123" }) {
             Assert.assertEquals(Utils.fromBase64(Utils.toBase64(str)), str.getBytes(Constants.DEFAULT_CHARSET));
-            Assert.assertEquals(
-                    Utils.fromBase64(Utils.toBase64(str, Constants.DEFAULT_CHARSET), Constants.DEFAULT_CHARSET),
+            Assert.assertEquals(Utils.fromBase64(Utils.toBase64(str).getBytes(Constants.DEFAULT_CHARSET)),
                     str.getBytes(Constants.DEFAULT_CHARSET));
+            for (String ws : new String[] { " ", "\t", "\r", "\n" }) {
+                Assert.assertEquals(Utils.fromBase64(Utils.toBase64(str) + ws, true),
+                        str.getBytes(Constants.DEFAULT_CHARSET));
+                Assert.assertThrows(IllegalArgumentException.class,
+                        () -> Utils.fromBase64(Utils.toBase64(str) + ws, false));
+                Assert.assertEquals(
+                        Utils.fromBase64((Utils.toBase64(str) + ws).getBytes(Constants.DEFAULT_CHARSET), true),
+                        str.getBytes(Constants.DEFAULT_CHARSET));
+                Assert.assertThrows(IllegalArgumentException.class,
+                        () -> Utils.fromBase64((Utils.toBase64(str) + ws).getBytes(Constants.DEFAULT_CHARSET), false));
+            }
         }
 
         Assert.assertNotEquals(Utils.fromBase64(Utils.toBase64("壮壮哒💪123")),
