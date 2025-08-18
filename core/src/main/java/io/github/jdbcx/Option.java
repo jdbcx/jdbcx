@@ -85,8 +85,8 @@ public final class Option implements Serializable {
      * Path to config property file.
      */
     public static final Option CONFIG_PATH = Option
-            .of(new String[] { "config.path", "The path to the configuration file to load at startup.",
-                    Constants.CONF_DIR + "/config.properties" });
+            .of("config.path", "The path to the configuration file to load at startup.",
+                    Constants.CONF_DIR + "/config.properties");
     /**
      * Custom classpath for {@link ExpandedUrlClassLoader} to load classes.
      */

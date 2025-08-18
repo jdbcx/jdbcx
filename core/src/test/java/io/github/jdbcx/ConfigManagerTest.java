@@ -124,6 +124,21 @@ public class ConfigManagerTest {
     }
 
     @Test(groups = { "unit" })
+    public void testLoad() {
+        Properties base = new Properties();
+        ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(base, "target/test-classes/secret.test");
+        TestConfigManager manager = new TestConfigManager(base);
+        Properties props = manager.load("target/test-classes/test-load.properties", base);
+        Assert.assertEquals(props.size(), 2);
+        Assert.assertEquals(props.getProperty("jdbcx.this"), "321");
+        Assert.assertEquals(props.getProperty("jdbcx.that"), "123");
+
+        TestConfigManager m = new TestConfigManager(new Properties());
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> m.load("target/test-classes/test-load.properties", base));
+    }
+
+    @Test(groups = { "unit" })
     public void testKeyGen() {
         TestConfigManager manager = new TestConfigManager(null);
 
@@ -147,11 +162,12 @@ public class ConfigManagerTest {
 
     @Test(groups = { "unit" })
     public void testNewInstance() {
-        Assert.assertNotNull(ConfigManager.newInstance(TestConfigManager.class.getName(), null));
-        Assert.assertNotNull(ConfigManager.newInstance(TestConfigManager.class.getName(), new Properties()));
+        Assert.assertNotNull(ConfigManager.newInstance(null));
 
-        Assert.assertEquals(ConfigManager.newInstance(TestConfigManager.class.getName(), null).getClass(),
-                TestConfigManager.class);
+        Properties props = new Properties();
+        Assert.assertNotNull(ConfigManager.newInstance(props));
+        ConfigManager.OPTION_CONFIG_PROVIDER.setJdbcxValue(props, TestConfigManager.class.getName());
+        Assert.assertEquals(ConfigManager.newInstance(props).getClass(), TestConfigManager.class);
     }
 
     @Test(groups = { "unit" })

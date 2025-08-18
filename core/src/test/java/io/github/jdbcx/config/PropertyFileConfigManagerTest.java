@@ -31,10 +31,10 @@ import io.github.jdbcx.interpreter.JdbcInterpreter;
 public class PropertyFileConfigManagerTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Assert.assertNotNull(ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, null));
-        Assert.assertNotNull(ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, new Properties()));
+        Assert.assertNotNull(ConfigManager.newInstance(null));
+        Assert.assertNotNull(ConfigManager.newInstance(new Properties()));
         Assert.assertEquals(
-                ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, new Properties()).getClass(),
+                ConfigManager.newInstance(new Properties()).getClass(),
                 PropertyFileConfigManager.class);
     }
 
@@ -42,7 +42,7 @@ public class PropertyFileConfigManagerTest {
     public void testGetConnectionById() throws Exception {
         Properties config = new Properties();
         PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(config, "target/test-classes/config");
-        final ConfigManager manager = ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, config);
+        final ConfigManager manager = ConfigManager.newInstance(config);
         Assert.assertEquals(manager.getMatchedIDs("db", "my*"), Collections.singletonList("my-sqlite"));
         try (Connection conn = JdbcInterpreter.getConnectionByConfig(manager.getConfig("db", "my-sqlite"), null);
                 Statement stmt = conn.createStatement();

@@ -59,7 +59,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     private final HttpServer server;
 
     public JdkHttpServer() {
-        this(ConfigManager.loadConfig(Option.CONFIG_PATH.getEffectiveDefaultValue(Option.PROPERTY_PREFIX), null,
+        this(ConfigManager.loadConfig(Option.CONFIG_PATH.getJdbcxValue(System.getProperties()), null,
                 System.getProperties()));
     }
 
