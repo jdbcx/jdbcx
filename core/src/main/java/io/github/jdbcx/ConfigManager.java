@@ -82,6 +82,8 @@ public abstract class ConfigManager {
     static final String ALGORITHM_AES_GCM_NOPADDING = ALGORITHM_AES + "/GCM/NoPadding";
     static final String ALGORITHM_CHACHA20_POLY1305 = ALGORITHM_CHACHA20 + "-Poly1305";
 
+    static final Option OPTION_CONFIG_PROVIDER = Option.of("config.provider", "The class to manage configuration.",
+            ConfigManager.class.getPackage().getName() + ".config.PropertyFile" + ConfigManager.class.getSimpleName());
     static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file",
             Constants.CONF_DIR + "/secret.key");
     static final Option OPTION_KEY_SIZE_BITS = Option
@@ -94,8 +96,6 @@ public abstract class ConfigManager {
             ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_CHACHA20_POLY1305);
 
     public static final String PROPERTY_ENCRYPTED_SUFFIX = ".encrypted";
-    public static final String PROPERTY_FILE_PROVIDER = ConfigManager.class.getPackage().getName()
-            + ".config.PropertyFile" + ConfigManager.class.getSimpleName();
 
     public static final Option OPTION_CACHE = Option
             .of(new String[] { "cache",
@@ -143,11 +143,11 @@ public abstract class ConfigManager {
         return config;
     }
 
-    public static final ConfigManager newInstance(String provider, Properties props) {
+    public static final ConfigManager newInstance(Properties props) {
         if (props == null) {
             props = new Properties();
         }
-        return Utils.newInstance(ConfigManager.class, provider, props);
+        return Utils.newInstance(ConfigManager.class, OPTION_CONFIG_PROVIDER.getJdbcxValue(props), props);
     }
 
     public static final Pattern parseGlobPattern(String str) {
@@ -433,6 +433,13 @@ public abstract class ConfigManager {
 
     public Properties getConfig(String category, String id) {
         throw new UnsupportedOperationException();
+    }
+
+    public Properties load(String fileName, Properties base) {
+        Properties props = loadConfig(fileName, null, base);
+        Path file = Utils.getPath(fileName, true).getFileName();
+        decrypt(props, file != null ? file.toString() : null);
+        return props;
     }
 
     public void reload(Properties props) {

@@ -279,7 +279,7 @@ final class DriverInfo {
         this.extension = getDriverExtension(this.normalizedUrl, getExtensions());
         this.actualUrl = normalizeUrl(this.extension, this.normalizedUrl);
         this.extensionProps = DriverExtension.extractProperties(this.extension, info);
-        this.configManager = ConfigManager.newInstance(ConfigManager.PROPERTY_FILE_PROVIDER, info);
+        this.configManager = ConfigManager.newInstance(info);
         this.driver = findSuitableDriver(this.actualUrl, this.extensionProps, this.customClassLoader);
     }
 

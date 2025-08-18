@@ -31,7 +31,7 @@ public class JdkHttpServerTest extends BaseBridgeServerTest {
         Properties props = new Properties();
         Option.CONFIG_PATH.setJdbcxValue(props, "target/test-classes/test-config.properties");
         Option.SERVER_URL.setJdbcxValue(props, getServerUrl());
-        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "/test-datasource.properties");
+        JdkHttpServer.OPTION_DATASOURCE_CONFIG.setJdbcxValue(props, "target/test-classes/test-datasource.properties");
         server = new JdkHttpServer(props);
     }
 

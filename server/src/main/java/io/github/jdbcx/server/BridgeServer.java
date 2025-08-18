@@ -132,8 +132,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return config;
     }
 
-    protected static final List<ServerAcl> loadAcl(Properties config) {
-        Properties props = ConfigManager.loadConfig(OPTION_ACL.getJdbcxValue(config), null, null);
+    protected static final List<ServerAcl> loadAcl(Properties props) {
         if (props.isEmpty()) {
             log.debug("No ACL config file specified");
             return Collections.emptyList();
@@ -223,6 +222,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             }
         }
 
+        log.debug("Instantiating configuration manager...");
+        final ConfigManager configManager = ConfigManager.newInstance(props);
+        configManager.decrypt(props, null); // in case there's anything encrypted
+
         log.debug("Initializing metrics registry...");
         promRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         promRegistry.config().commonTags("instance", baseUrl);
@@ -234,7 +237,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         if (!Checker.isNullOrEmpty(dsConfigFile)) {
             log.debug("Loading HikariConfig from [%s]...", dsConfigFile);
             try {
-                config = new HikariConfig(dsConfigFile);
+                config = new HikariConfig(configManager.load(dsConfigFile, props));
             } catch (Exception e) {
                 log.warn(e.getMessage());
             }
@@ -282,7 +285,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         defaultFormat = Format.valueOf(Option.SERVER_FORMAT.getJdbcxValue(props));
         defaultCompress = Compression.valueOf(Option.SERVER_COMPRESSION.getJdbcxValue(props));
 
-        acl = auth ? loadAcl(props) : Collections.emptyList();
+        acl = auth ? loadAcl(configManager.load(OPTION_ACL.getJdbcxValue(props), props)) : Collections.emptyList();
         essentials = new Properties();
         Option.SERVER_AUTH.setValue(essentials, Boolean.toString(auth));
         Option.SERVER_URL.setValue(essentials, baseUrl);
