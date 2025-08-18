@@ -165,6 +165,43 @@ select splitByChar(',', '{{ shell.myserver(cli.stderr.redirect=true):
 | 3   | Nested query is not supported             | -                                   |
 | 4   | MCP extension requires JDK 17+            | -                                   |
 
+## Security
+
+To secure datasource credentials, encrypt them with a secret key. This key is typically stored as an encrypted secret file in k8s or docker swarm. Remember, if you rename a datasource, you must re-encrypt its credentials.
+
+```bash
+$ cat mysql1.properties
+jdbcx.description=My MySQL server for development.
+jdbcx.driver=com.mysql.cj.jdbc.Driver
+jdbcx.url=jdbc:mysql://localhost:3306
+user=root
+password=<my root password>
+
+# Generate secret key
+$ docker run --rm -it jdbcx/jdbcx keygen > secret.key
+
+# Use the secret key to encrypt password for specific datasource
+$ docker run --rm -it -v `pwd`/secret.key:/app/.jdbcx/secret.key jdbcx/jdbcx encrypt '<my root password>' 'mysql1'
+Gm7+r5vldBu+irReosAWUosbWhNWpiYaocmspi5oeRK/tLsNH0U/zUp7jDmAqGQ=
+
+# Verify the encrypted password
+$ docker run --rm -it -v `pwd`/secret.key:/app/.jdbcx/secret.key jdbcx/jdbcx decrypt 'Gm7+r5vldBu+irReosAWUosbWhNWpiYaocmspi5oeRK/tLsNH0U/zUp7jDmAqGQ=' 'mysql1'
+<my root password>
+
+# Update datasource configuration to use encrypted password
+$ sed -i .bak 's|^\(password\)=.*|\1.encrypted=Gm7+r5vldBu+irReosAWUosbWhNWpiYaocmspi5oeRK/tLsNH0U/zUp7jDmAqGQ=|' mysql1.properties
+$ cat mysql1.properties
+jdbcx.description=My MySQL server for development.
+jdbcx.driver=com.mysql.cj.jdbc.Driver
+jdbcx.url=jdbc:mysql://localhost:3306
+user=root
+password.encrypted=Gm7+r5vldBu+irReosAWUosbWhNWpiYaocmspi5oeRK/tLsNH0U/zUp7jDmAqGQ=
+
+# Test the encrypted datasource
+$ docker run --rm -i -d -p8080:8080 -v `pwd`/secret.key:/app/.jdbcx/secret.key jdbcx/jdbcx -v `pwd`/mysql1.properties:/app/.jdbcx/db/mysql1.properties server
+$ curl -s -d 'select * from {{table.db.mysql1: show processlist}}' 'http://localhost:8080/query'
+```
+
 ## Performance
 
 ### Test Environment
