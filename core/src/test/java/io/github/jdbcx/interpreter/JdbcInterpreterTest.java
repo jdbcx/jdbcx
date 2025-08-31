@@ -63,6 +63,39 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testGetCurrentDatabaseCatalogAndSchema() throws SQLException {
+        Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props)) {
+            String json = JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(conn, conn.getMetaData());
+            Assert.assertTrue(json.startsWith("\"currentDatabase\""), "Should start with currentDatabase");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
+            String json = JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(conn, conn.getMetaData());
+            Assert.assertTrue(json.startsWith("\"currentCatalog\""), "Should start with currentCatalog");
+            Assert.assertTrue(json.indexOf("\"currentSchema\"") > 0, "Should has currentSchema");
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            String json = JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(conn, conn.getMetaData());
+            Assert.assertEquals(json, "", "Should have no current catalog and schema");
+        }
+
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer() + "?allowMultiQueries=true")) {
+            String json = JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(conn, conn.getMetaData());
+            Assert.assertEquals(json, "", "Should have no current catalog and schema");
+        }
+
+        try (Connection conn = DriverManager
+                .getConnection(
+                        "jdbc:mysql://root@" + getMySqlServer() + "/information_schema?allowMultiQueries=true")) {
+            String json = JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(conn, conn.getMetaData());
+            Assert.assertEquals(json, "\"currentDatabase\":\"information_schema\"", "Should have current database");
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testGetDatabaseCatalogs() throws SQLException {
         Properties props = new Properties();
         try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props)) {

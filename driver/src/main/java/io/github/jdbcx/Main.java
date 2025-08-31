@@ -307,13 +307,13 @@ public final class Main {
             int updates = 0;
             while (true) {
                 if (hasResultSet) {
-                    try (ResultSet rs = stmt.getResultSet();
+                    try (Result<?> result = Result.of(stmt.getResultSet());
                             OutputStream out = Compression.getProvider(outputCompression)
                                     .compress(
                                             outputFile.isEmpty() ? new UnclosableOutputStream(System.out) // NOSONAR
                                                     : new FileOutputStream(outputFile),
                                             compressionLevel, compressionBuffer)) {
-                        Result.writeTo(Result.of(rs), outputFormat, outputParams, out);
+                        Result.writeTo(result, outputFormat, outputParams, out);
                     }
                     if (outputFile.isEmpty()) {
                         println();

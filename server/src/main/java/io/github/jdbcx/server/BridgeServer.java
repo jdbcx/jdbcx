@@ -254,7 +254,11 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         config.setMetricRegistry(promRegistry);
         if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
             config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver
-            config.addDataSourceProperty(Option.CONFIG_PATH.getJdbcxName(), Option.CONFIG_PATH.getJdbcxValue(props));
+            // FIXME needs a better way to pass all JDBCX properties from server to driver
+            for (Option o : new Option[] { Option.CONFIG_PATH, Option.SERVER_AUTH, Option.SERVER_URL,
+                    Option.SERVER_TOKEN }) {
+                config.addDataSourceProperty(o.getJdbcxName(), o.getJdbcxValue(props));
+            }
         }
         datasource = new HikariDataSource(config);
 
@@ -361,6 +365,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         writer.write(']');
     }
 
+    protected final void appendJsonIfNotEmpty(Writer writer, String str, boolean encode)
+            throws IOException {
+        if (!Checker.isNullOrEmpty(str)) {
+            writer.write(',');
+            writer.write(encode ? JsonHelper.encode(str) : str);
+        }
+    }
+
     protected final void writeDataSourceConfig(Writer writer, String extension, String name) throws IOException {
         writer.write('{');
         try (Connection conn = datasource.getConnection()) {
@@ -392,17 +404,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             if (DB_EXTENSIONS.contains(extension)) {
                 try (Connection c = JdbcInterpreter.getConnectionByConfig(props, null)) {
                     final DatabaseMetaData metaData = c.getMetaData();
-                    str = JdbcInterpreter.getDatabaseProduct(metaData);
-                    if (!Checker.isNullOrEmpty(str)) {
-                        writer.write(',');
-                        writer.write(str);
-                    }
-                    str = JdbcInterpreter.getDatabaseCatalogs(metaData, name,
-                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES);
-                    if (!Checker.isNullOrEmpty(str)) {
-                        writer.write(',');
-                        writer.write(str);
-                    }
+                    // database product
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getDatabaseProduct(metaData), false);
+                    // current catalog & schema
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(c, metaData),
+                            false);
+                    // databases
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getDatabaseCatalogs(metaData, name,
+                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES), false);
                 }
             }
         } catch (Exception e) {
@@ -748,6 +757,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 }
                 case ASYNC: {
                     if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+                        log.warn("Unauthorized request from [%s]", clientAddress.getAddress());
                         respond(request, HttpURLConnection.HTTP_FORBIDDEN);
                     } else {
                         setResponseHeaders(request);

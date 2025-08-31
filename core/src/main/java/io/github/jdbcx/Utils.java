@@ -558,6 +558,15 @@ public final class Utils {
         }
     }
 
+    public static String capitalize(String str) {
+        if (str == null) {
+            return Constants.EMPTY_STRING;
+        } else if (str.isEmpty()) {
+            return str;
+        }
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1).toLowerCase(Locale.ROOT);
+    }
+
     /**
      * Creates a temporary file. Same as {@code createTempFile(null, null, true)}.
      *

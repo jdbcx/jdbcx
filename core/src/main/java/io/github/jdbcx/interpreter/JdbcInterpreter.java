@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
@@ -51,6 +52,10 @@ public class JdbcInterpreter extends AbstractInterpreter {
     private static final String JSON_PROP_NAME = "\"name\":";
     private static final String JSON_PROP_PRODUCT = "\"product\":";
     private static final String JSON_PROP_TABLES = "\"tables\":";
+
+    private static final String PREFIX_CURRENT = "current";
+    private static final String TERM_CATALOG = "Catalog";
+    private static final String TERM_SCHEMA = "Schema";
 
     public static final String DEFAULT_TABLE_PATTERN = "%";
     public static final String DEFAULT_TABLE_TYPES = "TABLE,VIEW";
@@ -173,6 +178,40 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         return first ? getDatabaseSchemas(metaData, null, tablePattern, tableTypes) : builder.append(']').toString();
+    }
+
+    public static final String getCurrentDatabaseCatalogAndSchema(Connection conn, DatabaseMetaData metaData) {
+        StringBuilder builder = new StringBuilder();
+        try {
+            final String catalog = conn.getCatalog();
+            String catalogTerm = null;
+            if (!Checker.isNullOrEmpty(catalog)) {
+                catalogTerm = metaData.getCatalogTerm();
+                builder.append(JsonHelper.encode(
+                        PREFIX_CURRENT
+                                + (Checker.isNullOrEmpty(catalogTerm) ? TERM_CATALOG : Utils.capitalize(catalogTerm))))
+                        .append(':')
+                        .append(JsonHelper.encode(catalog));
+            }
+
+            final String schema = conn.getSchema();
+            if (!Checker.isNullOrEmpty(schema)) {
+                String schemaTerm = metaData.getSchemaTerm();
+                if (!Objects.equals(schemaTerm, catalogTerm)) {
+                    if (builder.length() > 0) {
+                        builder.append(',');
+                    }
+                    builder.append(JsonHelper.encode(
+                            PREFIX_CURRENT
+                                    + (Checker.isNullOrEmpty(schemaTerm) ? TERM_SCHEMA : Utils.capitalize(schemaTerm))))
+                            .append(':')
+                            .append(JsonHelper.encode(schema));
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return builder.toString();
     }
 
     public static final String getDatabaseCatalogs(DatabaseMetaData metaData, String id, String tablePattern, // NOSONAR

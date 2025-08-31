@@ -63,6 +63,7 @@ public final class Result<T> implements AutoCloseable {
         private Object rawValue;
         private Class<?> valueType;
         private DeferredValue<Iterable<Row>> rows;
+        private Runnable postCloseTask;
 
         private Builder() {
             this.fields = new ArrayList<>();
@@ -71,6 +72,7 @@ public final class Result<T> implements AutoCloseable {
             this.rawValue = null;
             this.valueType = null;
             this.rows = null;
+            this.postCloseTask = null;
         }
 
         private Builder(Result<?> template) {
@@ -79,6 +81,7 @@ public final class Result<T> implements AutoCloseable {
             this.rawValue = template.rawValue;
             this.valueType = template.valueType;
             this.rows = template.rows;
+            this.postCloseTask = template.postCloseTask;
         }
 
         public Builder fields(Field... fields) {
@@ -157,12 +160,17 @@ public final class Result<T> implements AutoCloseable {
             return this;
         }
 
+        public Builder postCloseTask(Runnable task) {
+            this.postCloseTask = task;
+            return this;
+        }
+
         public Result<?> build() { // NOSONAR
             if (valueType == null || rows == null) {
                 throw new IllegalArgumentException("Non-null value type and rows are required");
             }
 
-            return new Result<>(fields, rawValue, valueType, rows);
+            return new Result<>(fields, rawValue, valueType, rows, postCloseTask);
         }
     }
 
@@ -409,6 +417,7 @@ public final class Result<T> implements AutoCloseable {
     private final Class<?> valueType;
 
     private final DeferredValue<Iterable<Row>> rows;
+    private final Runnable postCloseTask;
 
     private final AtomicBoolean active;
 
@@ -583,18 +592,23 @@ public final class Result<T> implements AutoCloseable {
                 }
             }
         }
+        if (postCloseTask != null) {
+            postCloseTask.run();
+        }
         active.compareAndSet(true, false);
     }
 
     private Result(List<Field> fields, T rawValue, Class<?> valueType, Iterable<Row> rows) {
-        this(fields, rawValue, valueType, DeferredValue.of(Optional.of(rows)));
+        this(fields, rawValue, valueType, DeferredValue.of(Optional.of(rows)), null);
     }
 
-    private Result(List<Field> fields, T rawValue, Class<?> valueType, DeferredValue<Iterable<Row>> rows) {
+    private Result(List<Field> fields, T rawValue, Class<?> valueType, DeferredValue<Iterable<Row>> rows,
+            Runnable postCloseTask) {
         this.fields = fields;
         this.rawValue = rawValue;
         this.valueType = valueType;
         this.rows = rows;
+        this.postCloseTask = postCloseTask;
 
         this.active = new AtomicBoolean(false);
     }
