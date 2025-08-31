@@ -18,7 +18,10 @@ package io.github.jdbcx.interpreter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Properties;
+import java.util.UUID;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -52,6 +55,18 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", null), "Should have driver");
         Assert.assertNotNull(JdbcInterpreter.getDriverByUrl("jdbc:ch://localhost", getClass().getClassLoader()),
                 "Should have driver");
+    }
+
+    @Test(groups = { "unit" })
+    public void testNormalizeName() {
+        Assert.assertEquals(JdbcInterpreter.normalizedName(null, ""), "");
+        Assert.assertEquals(JdbcInterpreter.normalizedName("", ""), "");
+        Assert.assertEquals(JdbcInterpreter.normalizedName(null, "`"), "");
+        Assert.assertEquals(JdbcInterpreter.normalizedName("", "`"), "");
+
+        Assert.assertEquals(JdbcInterpreter.normalizedName("`a`", "`"), "a");
+        Assert.assertEquals(JdbcInterpreter.normalizedName("\"a\"", "`"), "\"a\"");
+        Assert.assertEquals(JdbcInterpreter.normalizedName("\"a\"", "`\""), "a");
     }
 
     @Test(groups = { "integration" })
@@ -118,6 +133,68 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
                 .getConnection("jdbc:mysql://root@" + getMySqlServer() + "?allowMultiQueries=true")) {
             String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-mysql", null, null);
             Assert.assertTrue(schema.startsWith("\"databases\""), "Should start with databases");
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetDatabaseTable() throws SQLException {
+        final String table = UUID.randomUUID().toString();
+        Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("create table if not exists `" + table
+                    + "`(a UInt32, b String) engine=MergeTree primary key a order by (a,b); " +
+                    "ALTER TABLE `" + table + "` ADD INDEX my_index_name (a) TYPE minmax GRANULARITY 1;");
+            Assert.assertEquals(
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
+                            table),
+                    "\"database\":\"default\",\"table\":\"" + table
+                            + "\",\"columns\":[{\"name\":\"a\",\"type\":\"UInt32\",\"nullable\":false},{\"name\":\"b\",\"type\":\"String\",\"nullable\":false}],\"indexes\":[{\"name\":\"my_index_name\",\"columns\":[\"a\"]}]");
+            Assert.assertEquals(JdbcInterpreter.getDatabaseTable(conn, table),
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
+                            table));
+        }
+
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer()
+                        + "/test?createDatabaseIfNotExist=true&allowMultiQueries=true");
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("create table if not exists `" + table
+                    + "` (a INTEGER NOT NULL, b CHAR(1) NOT NULL, c VARCHAR(30) NULL, PRIMARY KEY (a,b), UNIQUE INDEX i1(a), INDEX i2(a,c)) ENGINE=InnoDB");
+            Assert.assertEquals(
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
+                            table),
+                    "\"database\":\"test\",\"table\":\"" + table
+                            + "\",\"columns\":[{\"name\":\"a\",\"type\":\"INT\",\"nullable\":false},{\"name\":\"b\",\"type\":\"CHAR\",\"nullable\":false},{\"name\":\"c\",\"type\":\"VARCHAR\",\"nullable\":true}],\"primaryKey\":[\"a\",\"b\"],\"indexes\":[{\"name\":\"i1\",\"columns\":[\"a\"]},{\"name\":\"PRIMARY\",\"columns\":[\"a\",\"b\"]},{\"name\":\"i2\",\"columns\":[\"a\",\"c\"]}]");
+            Assert.assertEquals(
+                    JdbcInterpreter.getDatabaseTable(conn, "`test`.`" + table + "`"),
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
+                            table));
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetFullQualifiedTable() throws SQLException {
+        final String table = UUID.randomUUID().toString();
+        Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(
+                    "create table if not exists `" + table + "`(a UInt32, b String) engine=MergeTree order by a");
+            Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, table),
+                    Arrays.asList(conn.getCatalog(), conn.getSchema(), table));
+            Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, "default.`" + table + "`"),
+                    Arrays.asList("default", conn.getSchema(), table)); // bug in ClickHouse JDBC driver
+        }
+
+        try (Connection conn = DriverManager
+                .getConnection("jdbc:mysql://root@" + getMySqlServer()
+                        + "/test?createDatabaseIfNotExist=true&allowMultiQueries=true");
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("create database if not exists test1; create table if not exists test1.`" + table
+                    + "` (a INTEGER NOT NULL, b CHAR(1) NOT NULL, c VARCHAR(30) NULL, PRIMARY KEY (a,b)) ENGINE=InnoDB");
+            Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, " `test1` . `" + table + "`"),
+                    Arrays.asList("test1", conn.getSchema(), table));
         }
     }
 }

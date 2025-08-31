@@ -789,6 +789,37 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testDataSourceDetail() throws Exception {
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(VariableTag.BRACE, config);
+        HttpURLConnection conn = null;
+        try {
+            conn = web.openConnection(Utils.toURL(this.server.getBaseUrl() + "config/db/nonexist/nonexist"), config,
+                    headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()), "{\"type\":\"db\"}");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        try {
+            conn = web.openConnection(
+                    Utils.toURL(this.server.getBaseUrl() + "config/db/my-duckdb/memory.main.nonexist"), config,
+                    headers);
+            Assert.assertEquals(conn.getResponseCode(), 200);
+            Assert.assertEquals(Stream.readAllAsString(conn.getInputStream()),
+                    "{\"type\":\"db\",\"catalog\":\"memory\",\"schema\":\"main\",\"table\":\"nonexist\",\"columns\":[],\"indexes\":[]}");
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testErrorMessage() throws Exception {
         Properties config = new Properties();
         Map<String, String> headers = new HashMap<>();

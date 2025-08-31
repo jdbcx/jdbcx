@@ -377,6 +377,8 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split(",,, ", ',', true, true, true), Collections.emptyList());
         Assert.assertEquals(Utils.split(",,,a", ',', true, true, true), Collections.singletonList("a"));
         Assert.assertEquals(Utils.split(",, a , ,", ',', true, true, true), Collections.singletonList("a"));
+
+        Assert.assertEquals(Utils.split("1.2\\.3", '.'), Arrays.asList("1", "2\\", "3"));
     }
 
     @Test(groups = { "unit" })
