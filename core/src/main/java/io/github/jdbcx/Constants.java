@@ -59,6 +59,13 @@ public final class Constants {
     public static final String LOCAL_HOST_IPV6 = "::1";
     public static final String LOCAL_HOST_NAME = "localhost";
 
+    public static final String JSON_PROP_ID = "\"id\":";
+    public static final String JSON_PROP_ALIASES = "\"aliases\":";
+    public static final String JSON_PROP_NAME = "\"name\":";
+    public static final String JSON_PROP_DESC = "\"description\":";
+    public static final String JSON_PROP_TABLE = "\"table\":";
+    public static final String JSON_PROP_TYPE = "\"type\":";
+
     public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     public static final TimeZone SYS_TIMEZONE = TimeZone.getDefault();
     public static final ZoneId UTC_ZONE = UTC_TIMEZONE.toZoneId();

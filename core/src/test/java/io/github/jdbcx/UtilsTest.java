@@ -161,6 +161,17 @@ public class UtilsTest {
     }
 
     @Test(groups = "unit")
+    public void testCapitalize() {
+        Assert.assertEquals(Utils.capitalize(null), "");
+        Assert.assertEquals(Utils.capitalize(""), "");
+        Assert.assertEquals(Utils.capitalize(" "), " ");
+        Assert.assertEquals(Utils.capitalize("ok"), "Ok");
+        Assert.assertEquals(Utils.capitalize("OK"), "Ok");
+        Assert.assertEquals(Utils.capitalize("1OK"), "1ok");
+        Assert.assertEquals(Utils.capitalize(" OK"), " ok");
+    }
+
+    @Test(groups = "unit")
     public void testFindFiles() throws IOException {
         Assert.assertEquals(Utils.findFiles(null, null), Collections.emptyList());
         Assert.assertEquals(Utils.findFiles("", ""), Collections.emptyList());
@@ -366,6 +377,8 @@ public class UtilsTest {
         Assert.assertEquals(Utils.split(",,, ", ',', true, true, true), Collections.emptyList());
         Assert.assertEquals(Utils.split(",,,a", ',', true, true, true), Collections.singletonList("a"));
         Assert.assertEquals(Utils.split(",, a , ,", ',', true, true, true), Collections.singletonList("a"));
+
+        Assert.assertEquals(Utils.split("1.2\\.3", '.'), Arrays.asList("1", "2\\", "3"));
     }
 
     @Test(groups = { "unit" })

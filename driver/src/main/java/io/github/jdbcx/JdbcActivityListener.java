@@ -43,7 +43,7 @@ public interface JdbcActivityListener {
         return query;
     }
 
-    default ResultSet onResult(ResultSet rs) throws SQLException {
+    default Result<?> onResult(Result<?> rs) throws SQLException {
         return rs;
     }
 

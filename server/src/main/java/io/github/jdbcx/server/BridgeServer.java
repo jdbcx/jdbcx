@@ -89,11 +89,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final List<String> DB_EXTENSIONS = Collections.unmodifiableList(Arrays.asList("db", "sql"));
 
-    public static final String JSON_PROP_ID = "\"id\":";
-    public static final String JSON_PROP_ALIASES = "\"aliases\":";
-    public static final String JSON_PROP_DESC = "\"description\":";
-    public static final String JSON_PROP_TYPE = "\"type\":";
-
     // information_schema
 
     public static final String PATH_CONFIG = "config";
@@ -254,7 +249,11 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         config.setMetricRegistry(promRegistry);
         if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
             config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver
-            config.addDataSourceProperty(Option.CONFIG_PATH.getJdbcxName(), Option.CONFIG_PATH.getJdbcxValue(props));
+            // FIXME needs a better way to pass all JDBCX properties from server to driver
+            for (Option o : new Option[] { Option.CONFIG_PATH, Option.SERVER_AUTH, Option.SERVER_URL,
+                    Option.SERVER_TOKEN }) {
+                config.addDataSourceProperty(o.getJdbcxName(), o.getJdbcxValue(props));
+            }
         }
         datasource = new HikariDataSource(config);
 
@@ -347,8 +346,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 StringBuilder builder = new StringBuilder();
                 for (String id : manager.getAllIDs(extension)) {
                     Properties props = manager.getConfig(extension, id);
-                    builder.append('{').append(JSON_PROP_ID).append(JsonHelper.encode(id)).append(',')
-                            .append(JSON_PROP_DESC).append(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)))
+                    builder.append('{').append(Constants.JSON_PROP_ID).append(JsonHelper.encode(id)).append(',')
+                            .append(Constants.JSON_PROP_DESC)
+                            .append(JsonHelper.encode(Option.DESCRIPTION.getJdbcxValue(props)))
                             .append('}');
                     writer.write(builder.toString());
                     builder.setLength(0);
@@ -361,11 +361,19 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         writer.write(']');
     }
 
+    protected final void appendJsonIfNotEmpty(Writer writer, String str, boolean encode)
+            throws IOException {
+        if (!Checker.isNullOrEmpty(str)) {
+            writer.write(',');
+            writer.write(encode ? JsonHelper.encode(str) : str);
+        }
+    }
+
     protected final void writeDataSourceConfig(Writer writer, String extension, String name) throws IOException {
         writer.write('{');
         try (Connection conn = datasource.getConnection()) {
             ManagedConnection managedConn = conn.unwrap(ManagedConnection.class);
-            writer.write(JSON_PROP_TYPE);
+            writer.write(Constants.JSON_PROP_TYPE);
             writer.write(JsonHelper.encode(extension));
             if (managedConn == null) {
                 return;
@@ -374,39 +382,72 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             ConfigManager manager = managedConn.getManager().getConfigManager();
             Properties props = manager.getConfig(extension, name);
             writer.write(',');
-            writer.write(JSON_PROP_ID);
+            writer.write(Constants.JSON_PROP_ID);
             writer.write(JsonHelper.encode(name));
             String str = ConfigManager.OPTION_ALIAS.getJdbcxValue(props);
             if (!Checker.isNullOrEmpty(str)) {
                 writer.write(',');
-                writer.write(JSON_PROP_ALIASES);
+                writer.write(Constants.JSON_PROP_ALIASES);
                 writer.write(JsonHelper.encode(Utils.split(str, ',', true, true, true)));
             }
             str = Option.DESCRIPTION.getJdbcxValue(props);
             if (!Checker.isNullOrEmpty(str)) {
                 writer.write(',');
-                writer.write(JSON_PROP_DESC);
+                writer.write(Constants.JSON_PROP_DESC);
                 writer.write(JsonHelper.encode(str));
             }
 
             if (DB_EXTENSIONS.contains(extension)) {
                 try (Connection c = JdbcInterpreter.getConnectionByConfig(props, null)) {
                     final DatabaseMetaData metaData = c.getMetaData();
-                    str = JdbcInterpreter.getDatabaseProduct(metaData);
-                    if (!Checker.isNullOrEmpty(str)) {
-                        writer.write(',');
-                        writer.write(str);
-                    }
-                    str = JdbcInterpreter.getDatabaseCatalogs(metaData, name,
-                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES);
-                    if (!Checker.isNullOrEmpty(str)) {
-                        writer.write(',');
-                        writer.write(str);
-                    }
+                    // database product
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getDatabaseProduct(metaData), false);
+                    // current catalog & schema
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getCurrentDatabaseCatalogAndSchema(c, metaData),
+                            false);
+                    // databases
+                    appendJsonIfNotEmpty(writer, JdbcInterpreter.getDatabaseCatalogs(metaData, name,
+                            JdbcInterpreter.DEFAULT_TABLE_PATTERN, JdbcInterpreter.DEFAULT_TABLE_TYPES), false);
                 }
             }
         } catch (Exception e) {
             log.warn("Failed to inspect datasource [%s].[%s]", extension, name, e);
+        }
+        writer.write('}');
+    }
+
+    protected final void writeDataSourceDetail(Writer writer, String extension, String name, String detail)
+            throws IOException {
+        writer.write('{');
+        try (Connection conn = datasource.getConnection()) {
+            ManagedConnection managedConn = conn.unwrap(ManagedConnection.class);
+            writer.write(Constants.JSON_PROP_TYPE);
+            writer.write(JsonHelper.encode(extension));
+            if (managedConn == null) {
+                return;
+            }
+
+            ConfigManager manager = managedConn.getManager().getConfigManager();
+            Properties props = manager.getConfig(extension, name);
+            if (DB_EXTENSIONS.contains(extension)) {
+                try (Connection c = JdbcInterpreter.getConnectionByConfig(props, null)) {
+                    String json = JdbcInterpreter.getDatabaseTable(c, detail);
+                    if (!Checker.isNullOrEmpty(json)) {
+                        writer.write(',');
+                        writer.write(json);
+                    }
+                }
+            } else {
+                String value = props.getProperty(detail);
+                if (!Checker.isNullOrEmpty(value)) {
+                    writer.write(',');
+                    writer.write(JsonHelper.encode(detail));
+                    writer.write(':');
+                    writer.write(JsonHelper.encode(value));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to inspect [%s] of datasource [%s].[%s]", detail, extension, name, e);
         }
         writer.write('}');
     }
@@ -635,6 +676,12 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                                 writeDataSourceConfig(writer, list.get(0), list.get(1));
                             }
                             return;
+                        case 3: // show specific detail of the named datasource
+                            try (Writer writer = getResponseWriter(implementation, HEADER_CONTENT_TYPE,
+                                    Format.JSON.mimeType())) {
+                                writeDataSourceDetail(writer, list.get(0), list.get(1), list.get(2));
+                            }
+                            return;
                         default:
                             break;
                     }
@@ -748,6 +795,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 }
                 case ASYNC: {
                     if (auth && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+                        log.warn("Unauthorized request from [%s]", clientAddress.getAddress());
                         respond(request, HttpURLConnection.HTTP_FORBIDDEN);
                     } else {
                         setResponseHeaders(request);

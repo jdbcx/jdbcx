@@ -397,6 +397,14 @@ public class ResultTest {
     }
 
     @Test(groups = "unit")
+    public void testPostCloseTask() {
+        Result<?> result = Result.of(1L).update().postCloseTask(() -> {
+            throw new UnsupportedOperationException();
+        }).build();
+        Assert.assertThrows(UnsupportedOperationException.class, result::close);
+    }
+
+    @Test(groups = "unit")
     public void testClose() {
         final Result<?> r0 = Result.of(Collections.emptyList());
         final Result<?> r1 = Result.of(1L);

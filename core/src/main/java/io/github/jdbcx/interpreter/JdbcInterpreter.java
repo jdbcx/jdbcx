@@ -22,17 +22,21 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.ConfigManager;
@@ -48,9 +52,16 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public class JdbcInterpreter extends AbstractInterpreter {
     private static final String JSON_ARRAY_PREFIX = ":[";
-    private static final String JSON_PROP_NAME = "\"name\":";
+    private static final String JSON_PROP_COLUMNS = "\"columns\":";
+    private static final String JSON_PROP_INDEXES = "\"indexes\":";
+    private static final String JSON_PROP_NULLABLE = "\"nullable\":";
+    private static final String JSON_PROP_PRIMARY_KEY = "\"primaryKey\":";
     private static final String JSON_PROP_PRODUCT = "\"product\":";
     private static final String JSON_PROP_TABLES = "\"tables\":";
+
+    private static final String PREFIX_CURRENT = "current";
+    private static final String TERM_CATALOG = "Catalog";
+    private static final String TERM_SCHEMA = "Schema";
 
     public static final String DEFAULT_TABLE_PATTERN = "%";
     public static final String DEFAULT_TABLE_TYPES = "TABLE,VIEW";
@@ -67,11 +78,15 @@ public class JdbcInterpreter extends AbstractInterpreter {
             .unmodifiableList(Arrays.asList(Option.EXEC_ERROR, Option.INPUT_FILE, JdbcExecutor.OPTION_RESULT,
                     ConfigManager.OPTION_MANAGED, Option.EXEC_TIMEOUT));
 
-    private final String defaultConnectionUrl;
-    private final String defaultConnectionProps;
+    final static class OrderedColumn {
+        final int position;
+        final String column;
 
-    private final ClassLoader loader;
-    private final JdbcExecutor executor;
+        OrderedColumn(int position, String column) {
+            this.position = position;
+            this.column = column;
+        }
+    }
 
     static final Driver getDriverByClass(String driver, ClassLoader loader) throws SQLException {
         if (loader == null) {
@@ -127,7 +142,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 }
                 String schema = rs.getString(1);
                 builder.append('{');
-                builder.append(JSON_PROP_NAME);
+                builder.append(Constants.JSON_PROP_NAME);
                 builder.append(JsonHelper.encode(schema));
                 builder.append(',');
                 builder.append(getDatabaseTables(metaData, catalog, schema, tablePattern, tableTypes));
@@ -162,7 +177,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 }
                 String catalog = rs.getString(1);
                 builder.append('{');
-                builder.append(JSON_PROP_NAME);
+                builder.append(Constants.JSON_PROP_NAME);
                 builder.append(JsonHelper.encode(catalog));
                 builder.append(',');
                 builder.append(getDatabaseSchemas(metaData, catalog, tablePattern, tableTypes));
@@ -173,6 +188,313 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
 
         return first ? getDatabaseSchemas(metaData, null, tablePattern, tableTypes) : builder.append(']').toString();
+    }
+
+    static final String normalizedName(String name, String quoteString) {
+        if (Checker.isNullOrEmpty(name)) {
+            return Constants.EMPTY_STRING;
+        } else if (quoteString.isEmpty()) {
+            return name;
+        }
+
+        final int lastIndex = name.length() - 1;
+        for (int i = 0, len = quoteString.length(); i < len; i++) {
+            char ch = quoteString.charAt(i);
+            if (name.charAt(0) == ch && name.charAt(lastIndex) == ch) {
+                return name.substring(1, lastIndex);
+            }
+        }
+        return name;
+    }
+
+    static final List<String> getFullQualifiedTable(Connection conn, String table) throws SQLException {
+        if (Checker.isNullOrEmpty(table)) {
+            return Collections.emptyList();
+        }
+
+        DatabaseMetaData metaData = conn.getMetaData();
+        String quoteString = metaData.getIdentifierQuoteString();
+        quoteString = Checker.isNullOrEmpty(quoteString) ? Constants.EMPTY_STRING : quoteString.trim();
+        List<String> list = new ArrayList<>(3);
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0, len = table.length(); i < len; i++) {
+            char ch = table.charAt(i);
+            if (builder.length() == 0) {
+                if (Character.isWhitespace(ch) || ch == '.') {
+                    continue;
+                } else if (quoteString.indexOf(ch) != -1) {
+                    for (int j = i + 1; j < len; j++) {
+                        char nextCh = table.charAt(j);
+                        if (nextCh == '\\') {
+                            if (++j < len) {
+                                builder.append(table.charAt(j));
+                            } else {
+                                throw new IllegalArgumentException("Missing character after '\\'");
+                            }
+                        } else if (nextCh == ch) {
+                            if (j + 1 < len && table.charAt(j + 1) == nextCh) {
+                                builder.append(nextCh);
+                            } else {
+                                i = j;
+                                break;
+                            }
+                        } else {
+                            builder.append(nextCh);
+                        }
+                    }
+                    list.add(builder.toString());
+                    builder.setLength(0);
+                } else if (ch == '\\') {
+                    if (++i < len) {
+                        builder.append(table.charAt(i));
+                    } else {
+                        throw new IllegalArgumentException("Missing character after '\\'");
+                    }
+                } else {
+                    builder.append(ch);
+                }
+            } else if (ch == '\\') {
+                if (++i < len) {
+                    builder.append(table.charAt(i));
+                } else {
+                    throw new IllegalArgumentException("Missing character after '\\'");
+                }
+            } else if (ch == '.') {
+                list.add(builder.toString());
+                builder.setLength(0);
+            } else {
+                builder.append(ch);
+            }
+        }
+        if (builder.length() > 0) {
+            list.add(builder.toString());
+            builder.setLength(0);
+        }
+
+        List<String> names = new ArrayList<>(3);
+        String[] types = Utils.split(DEFAULT_TABLE_TYPES, ',', true, true, true).toArray(Constants.EMPTY_STRING_ARRAY);
+        if (list.isEmpty()) {
+            return Collections.emptyList();
+        }
+        switch (list.size()) {
+            case 1: // just table name
+                names.add(conn.getCatalog());
+                names.add(conn.getSchema());
+                names.add(list.get(0));
+                break;
+            case 2: {
+                String catalogOrSchema = list.get(0);
+                String pattern = list.get(1);
+                String normalizedTable = normalizedName(pattern, quoteString);
+                try (ResultSet rs = metaData.getTables(catalogOrSchema, conn.getSchema(), pattern, types)) {
+                    while (rs.next()) {
+                        if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
+                            names.add(catalogOrSchema);
+                            names.add(conn.getSchema());
+                            names.add(pattern);
+                            break;
+                        }
+                    }
+                } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+                    // ignore
+                }
+                if (names.isEmpty()) {
+                    try (ResultSet rs = metaData.getTables(conn.getCatalog(), catalogOrSchema, pattern, types)) {
+                        while (rs.next()) {
+                            if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
+                                names.add(conn.getCatalog());
+                                names.add(catalogOrSchema);
+                                names.add(pattern);
+                                break;
+                            }
+                        }
+                    } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+                        // ignore
+                    }
+                }
+                break;
+            }
+            case 3:
+                names = list;
+                break;
+            default:
+                names = list.subList(0, 3);
+                break;
+        }
+        return names.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(names);
+    }
+
+    static final String getDatabaseTable(DatabaseMetaData metaData, String catalog, String schema, String table)
+            throws SQLException {
+        StringBuilder builder = new StringBuilder();
+
+        String quoteString = metaData.getIdentifierQuoteString();
+        quoteString = Checker.isNullOrEmpty(quoteString) ? Constants.EMPTY_STRING : quoteString.trim();
+        final String normalizedTable = normalizedName(table, quoteString);
+
+        if (!Checker.isNullOrEmpty(catalog)) {
+            builder.append(JsonHelper.encode(metaData.getCatalogTerm())).append(':').append(JsonHelper.encode(catalog));
+        }
+        if (!Checker.isNullOrEmpty(schema)) {
+            if (builder.length() > 0) {
+                builder.append(',');
+            }
+            builder.append(JsonHelper.encode(metaData.getSchemaTerm())).append(':').append(JsonHelper.encode(schema));
+        }
+        builder.append(',').append(Constants.JSON_PROP_TABLE).append(JsonHelper.encode(table));
+
+        // columns
+        builder.append(',').append(JSON_PROP_COLUMNS).append('[');
+        try (ResultSet rs = metaData.getColumns(catalog, schema, table, DEFAULT_TABLE_PATTERN)) {
+            boolean first = true;
+            while (rs.next()) {
+                final String columnTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
+                final String columnName = rs.getString("COLUMN_NAME");
+                if (!normalizedTable.equals(columnTable) || Checker.isNullOrEmpty(columnName)) {
+                    continue;
+                }
+
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(',');
+                }
+                builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(columnName)).append(',')
+                        .append(Constants.JSON_PROP_TYPE).append(JsonHelper.encode(rs.getString("TYPE_NAME")));
+                builder.append(',').append(JSON_PROP_NULLABLE)
+                        .append(!"no".equalsIgnoreCase(rs.getString("IS_NULLABLE")));
+                String remarks = rs.getString("REMARKS");
+                if (!Checker.isNullOrEmpty(remarks)) {
+                    builder.append(',').append(Constants.JSON_PROP_DESC).append(JsonHelper.encode(remarks));
+                }
+                builder.append('}');
+            }
+        }
+        builder.append(']');
+
+        // constraints
+        try (ResultSet rs = metaData.getPrimaryKeys(catalog, schema, table)) {
+            Map<String, List<OrderedColumn>> columMappings = new LinkedHashMap<>();
+            while (rs.next()) {
+                final String columnTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
+                final String columnName = rs.getString("COLUMN_NAME");
+                if (!normalizedTable.equals(columnTable) || Checker.isNullOrEmpty(columnName)) {
+                    continue;
+                }
+
+                final String pkName = normalizedName(rs.getString("PK_NAME"), Constants.EMPTY_STRING);
+                List<OrderedColumn> list = columMappings.get(pkName);
+                if (list == null) {
+                    list = new ArrayList<>();
+                    columMappings.put(pkName, list);
+                }
+                list.add(new OrderedColumn(rs.getShort("KEY_SEQ"), columnName));
+            }
+
+            if (!columMappings.isEmpty()) {
+                boolean first = true;
+                builder.append(',').append(JSON_PROP_PRIMARY_KEY).append('[');
+                if (columMappings.size() == 1) {
+                    builder.append(String.join(",", columMappings.values().iterator().next().stream()
+                            .sorted((x, y) -> x.position - y.position).map(x -> JsonHelper.encode(x.column))
+                            .collect(Collectors.toList())));
+                } else {
+                    for (Entry<String, List<OrderedColumn>> e : columMappings.entrySet()) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            builder.append(',');
+                        }
+                        builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(e.getKey()))
+                                .append(',')
+                                .append(JSON_PROP_COLUMNS).append('[').append(String.join(",", e.getValue().stream()
+                                        .sorted((x, y) -> x.position - y.position).map(x -> JsonHelper.encode(x.column))
+                                        .collect(Collectors.toList())))
+                                .append(']').append('}');
+                    }
+                }
+                builder.append(']');
+            }
+        }
+
+        // indexes
+        builder.append(',').append(JSON_PROP_INDEXES).append('[');
+        try (ResultSet rs = metaData.getIndexInfo(catalog, schema, table, false, true)) {
+            Map<String, List<OrderedColumn>> columMappings = new LinkedHashMap<>();
+            while (rs.next()) {
+                final String indexTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
+                final String indexName = rs.getString("INDEX_NAME");
+                if (!normalizedTable.equals(indexTable) || indexName == null) {
+                    continue;
+                }
+
+                List<OrderedColumn> list = columMappings.get(indexName);
+                if (list == null) {
+                    list = new ArrayList<>();
+                    columMappings.put(indexName, list);
+                }
+                list.add(new OrderedColumn(rs.getInt("ORDINAL_POSITION"), rs.getString("COLUMN_NAME")));
+            }
+
+            boolean first = true;
+            for (Entry<String, List<OrderedColumn>> e : columMappings.entrySet()) {
+                if (first) {
+                    first = false;
+                } else {
+                    builder.append(',');
+                }
+                builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(e.getKey())).append(',')
+                        .append(JSON_PROP_COLUMNS).append('[')
+                        .append(String.join(",", e.getValue().stream()
+                                .sorted((x, y) -> x.position - y.position).map(x -> JsonHelper.encode(x.column))
+                                .collect(Collectors.toList())))
+                        .append(']').append('}');
+            }
+        }
+        return builder.append(']').toString();
+    }
+
+    public static final String getCurrentDatabaseCatalogAndSchema(Connection conn, DatabaseMetaData metaData) {
+        StringBuilder builder = new StringBuilder();
+        try {
+            final String catalog = conn.getCatalog();
+            String catalogTerm = null;
+            if (!Checker.isNullOrEmpty(catalog)) {
+                catalogTerm = metaData.getCatalogTerm();
+                builder.append(JsonHelper.encode(
+                        PREFIX_CURRENT
+                                + (Checker.isNullOrEmpty(catalogTerm) ? TERM_CATALOG : Utils.capitalize(catalogTerm))))
+                        .append(':')
+                        .append(JsonHelper.encode(catalog));
+            }
+
+            final String schema = conn.getSchema();
+            if (!Checker.isNullOrEmpty(schema)) {
+                String schemaTerm = metaData.getSchemaTerm();
+                if (!Objects.equals(schemaTerm, catalogTerm)) {
+                    if (builder.length() > 0) {
+                        builder.append(',');
+                    }
+                    builder.append(JsonHelper.encode(
+                            PREFIX_CURRENT
+                                    + (Checker.isNullOrEmpty(schemaTerm) ? TERM_SCHEMA : Utils.capitalize(schemaTerm))))
+                            .append(':')
+                            .append(JsonHelper.encode(schema));
+                }
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return builder.toString();
+    }
+
+    public static final String getDatabaseTable(Connection conn, String table) throws SQLException {
+        List<String> names = getFullQualifiedTable(conn, table);
+        if (names.isEmpty()) {
+            return Constants.EMPTY_STRING;
+        }
+
+        return getDatabaseTable(conn.getMetaData(), names.get(0), names.get(1), names.get(2));
     }
 
     public static final String getDatabaseCatalogs(DatabaseMetaData metaData, String id, String tablePattern, // NOSONAR
@@ -314,6 +636,12 @@ public class JdbcInterpreter extends AbstractInterpreter {
             }
         }
     }
+
+    private final String defaultConnectionUrl;
+    private final String defaultConnectionProps;
+
+    private final ClassLoader loader;
+    private final JdbcExecutor executor;
 
     @SuppressWarnings("unchecked")
     protected Connection getConnection(Properties props) throws SQLException {

@@ -102,7 +102,7 @@ abstract class AbstractActivityListener implements JdbcActivityListener {
             }
 
             final Result<?> result = writeOutputFile(
-                    interpreter.interpret(Checker.isNullOrEmpty(query) ? defaultQuery : query, config),
+                    onResult(interpreter.interpret(Checker.isNullOrEmpty(query) ? defaultQuery : query, config)),
                     saveResult ? null : FileConfiguration.ofOutputFile(config, defaultOutputFile));
             if (saveResult) {
                 final int len = result.getFieldCount();

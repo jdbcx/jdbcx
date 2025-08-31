@@ -65,6 +65,12 @@ public class BridgeDriverExtension implements DriverExtension {
     static final Option OPTION_TOKEN = Option
             .of(new String[] { DriverExtension.PROPERTY_BRIDGE_TOKEN, "Secure token for accessing bridge server" });
 
+    static final class UnexpectedServerException extends RuntimeException {
+        UnexpectedServerException(String error) {
+            super(error);
+        }
+    }
+
     static final class ActivityListener extends AbstractActivityListener {
         static StringBuilder getUrlBuilder(String url) {
             if (Checker.isNullOrEmpty(url)) {
@@ -125,6 +131,33 @@ public class BridgeDriverExtension implements DriverExtension {
             return builder.toString();
         }
 
+        void checkError() {
+            final QueryContext context = interpreter.getContext();
+            final Object queryId = context.get(KEY_QUERY_ID);
+            if (queryId != null) { // only when query id is available
+                final StringBuilder builder = getUrlBuilder(
+                        OPTION_URL.getValue((Properties) context.get(QueryContext.KEY_BRIDGE)));
+                try {
+                    Properties config = new Properties();
+                    WebExecutor web = getTempWebExecutor(interpreter.getVariableTag(), config);
+                    try (InputStream input = web.get(Utils.toURL(builder.append("error/").append(queryId).toString()),
+                            config,
+                            Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
+                        throw new UnexpectedServerException(Stream.readAllAsString(input));
+                    }
+                } catch (UnexpectedServerException exp) {
+                    throw exp;
+                } catch (Exception exp) {
+                    log.error("Failed to retrieve error message from bridge server: " + builder.toString(), exp);
+                }
+            }
+        }
+
+        @Override
+        public Result<?> onResult(Result<?> rs) throws SQLException {
+            return rs.update().postCloseTask(this::checkError).build();
+        }
+
         @Override
         protected SQLException onException(Exception e) {
             Throwable cause = e;
@@ -138,23 +171,12 @@ public class BridgeDriverExtension implements DriverExtension {
                 cause = cause.getCause();
             } while (cause != null);
 
-            final QueryContext context = interpreter.getContext();
-            final Object queryId = context.get(KEY_QUERY_ID);
-            if (queryId != null) { // only when query id is available
-                final StringBuilder builder = getUrlBuilder(
-                        OPTION_URL.getValue((Properties) context.get(QueryContext.KEY_BRIDGE)));
-                try {
-                    Properties config = new Properties();
-                    WebExecutor web = getTempWebExecutor(interpreter.getVariableTag(), config);
-                    try (InputStream input = web.get(Utils.toURL(builder.append("error/").append(queryId).toString()),
-                            config,
-                            Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
-                        return new SQLException(Stream.readAllAsString(input), rootCause);
-                    }
-                } catch (Exception exp) {
-                    log.error("Failed to retrieve error message from bridge server: " + builder.toString(), exp);
-                }
+            try {
+                checkError();
+            } catch (UnexpectedServerException exp) {
+                return new SQLException(exp.getMessage(), rootCause);
             }
+
             return super.onException(e);
         }
 

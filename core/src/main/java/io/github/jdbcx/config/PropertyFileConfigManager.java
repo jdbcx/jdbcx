@@ -118,6 +118,7 @@ public class PropertyFileConfigManager extends ConfigManager {
                                         Constants.DEFAULT_CHARSET)) {
                                     Properties properties = new Properties();
                                     properties.load(reader);
+                                    decrypt(properties, id);
                                     ids.add(uid);
                                     config.put(uid, properties);
                                     Option.ID.setJdbcxValue(properties, id);
@@ -258,6 +259,7 @@ public class PropertyFileConfigManager extends ConfigManager {
             log.debug("Loading configuration of named %s [%s] from [%s]...", category, id, p);
             try (Reader reader = new InputStreamReader(new FileInputStream(p.toFile()), Constants.DEFAULT_CHARSET)) {
                 props.load(reader);
+                decrypt(props, id);
                 props.remove(Option.ID.getJdbcxName());
                 if (props.getProperty(Option.ID.getName()) != null) {
                     Option.ID.setValue(props, id);
