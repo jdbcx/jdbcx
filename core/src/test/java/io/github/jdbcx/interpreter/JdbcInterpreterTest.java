@@ -29,6 +29,7 @@ import org.testng.annotations.Test;
 import com.clickhouse.jdbc.ClickHouseDriver;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.Utils;
 
 public class JdbcInterpreterTest extends BaseIntegrationTest {
     @Test(groups = { "unit" })
@@ -121,7 +122,7 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
         try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
             String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-duckdb", null, null);
             Assert.assertTrue(schema.startsWith("\"catalogs\""), "Should start with catalogs");
-            Assert.assertTrue(schema.contains("\"schemas\""), "Should contain schemas");
+            Assert.assertFalse(schema.contains("\"schemas\""), "Should NOT contain schemas");
         }
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {
@@ -146,13 +147,13 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
                     + "`(a UInt32, b String) engine=MergeTree primary key a order by (a,b); " +
                     "ALTER TABLE `" + table + "` ADD INDEX my_index_name (a) TYPE minmax GRANULARITY 1;");
             Assert.assertEquals(
-                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
-                            table),
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
+                            Utils.getSchemaName(conn), table),
                     "\"database\":\"default\",\"table\":\"" + table
                             + "\",\"columns\":[{\"name\":\"a\",\"type\":\"UInt32\",\"nullable\":false},{\"name\":\"b\",\"type\":\"String\",\"nullable\":false}],\"indexes\":[{\"name\":\"my_index_name\",\"columns\":[\"a\"]}]");
             Assert.assertEquals(JdbcInterpreter.getDatabaseTable(conn, table),
-                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
-                            table));
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
+                            Utils.getSchemaName(conn), table));
         }
 
         try (Connection conn = DriverManager
@@ -162,14 +163,14 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
             stmt.executeUpdate("create table if not exists `" + table
                     + "` (a INTEGER NOT NULL, b CHAR(1) NOT NULL, c VARCHAR(30) NULL, PRIMARY KEY (a,b), UNIQUE INDEX i1(a), INDEX i2(a,c)) ENGINE=InnoDB");
             Assert.assertEquals(
-                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
-                            table),
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
+                            Utils.getSchemaName(conn), table),
                     "\"database\":\"test\",\"table\":\"" + table
                             + "\",\"columns\":[{\"name\":\"a\",\"type\":\"INT\",\"nullable\":false},{\"name\":\"b\",\"type\":\"CHAR\",\"nullable\":false},{\"name\":\"c\",\"type\":\"VARCHAR\",\"nullable\":true}],\"primaryKey\":[\"a\",\"b\"],\"indexes\":[{\"name\":\"i1\",\"columns\":[\"a\"]},{\"name\":\"PRIMARY\",\"columns\":[\"a\",\"b\"]},{\"name\":\"i2\",\"columns\":[\"a\",\"c\"]}]");
             Assert.assertEquals(
                     JdbcInterpreter.getDatabaseTable(conn, "`test`.`" + table + "`"),
-                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), conn.getCatalog(), conn.getSchema(),
-                            table));
+                    JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
+                            Utils.getSchemaName(conn), table));
         }
     }
 
@@ -182,9 +183,9 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
             stmt.executeUpdate(
                     "create table if not exists `" + table + "`(a UInt32, b String) engine=MergeTree order by a");
             Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, table),
-                    Arrays.asList(conn.getCatalog(), conn.getSchema(), table));
+                    Arrays.asList(Utils.getCatalogName(conn), Utils.getSchemaName(conn), table));
             Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, "default.`" + table + "`"),
-                    Arrays.asList("default", conn.getSchema(), table)); // bug in ClickHouse JDBC driver
+                    Arrays.asList("default", Utils.getSchemaName(conn), table)); // bug in ClickHouse JDBC driver
         }
 
         try (Connection conn = DriverManager
@@ -194,7 +195,7 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
             stmt.executeUpdate("create database if not exists test1; create table if not exists test1.`" + table
                     + "` (a INTEGER NOT NULL, b CHAR(1) NOT NULL, c VARCHAR(30) NULL, PRIMARY KEY (a,b)) ENGINE=InnoDB");
             Assert.assertEquals(JdbcInterpreter.getFullQualifiedTable(conn, " `test1` . `" + table + "`"),
-                    Arrays.asList("test1", conn.getSchema(), table));
+                    Arrays.asList("test1", Utils.getSchemaName(conn), table));
         }
     }
 }

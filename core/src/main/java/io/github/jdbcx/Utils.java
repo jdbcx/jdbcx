@@ -42,6 +42,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -1376,6 +1377,26 @@ public final class Utils {
             rows = stmt.getUpdateCount();
         }
         return rows;
+    }
+
+    public static String getCatalogName(Connection conn) {
+        String catalog = null;
+        try {
+            catalog = conn.getCatalog();
+        } catch (Throwable e) {
+            // ignore
+        }
+        return catalog;
+    }
+
+    public static String getSchemaName(Connection conn) {
+        String schema = null;
+        try {
+            schema = conn.getSchema();
+        } catch (Throwable e) {
+            // ignore
+        }
+        return schema;
     }
 
     /**

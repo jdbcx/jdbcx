@@ -27,17 +27,14 @@ import java.util.Properties;
 import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
-import io.github.jdbcx.Logger;
-import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 public class DbDriverExtension implements DriverExtension {
-    private static final Logger log = LoggerFactory.getLogger(DbDriverExtension.class);
-
     static final class ActivityListener extends AbstractActivityListener {
         ActivityListener(QueryContext context, Properties config, ClassLoader loader) {
             super(new JdbcInterpreter(context, config, loader), config);
@@ -82,18 +79,8 @@ public class DbDriverExtension implements DriverExtension {
                 Properties newProps = new Properties(props);
                 newProps.putAll(manager.getConfig(category, id));
                 Connection conn = JdbcInterpreter.getConnectionByConfig(newProps, loader);
-                String catalog = null;
-                String schema = null;
-                try { // NOSONAR
-                    catalog = conn.getCatalog();
-                } catch (Throwable t) { // NOSONAR
-                    log.debug("Failed to get catalog of connection [%id] due to %s", id, t.getMessage());
-                }
-                try { // NOSONAR
-                    schema = conn.getSchema();
-                } catch (Throwable t) { // NOSONAR
-                    log.debug("Failed to get schema of connection [%id] due to %s", id, t.getMessage());
-                }
+                String catalog = Utils.getCatalogName(conn);
+                String schema = Utils.getSchemaName(conn);
 
                 DatabaseMetaData metaData = conn.getMetaData();
                 arr[i] = metaData.getTables(catalog, schema, tableNamePattern, types);

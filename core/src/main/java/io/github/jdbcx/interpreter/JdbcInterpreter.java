@@ -42,6 +42,8 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.ExpandedUrlClassLoader;
+import io.github.jdbcx.Logger;
+import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
@@ -51,7 +53,10 @@ import io.github.jdbcx.executor.JdbcExecutor;
 import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 
 public class JdbcInterpreter extends AbstractInterpreter {
+    private static final Logger log = LoggerFactory.getLogger(JdbcInterpreter.class);
+
     private static final String JSON_ARRAY_PREFIX = ":[";
+    private static final String JSON_EMPTY_ARRAY = "[]";
     private static final String JSON_PROP_COLUMNS = "\"columns\":";
     private static final String JSON_PROP_INDEXES = "\"indexes\":";
     private static final String JSON_PROP_NULLABLE = "\"nullable\":";
@@ -133,20 +138,25 @@ public class JdbcInterpreter extends AbstractInterpreter {
         boolean first = true;
         try (ResultSet rs = metaData.getSchemas(catalog, DEFAULT_TABLE_PATTERN)) {
             while (rs.next()) {
-                if (first) {
-                    builder.append(JsonHelper.encode(term));
-                    builder.append(JSON_ARRAY_PREFIX);
-                    first = false;
-                } else {
-                    builder.append(',');
-                }
                 String schema = rs.getString(1);
-                builder.append('{');
-                builder.append(Constants.JSON_PROP_NAME);
-                builder.append(JsonHelper.encode(schema));
-                builder.append(',');
-                builder.append(getDatabaseTables(metaData, catalog, schema, tablePattern, tableTypes));
-                builder.append('}');
+                try {
+                    String tables = getDatabaseTables(metaData, catalog, schema, tablePattern, tableTypes);
+                    if (tables.endsWith(JSON_EMPTY_ARRAY)) { // ignore schema without any table
+                        continue;
+                    }
+                    if (first) {
+                        builder.append(JsonHelper.encode(term));
+                        builder.append(JSON_ARRAY_PREFIX);
+                        first = false;
+                    } else {
+                        builder.append(',');
+                    }
+                    builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(schema)).append(',')
+                            .append(tables).append('}');
+                } catch (SQLException e) {
+                    log.warn("Failed to get database tables(catalog=%s, schema=%s, pattern=%s) due to %s", catalog,
+                            schema, tablePattern, e.getMessage());
+                }
             }
         } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
             // ignore
@@ -168,20 +178,21 @@ public class JdbcInterpreter extends AbstractInterpreter {
         boolean first = true;
         try (ResultSet rs = metaData.getCatalogs()) {
             while (rs.next()) {
-                if (first) {
-                    builder.append(JsonHelper.encode(term));
-                    builder.append(JSON_ARRAY_PREFIX);
-                    first = false;
-                } else {
-                    builder.append(',');
-                }
                 String catalog = rs.getString(1);
-                builder.append('{');
-                builder.append(Constants.JSON_PROP_NAME);
-                builder.append(JsonHelper.encode(catalog));
-                builder.append(',');
-                builder.append(getDatabaseSchemas(metaData, catalog, tablePattern, tableTypes));
-                builder.append('}');
+                try {
+                    String schemas = getDatabaseSchemas(metaData, catalog, tablePattern, tableTypes);
+                    if (first) {
+                        builder.append(JsonHelper.encode(term));
+                        builder.append(JSON_ARRAY_PREFIX);
+                        first = false;
+                    } else {
+                        builder.append(',');
+                    }
+                    builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(catalog)).append(',')
+                            .append(schemas).append('}');
+                } catch (SQLException e) {
+                    log.debug("Failed to get schemas from catalog [%s] due to %s", catalog, e.getMessage());
+                }
             }
         } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
             // ignore
@@ -278,19 +289,20 @@ public class JdbcInterpreter extends AbstractInterpreter {
         }
         switch (list.size()) {
             case 1: // just table name
-                names.add(conn.getCatalog());
-                names.add(conn.getSchema());
+                names.add(Utils.getCatalogName(conn));
+                names.add(Utils.getSchemaName(conn));
                 names.add(list.get(0));
                 break;
             case 2: {
                 String catalogOrSchema = list.get(0);
                 String pattern = list.get(1);
                 String normalizedTable = normalizedName(pattern, quoteString);
-                try (ResultSet rs = metaData.getTables(catalogOrSchema, conn.getSchema(), pattern, types)) {
+                String name = Utils.getSchemaName(conn);
+                try (ResultSet rs = metaData.getTables(catalogOrSchema, name, pattern, types)) {
                     while (rs.next()) {
                         if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
                             names.add(catalogOrSchema);
-                            names.add(conn.getSchema());
+                            names.add(name);
                             names.add(pattern);
                             break;
                         }
@@ -299,10 +311,11 @@ public class JdbcInterpreter extends AbstractInterpreter {
                     // ignore
                 }
                 if (names.isEmpty()) {
-                    try (ResultSet rs = metaData.getTables(conn.getCatalog(), catalogOrSchema, pattern, types)) {
+                    name = Utils.getCatalogName(conn);
+                    try (ResultSet rs = metaData.getTables(name, catalogOrSchema, pattern, types)) {
                         while (rs.next()) {
                             if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
-                                names.add(conn.getCatalog());
+                                names.add(name);
                                 names.add(catalogOrSchema);
                                 names.add(pattern);
                                 break;
@@ -457,7 +470,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
     public static final String getCurrentDatabaseCatalogAndSchema(Connection conn, DatabaseMetaData metaData) {
         StringBuilder builder = new StringBuilder();
         try {
-            final String catalog = conn.getCatalog();
+            final String catalog = Utils.getCatalogName(conn);
             String catalogTerm = null;
             if (!Checker.isNullOrEmpty(catalog)) {
                 catalogTerm = metaData.getCatalogTerm();
@@ -468,7 +481,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                         .append(JsonHelper.encode(catalog));
             }
 
-            final String schema = conn.getSchema();
+            final String schema = Utils.getSchemaName(conn);
             if (!Checker.isNullOrEmpty(schema)) {
                 String schemaTerm = metaData.getSchemaTerm();
                 if (!Objects.equals(schemaTerm, catalogTerm)) {
