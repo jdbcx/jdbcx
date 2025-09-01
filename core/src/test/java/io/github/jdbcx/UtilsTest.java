@@ -24,7 +24,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -622,5 +624,32 @@ public class UtilsTest {
         Assert.assertEquals(Utils.toHex(new byte[2]), "0000");
         Assert.assertEquals(Utils.toHex(new byte[3]), "000000");
         Assert.assertEquals(Utils.toHex(new byte[4]), "00000000");
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetCatalogAndSchema() throws SQLException {
+        try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
+            Assert.assertEquals(Utils.getCatalogName(conn), conn.getCatalog());
+            Assert.assertEquals(Utils.getSchemaName(conn), conn.getSchema());
+        }
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetColumnLabel() throws SQLException {
+        try (Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select 5")) {
+            Assert.assertEquals(Utils.getColumnLabel(rs.getMetaData(), 1), rs.getMetaData().getColumnLabel(1));
+            Assert.assertEquals(Utils.getColumnLabel(rs.getMetaData(), 1), rs.getMetaData().getColumnName(1));
+        }
+    }
+
+    @Test(groups = { "unit" })
+    public void testGetAffectedRows() throws SQLException {
+        try (Connection conn = DriverManager.getConnection("jdbc:duckdb:");
+                Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("create table if not exists abc(a VARCHAR(30))");
+            Assert.assertEquals(Utils.getAffectedRows(stmt), stmt.getLargeUpdateCount());
+        }
     }
 }
