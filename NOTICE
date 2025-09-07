@@ -42,7 +42,7 @@ This project includes:
   Arrow Memory - Unsafe under Apache-2.0
   Arrow Vectors under Apache-2.0
   Bouncy Castle Provider under Bouncy Castle Licence
-  brotli4j under Apache License 2.0
+  Brotli4j under Apache License 2.0
   BSON under The Apache License, Version 2.0
   Caffeine cache under Apache License, Version 2.0
   Checker Qual under The MIT License
