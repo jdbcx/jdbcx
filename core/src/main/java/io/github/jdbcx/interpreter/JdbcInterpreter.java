@@ -22,6 +22,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,13 +56,31 @@ import io.github.jdbcx.executor.jdbc.SqlExceptionUtils;
 public class JdbcInterpreter extends AbstractInterpreter {
     private static final Logger log = LoggerFactory.getLogger(JdbcInterpreter.class);
 
+    private static final String COLUMN_COLUMN_DEF = "COLUMN_DEF";
+    private static final String COLUMN_COLUMN_NAME = "COLUMN_NAME";
+    private static final String COLUMN_COLUMN_SIZE = "COLUMN_SIZE";
+    private static final String COLUMN_DATA_TYPE = "DATA_TYPE";
+    private static final String COLUMN_DECIMAL_DIGITS = "DECIMAL_DIGITS";
+    private static final String COLUMN_INDEX_NAME = "INDEX_NAME";
+    private static final String COLUMN_IS_NULLABLE = "IS_NULLABLE";
+    private static final String COLUMN_KEY_SEQ = "KEY_SEQ";
+    private static final String COLUMN_ORDINAL_POSITION = "ORDINAL_POSITION";
+    private static final String COLUMN_PK_NAME = "PK_NAME";
+    private static final String COLUMN_REMARKS = "REMARKS";
+    private static final String COLUMN_TABLE_NAME = "TABLE_NAME";
+    private static final String COLUMN_TYPE_NAME = "TYPE_NAME";
+
     private static final String JSON_ARRAY_PREFIX = ":[";
     private static final String JSON_EMPTY_ARRAY = "[]";
     private static final String JSON_PROP_COLUMNS = "\"columns\":";
+    private static final String JSON_PROP_DEFAULT = "\"default\":";
     private static final String JSON_PROP_INDEXES = "\"indexes\":";
     private static final String JSON_PROP_NULLABLE = "\"nullable\":";
+    private static final String JSON_PROP_PRECISION = "\"precision\":";
     private static final String JSON_PROP_PRIMARY_KEY = "\"primaryKey\":";
     private static final String JSON_PROP_PRODUCT = "\"product\":";
+    private static final String JSON_PROP_SCALE = "\"scale\":";
+    private static final String JSON_PROP_SIZE = "\"size\":";
     private static final String JSON_PROP_TABLES = "\"tables\":";
 
     private static final String PREFIX_CURRENT = "current";
@@ -300,7 +319,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 String name = Utils.getSchemaName(conn);
                 try (ResultSet rs = metaData.getTables(catalogOrSchema, name, pattern, types)) {
                     while (rs.next()) {
-                        if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
+                        if (normalizedTable.equals(normalizedName(rs.getString(COLUMN_TABLE_NAME), quoteString))) {
                             names.add(catalogOrSchema);
                             names.add(name);
                             names.add(pattern);
@@ -314,7 +333,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                     name = Utils.getCatalogName(conn);
                     try (ResultSet rs = metaData.getTables(name, catalogOrSchema, pattern, types)) {
                         while (rs.next()) {
-                            if (normalizedTable.equals(normalizedName(rs.getString("TABLE_NAME"), quoteString))) {
+                            if (normalizedTable.equals(normalizedName(rs.getString(COLUMN_TABLE_NAME), quoteString))) {
                                 names.add(name);
                                 names.add(catalogOrSchema);
                                 names.add(pattern);
@@ -361,9 +380,11 @@ public class JdbcInterpreter extends AbstractInterpreter {
         try (ResultSet rs = metaData.getColumns(catalog, schema, table, DEFAULT_TABLE_PATTERN)) {
             boolean first = true;
             while (rs.next()) {
-                final String columnTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
-                final String columnName = rs.getString("COLUMN_NAME");
-                if (!normalizedTable.equals(columnTable) || Checker.isNullOrEmpty(columnName)) {
+                final String columnTable = normalizedName(rs.getString(COLUMN_TABLE_NAME), quoteString);
+                final String columnName = rs.getString(COLUMN_COLUMN_NAME);
+                final String columnType = rs.getString(COLUMN_TYPE_NAME);
+                if (!normalizedTable.equals(columnTable) || Checker.isNullOrEmpty(columnName)
+                        || Checker.isNullOrEmpty(columnType)) {
                     continue;
                 }
 
@@ -372,13 +393,50 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 } else {
                     builder.append(',');
                 }
+
                 builder.append('{').append(Constants.JSON_PROP_NAME).append(JsonHelper.encode(columnName)).append(',')
-                        .append(Constants.JSON_PROP_TYPE).append(JsonHelper.encode(rs.getString("TYPE_NAME")));
+                        .append(Constants.JSON_PROP_TYPE).append(JsonHelper.encode(columnType));
+                if (columnType.charAt(columnType.length() - 1) != ')') {
+                    int precision = rs.getInt(COLUMN_COLUMN_SIZE);
+                    int scale = rs.getInt(COLUMN_DECIMAL_DIGITS);
+                    switch (rs.getInt(COLUMN_DATA_TYPE)) {
+                        case Types.DECIMAL:
+                        case Types.NUMERIC:
+                            builder.append(',').append(JSON_PROP_PRECISION).append(precision).append(',')
+                                    .append(JSON_PROP_SCALE).append(scale);
+                            break;
+                        case Types.OTHER:
+                            if (scale > 0) {
+                                builder.append(',').append(JSON_PROP_PRECISION).append(precision).append(',')
+                                        .append(JSON_PROP_SCALE).append(scale);
+                            } else if (precision > 0) {
+                                builder.append(',').append(JSON_PROP_SIZE).append(precision);
+                            }
+                            break;
+                        case Types.BIT:
+                        case Types.CHAR:
+                        case Types.NCHAR:
+                        case Types.VARCHAR:
+                        case Types.NVARCHAR:
+                        case Types.LONGVARCHAR:
+                        case Types.LONGNVARCHAR:
+                            if (precision > 0) {
+                                builder.append(',').append(JSON_PROP_SIZE).append(precision);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
                 builder.append(',').append(JSON_PROP_NULLABLE)
-                        .append(!"no".equalsIgnoreCase(rs.getString("IS_NULLABLE")));
-                String remarks = rs.getString("REMARKS");
-                if (!Checker.isNullOrEmpty(remarks)) {
-                    builder.append(',').append(Constants.JSON_PROP_DESC).append(JsonHelper.encode(remarks));
+                        .append(!Constants.NO_EXPR.equalsIgnoreCase(rs.getString(COLUMN_IS_NULLABLE)));
+                String str = rs.getString(COLUMN_REMARKS);
+                if (!Checker.isNullOrEmpty(str)) {
+                    builder.append(',').append(Constants.JSON_PROP_DESC).append(JsonHelper.encode(str));
+                }
+                str = rs.getString(COLUMN_COLUMN_DEF);
+                if (!Checker.isNullOrEmpty(str)) {
+                    builder.append(',').append(JSON_PROP_DEFAULT).append(JsonHelper.encode(str));
                 }
                 builder.append('}');
             }
@@ -389,19 +447,19 @@ public class JdbcInterpreter extends AbstractInterpreter {
         try (ResultSet rs = metaData.getPrimaryKeys(catalog, schema, table)) {
             Map<String, List<OrderedColumn>> columMappings = new LinkedHashMap<>();
             while (rs.next()) {
-                final String columnTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
-                final String columnName = rs.getString("COLUMN_NAME");
+                final String columnTable = normalizedName(rs.getString(COLUMN_TABLE_NAME), quoteString);
+                final String columnName = rs.getString(COLUMN_COLUMN_NAME);
                 if (!normalizedTable.equals(columnTable) || Checker.isNullOrEmpty(columnName)) {
                     continue;
                 }
 
-                final String pkName = normalizedName(rs.getString("PK_NAME"), Constants.EMPTY_STRING);
+                final String pkName = normalizedName(rs.getString(COLUMN_PK_NAME), Constants.EMPTY_STRING);
                 List<OrderedColumn> list = columMappings.get(pkName);
                 if (list == null) {
                     list = new ArrayList<>();
                     columMappings.put(pkName, list);
                 }
-                list.add(new OrderedColumn(rs.getShort("KEY_SEQ"), columnName));
+                list.add(new OrderedColumn(rs.getShort(COLUMN_KEY_SEQ), columnName));
             }
 
             if (!columMappings.isEmpty()) {
@@ -435,8 +493,8 @@ public class JdbcInterpreter extends AbstractInterpreter {
         try (ResultSet rs = metaData.getIndexInfo(catalog, schema, table, false, true)) {
             Map<String, List<OrderedColumn>> columMappings = new LinkedHashMap<>();
             while (rs.next()) {
-                final String indexTable = normalizedName(rs.getString("TABLE_NAME"), quoteString);
-                final String indexName = rs.getString("INDEX_NAME");
+                final String indexTable = normalizedName(rs.getString(COLUMN_TABLE_NAME), quoteString);
+                final String indexName = rs.getString(COLUMN_INDEX_NAME);
                 if (!normalizedTable.equals(indexTable) || indexName == null) {
                     continue;
                 }
@@ -446,7 +504,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                     list = new ArrayList<>();
                     columMappings.put(indexName, list);
                 }
-                list.add(new OrderedColumn(rs.getInt("ORDINAL_POSITION"), rs.getString("COLUMN_NAME")));
+                list.add(new OrderedColumn(rs.getInt(COLUMN_ORDINAL_POSITION), rs.getString(COLUMN_COLUMN_NAME)));
             }
 
             boolean first = true;
