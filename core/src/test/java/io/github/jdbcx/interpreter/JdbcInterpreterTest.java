@@ -144,13 +144,17 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
         try (Connection conn = DriverManager.getConnection("jdbc:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("create table if not exists `" + table
-                    + "`(a UInt32, b String) engine=MergeTree primary key a order by (a,b); " +
-                    "ALTER TABLE `" + table + "` ADD INDEX my_index_name (a) TYPE minmax GRANULARITY 1;");
+                    + "`(a UInt32, b FixedString(3), c Nullable(String), d Decimal(18,4) DEFAULT 5.12345, e DateTime64(3, 'UTC'), f Array(Decimal(18,4))) "
+                    + "engine=MergeTree primary key a order by (a,b); "
+                    + "ALTER TABLE `" + table + "` ADD INDEX my_index_name (a) TYPE minmax GRANULARITY 1;");
             Assert.assertEquals(
                     JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
                             Utils.getSchemaName(conn), table),
-                    "\"database\":\"default\",\"table\":\"" + table
-                            + "\",\"columns\":[{\"name\":\"a\",\"type\":\"UInt32\",\"nullable\":false},{\"name\":\"b\",\"type\":\"String\",\"nullable\":false}],\"indexes\":[{\"name\":\"my_index_name\",\"columns\":[\"a\"]}]");
+                    "\"database\":\"default\",\"table\":\"" + table + "\",\"columns\":[{"
+                            + "\"name\":\"a\",\"type\":\"UInt32\",\"nullable\":false},{\"name\":\"b\",\"type\":\"FixedString(3)\",\"nullable\":false},"
+                            + "{\"name\":\"c\",\"type\":\"Nullable(String)\",\"nullable\":true},{\"name\":\"d\",\"type\":\"Decimal(18, 4)\",\"nullable\":false,\"default\":\"5.12345\"},"
+                            + "{\"name\":\"e\",\"type\":\"DateTime64(3, \\u0027UTC\\u0027)\",\"nullable\":false},{\"name\":\"f\",\"type\":\"Array(Decimal(18, 4))\",\"nullable\":false}],"
+                            + "\"indexes\":[{\"name\":\"my_index_name\",\"columns\":[\"a\"]}]");
             Assert.assertEquals(JdbcInterpreter.getDatabaseTable(conn, table),
                     JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
                             Utils.getSchemaName(conn), table));
@@ -161,12 +165,18 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
                         + "/test?createDatabaseIfNotExist=true&allowMultiQueries=true");
                 Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("create table if not exists `" + table
-                    + "` (a INTEGER NOT NULL, b CHAR(1) NOT NULL, c VARCHAR(30) NULL, PRIMARY KEY (a,b), UNIQUE INDEX i1(a), INDEX i2(a,c)) ENGINE=InnoDB");
+                    + "` (a INTEGER NOT NULL, b CHAR(2) NOT NULL, c VARCHAR(3) DEFAULT 'xyz', d DECIMAL(18,4) DEFAULT 5.12345, e TIMESTAMP(6) NULL, f BLOB,"
+                    + "PRIMARY KEY (a,b), UNIQUE INDEX i1(a), INDEX i2(a,c)) ENGINE=InnoDB");
             Assert.assertEquals(
                     JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
                             Utils.getSchemaName(conn), table),
-                    "\"database\":\"test\",\"table\":\"" + table
-                            + "\",\"columns\":[{\"name\":\"a\",\"type\":\"INT\",\"nullable\":false},{\"name\":\"b\",\"type\":\"CHAR\",\"nullable\":false},{\"name\":\"c\",\"type\":\"VARCHAR\",\"nullable\":true}],\"primaryKey\":[\"a\",\"b\"],\"indexes\":[{\"name\":\"i1\",\"columns\":[\"a\"]},{\"name\":\"PRIMARY\",\"columns\":[\"a\",\"b\"]},{\"name\":\"i2\",\"columns\":[\"a\",\"c\"]}]");
+                    "\"database\":\"test\",\"table\":\"" + table + "\",\"columns\":[{"
+                            + "\"name\":\"a\",\"type\":\"INT\",\"nullable\":false},{\"name\":\"b\",\"type\":\"CHAR\",\"size\":2,\"nullable\":false},"
+                            + "{\"name\":\"c\",\"type\":\"VARCHAR\",\"size\":3,\"nullable\":true,\"default\":\"xyz\"},"
+                            + "{\"name\":\"d\",\"type\":\"DECIMAL\",\"precision\":18,\"scale\":4,\"nullable\":true,\"default\":\"5.1235\"},"
+                            + "{\"name\":\"e\",\"type\":\"TIMESTAMP\",\"nullable\":true},{\"name\":\"f\",\"type\":\"BLOB\",\"nullable\":true}],"
+                            + "\"primaryKey\":[\"a\",\"b\"],\"indexes\":[{\"name\":\"i1\",\"columns\":[\"a\"]},{\"name\":\"PRIMARY\",\"columns\":["
+                            + "\"a\",\"b\"]},{\"name\":\"i2\",\"columns\":[\"a\",\"c\"]}]");
             Assert.assertEquals(
                     JdbcInterpreter.getDatabaseTable(conn, "`test`.`" + table + "`"),
                     JdbcInterpreter.getDatabaseTable(conn.getMetaData(), Utils.getCatalogName(conn),
