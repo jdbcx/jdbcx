@@ -36,6 +36,7 @@ public enum Format {
     AVRO(true, false, true, "avro/binary", "avro"), // https://avro.apache.org/docs/1.11.1/specification/#http-as-transport
     AVRO_BINARY(false, false, false, "application/vnd.apache.avro+binary", "avrob"),
     AVRO_JSON(false, false, false, "application/vnd.apache.avro+json", "avroj"),
+    BINARY(false, false, false, "application/octet-stream", "bin"),
     BSON(false, false, false, "application/bson", "bson"),
     JSONL(false, false, false, "application/jsonl", "jsonl"), // or application/json-lines?
     JSON_SEQ(false, false, false, "application/json-seq", "jsons"), // mainly for streaming, seldom used

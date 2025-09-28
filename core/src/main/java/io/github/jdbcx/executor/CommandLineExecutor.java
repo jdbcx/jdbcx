@@ -422,8 +422,7 @@ public class CommandLineExecutor extends AbstractExecutor {
             p = builder.start();
 
             final CompletableFuture<?> writeTask = writeToProcess(p.getOutputStream(), fileInput ? null : input,
-                    inputCharset,
-                    parallelism > 0);
+                    inputCharset, parallelism > 0);
             if (writeTask != null && !writeTask.isDone()) {
                 if (--parallelism <= 0) {
                     waitForTask(log, writeTask, startTime, timeoutMs);

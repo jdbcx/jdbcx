@@ -58,7 +58,7 @@ public class ShellInterpreter extends AbstractInterpreter {
                 return executor.getDryRunResult(Collections.emptyList(), query, props);
             }
             input = executor.execute(props, null, query);
-            return process(query, input, props);
+            return process(query, input, props, executor.getBinary(props));
         } catch (Exception e) {
             return handleError(e, query, props, input);
         }

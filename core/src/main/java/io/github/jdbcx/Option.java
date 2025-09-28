@@ -70,6 +70,9 @@ public final class Option implements Serializable {
      */
     public static final String ERROR_HANDLING_RETURN = "return";
 
+    public static final String TYPE_AUTO = "auto";
+    public static final String TYPE_BINARY = "binary";
+
     // most common options
     public static final Option ID = Option.of(new String[] { "id", "ID for looking up configuration" });
     public static final Option DESCRIPTION = Option.of(new String[] { "description", "Description" });
@@ -167,8 +170,6 @@ public final class Option implements Serializable {
     public static final Option PROXY = Option.of(new String[] { "proxy",
             "Optional proxy server to use for network connections. If empty, no proxy will be used and connections will be made directly." });
 
-    public static final Option RESULT_FORMAT = Option
-            .of(new String[] { "result.format", "Output format to use for query results." });
     public static final Option RESULT_VAR = Option
             .of(new String[] { "result.var", "Unique variable name of the query result." });
     public static final Option RESULT_REUSE = Option.of(new String[] { "result.reuse",
@@ -209,11 +210,10 @@ public final class Option implements Serializable {
             .of(new String[] { "result.table",
                     "The name of the database table to save the query results to. The table will be automatically created if it does not already exist." });
     /**
-     * The result type, either string, json or stream.
+     * The result type, either auto or binary.
      */
     public static final Option RESULT_TYPE = Option
-            .of(new String[] { "result.type", "The result type, either string, json or stream.", "string", "json",
-                    "stream" });
+            .of(new String[] { "result.type", "The result type, either auto or binary.", TYPE_AUTO, TYPE_BINARY });
 
     public static final Option SERVER_AUTH = Option.of(new String[] { "server.auth",
             "Whether to enable server-side authentication, which requires bearer token for submitting query for execution",

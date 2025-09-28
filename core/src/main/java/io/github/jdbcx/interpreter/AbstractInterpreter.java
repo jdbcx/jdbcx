@@ -58,8 +58,9 @@ abstract class AbstractInterpreter implements Interpreter {
         return Result.of(new ErrorHandler(query, props).attach(resources).handle(error));
     }
 
-    protected Result<?> process(String query, InputStream result, Properties props) {
-        return process(query, new InputStreamReader(result, Constants.DEFAULT_CHARSET), props);
+    protected Result<?> process(String query, InputStream result, Properties props, boolean binary) {
+        return binary ? Result.of(result, Constants.EMPTY_BYTE_ARRAY)
+                : process(query, new InputStreamReader(result, Constants.DEFAULT_CHARSET), props);
     }
 
     protected Result<?> process(String query, Reader result, Properties props) {
