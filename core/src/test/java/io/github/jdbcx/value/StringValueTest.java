@@ -59,6 +59,7 @@ public class StringValueTest extends BaseValueTest {
                 NumberFormatException.class, // isInfinity
                 NumberFormatException.class, // isNan
                 false, // isNull
+                new byte[0], // binary
                 false, // boolean
                 NumberFormatException.class, // char
                 NumberFormatException.class, // byte
@@ -88,6 +89,7 @@ public class StringValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x30 }, // binary
                 false, // boolean
                 '\0', // char
                 (byte) 0, // byte
@@ -113,6 +115,7 @@ public class StringValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x31 }, // binary
                 true, // boolean
                 '\1', // char
                 (byte) 1, // byte
@@ -138,6 +141,7 @@ public class StringValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x32 }, // binary
                 IllegalArgumentException.class, // boolean
                 '\2', // char
                 (byte) 2, // byte
@@ -163,6 +167,7 @@ public class StringValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x2D, 0x31 }, // binary
                 IllegalArgumentException.class, // boolean
                 (char) (0xFFFF & (short) -1), // char
                 (byte) -1, // byte
@@ -190,6 +195,7 @@ public class StringValueTest extends BaseValueTest {
                 NumberFormatException.class, // isInfinity
                 NumberFormatException.class, // isNan
                 false, // isNull
+                "2024-02-11".getBytes(), // binary
                 IllegalArgumentException.class, // boolean
                 NumberFormatException.class, // char
                 NumberFormatException.class, // byte
@@ -215,6 +221,7 @@ public class StringValueTest extends BaseValueTest {
                 NumberFormatException.class, // isInfinity
                 NumberFormatException.class, // isNan
                 false, // isNull
+                "08:54:50".getBytes(), // binary
                 IllegalArgumentException.class, // boolean
                 NumberFormatException.class, // char
                 NumberFormatException.class, // byte
@@ -240,6 +247,7 @@ public class StringValueTest extends BaseValueTest {
                 NumberFormatException.class, // isInfinity
                 NumberFormatException.class, // isNan
                 false, // isNull
+                "2024-02-11 08:54:50.123456789".getBytes(), // binary
                 IllegalArgumentException.class, // boolean
                 NumberFormatException.class, // char
                 NumberFormatException.class, // byte

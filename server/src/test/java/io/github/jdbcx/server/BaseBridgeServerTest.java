@@ -35,13 +35,14 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.ByteArrayClassLoader;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.RequestParameter;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.WrappedDriver;
-import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.server.impl.JdkHttpServer;
 
@@ -855,6 +856,43 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         } finally {
             if (conn != null) {
                 conn.disconnect();
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testBinaryResult() throws IOException, SQLException {
+        final String bridgeUrl = getServerUrl();
+
+        Properties props = new Properties();
+        props.setProperty("jdbcx.server.url", bridgeUrl);
+        props.setProperty("use_binary_string", "true");
+        WrappedDriver d = new WrappedDriver();
+
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                Statement stmt = conn.createStatement();) {
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format("select * from {{ table.shell: %s target/classes/%s.class }}",
+                            Constants.IS_WINDOWS ? "type" : "cat", QueryInfo.class.getName().replace('.', '/')))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertEquals(rs.getMetaData().getColumnTypeName(1),
+                        "Nullable(String)");
+                Assert.assertTrue(rs.next());
+            }
+
+            try (ResultSet rs = stmt
+                    .executeQuery(Utils.format(
+                            "select * from {{ table.shell(result.type=binary): %s target/classes/%s.class }}",
+                            Constants.IS_WINDOWS ? "type" : "cat",
+                            QueryInfo.class.getName().replace('.', '/')))) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertEquals(rs.getMetaData().getColumnTypeName(1), "Nullable(String)");
+                Assert.assertTrue(rs.next());
+                ByteArrayClassLoader loader = new ByteArrayClassLoader();
+                Class<?> clazz = loader.loadClassFromBytes(QueryInfo.class.getName(),
+                        Stream.readAllBytes((InputStream) rs.getBinaryStream(1)));
+                Assert.assertEquals(clazz.getName(), QueryInfo.class.getName());
+                Assert.assertFalse(rs.next());
             }
         }
     }

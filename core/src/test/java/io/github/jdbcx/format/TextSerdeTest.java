@@ -31,7 +31,7 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.Serialization;
-import io.github.jdbcx.executor.Stream;
+import io.github.jdbcx.Stream;
 
 public class TextSerdeTest {
     static class MyTextSerde extends TextSerde {

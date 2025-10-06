@@ -15,6 +15,7 @@
  */
 package io.github.jdbcx.driver;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +32,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
+import io.github.jdbcx.ByteArrayClassLoader;
+import io.github.jdbcx.Constants;
+import io.github.jdbcx.QueryMode;
+import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.jdbc.CombinedResultSet;
 
@@ -194,6 +199,26 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
         }
     }
 
+    @Test(groups = { "integration" })
+    public void testBinaryResult() throws IOException, SQLException {
+        Properties props = new Properties();
+        WrappedDriver d = new WrappedDriver();
+
+        try (WrappedConnection conn = (WrappedConnection) d.connect("jdbcx:sqlite::memory:", props);
+                WrappedStatement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(Utils.format(
+                        "{{ shell(result.type=binary): %s target/classes/%s.class }}",
+                        Constants.IS_WINDOWS ? "type" : "cat", QueryMode.class.getName().replace('.', '/')))) {
+            Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+            Assert.assertEquals(rs.getMetaData().getColumnTypeName(1), "BLOB");
+            Assert.assertTrue(rs.next());
+            ByteArrayClassLoader loader = new ByteArrayClassLoader();
+            Class<?> clazz = loader.loadClassFromBytes(QueryMode.class.getName(), rs.getBytes(1));
+            Assert.assertEquals(clazz.getName(), QueryMode.class.getName());
+            Assert.assertFalse(rs.next());
+        }
+    }
+
     @Test(dataProvider = "testConnections", groups = { "integration" })
     public void testMultipleActiveResultSets(String url, boolean support) throws SQLException {
         Properties props = new Properties();
@@ -220,8 +245,9 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
             try {
                 Assert.assertTrue(s.execute(query, new int[0]));
                 return s.getResultSet();
-            } catch (UnsupportedOperationException | SQLException e) {
-                if (e instanceof UnsupportedOperationException || e instanceof SQLFeatureNotSupportedException
+            } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
+                if (e instanceof SQLFeatureNotSupportedException || e instanceof UnsupportedOperationException
+                        || e instanceof NoSuchMethodError
                         || e.getMessage().toLowerCase(Locale.ROOT).contains("supported")) {
                     try {
                         return s.executeQuery(query);
@@ -237,8 +263,9 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
             try {
                 Assert.assertTrue(s.execute(query, new int[1]));
                 return s.getResultSet();
-            } catch (UnsupportedOperationException | SQLException e) {
-                if (e instanceof UnsupportedOperationException || e instanceof SQLFeatureNotSupportedException
+            } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
+                if (e instanceof SQLFeatureNotSupportedException || e instanceof UnsupportedOperationException
+                        || e instanceof NoSuchMethodError
                         || e.getMessage().toLowerCase(Locale.ROOT).contains("supported")) {
                     try {
                         return s.executeQuery(query);
@@ -253,8 +280,9 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
             try {
                 Assert.assertTrue(s.execute(query, new String[0]));
                 return s.getResultSet();
-            } catch (UnsupportedOperationException | SQLException e) {
-                if (e instanceof UnsupportedOperationException || e instanceof SQLFeatureNotSupportedException
+            } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
+                if (e instanceof SQLFeatureNotSupportedException || e instanceof UnsupportedOperationException
+                        || e instanceof NoSuchMethodError
                         || e.getMessage().toLowerCase(Locale.ROOT).contains("supported")) {
                     try {
                         return s.executeQuery(query);
@@ -269,8 +297,9 @@ public class WrappedConnectionTest extends BaseIntegrationTest {
             try {
                 Assert.assertTrue(s.execute(query, new String[] { "a" }));
                 return s.getResultSet();
-            } catch (UnsupportedOperationException | SQLException e) {
-                if (e instanceof UnsupportedOperationException || e instanceof SQLFeatureNotSupportedException
+            } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
+                if (e instanceof SQLFeatureNotSupportedException || e instanceof UnsupportedOperationException
+                        || e instanceof NoSuchMethodError
                         || e.getMessage().toLowerCase(Locale.ROOT).contains("supported")) {
                     try {
                         return s.executeQuery(query);

@@ -81,7 +81,7 @@ public class ScriptInterpreter extends AbstractInterpreter {
             if (result instanceof Result) {
                 return (Result<?>) result;
             } else if (result instanceof InputStream) {
-                return process(query, (InputStream) result, props);
+                return process(query, (InputStream) result, props, executor.getBinary(props));
             } else if (result instanceof Reader) {
                 return process(query, (Reader) result, props);
             } else if (result instanceof ResultSet) {

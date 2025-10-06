@@ -1498,17 +1498,26 @@ public final class Utils {
     }
 
     public static String toHex(byte[] bytes) {
+        return toHex(bytes, false);
+    }
+
+    public static String toHex(byte[] bytes, boolean quoted) {
         final int len;
         if (bytes == null || (len = bytes.length) == 0) {
-            return Constants.EMPTY_STRING;
+            return quoted ? Constants.EMPTY_EXPR : Constants.EMPTY_STRING;
         }
 
-        char[] hexChars = new char[len * 2];
+        char[] hexChars = new char[len * 2 + (quoted ? 2 : 0)];
         for (int i = 0; i < len; i++) {
             int v = bytes[i] & 0xFF;
             int j = i * 2;
             hexChars[j++] = HEX_ARRAY[v >>> 4];
             hexChars[j] = HEX_ARRAY[v & 0x0F];
+        }
+        if (quoted) {
+            System.arraycopy(hexChars, 0, hexChars, 1, hexChars.length - 2);
+            hexChars[0] = '\'';
+            hexChars[hexChars.length - 1] = '\'';
         }
 
         return new String(hexChars);

@@ -61,7 +61,7 @@ public class WrappedStatement implements Statement {
         ResultSet rs = null;
         try {
             rs = stmt.getGeneratedKeys();
-        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
             log.debug("Failed to get generated keys due to lack of support from the driver");
         }
         return rs;
@@ -110,7 +110,7 @@ public class WrappedStatement implements Statement {
                 } else {
                     try { // NOSONAR
                         rs[0] = stmt.getGeneratedKeys();
-                    } catch (SQLException | UnsupportedOperationException e) {
+                    } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
                         // ignore
                     }
                     affectedRows = Utils.getAffectedRows(stmt);

@@ -27,6 +27,7 @@ import java.util.function.UnaryOperator;
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.ErrorHandler;
+import io.github.jdbcx.Field;
 import io.github.jdbcx.Interpreter;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
@@ -58,8 +59,9 @@ abstract class AbstractInterpreter implements Interpreter {
         return Result.of(new ErrorHandler(query, props).attach(resources).handle(error));
     }
 
-    protected Result<?> process(String query, InputStream result, Properties props) {
-        return process(query, new InputStreamReader(result, Constants.DEFAULT_CHARSET), props);
+    protected Result<?> process(String query, InputStream result, Properties props, boolean binary) {
+        return binary ? Result.of(result, Constants.EMPTY_BYTE_ARRAY, Field.BINARY)
+                : process(query, new InputStreamReader(result, Constants.DEFAULT_CHARSET), props);
     }
 
     protected Result<?> process(String query, Reader result, Properties props) {

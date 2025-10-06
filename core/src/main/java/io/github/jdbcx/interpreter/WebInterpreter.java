@@ -196,7 +196,7 @@ public class WebInterpreter extends AbstractInterpreter {
             } else {
                 input = executor.execute(url, request, props, headers);
             }
-            return process(request, input, props);
+            return process(request, input, props, executor.getBinary(props));
         } catch (SocketTimeoutException e) {
             return handleError(new TimeoutException(e.getMessage()), query, props, input);
         } catch (IOException e) {

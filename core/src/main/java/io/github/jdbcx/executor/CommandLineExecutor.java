@@ -50,6 +50,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 
@@ -422,8 +423,7 @@ public class CommandLineExecutor extends AbstractExecutor {
             p = builder.start();
 
             final CompletableFuture<?> writeTask = writeToProcess(p.getOutputStream(), fileInput ? null : input,
-                    inputCharset,
-                    parallelism > 0);
+                    inputCharset, parallelism > 0);
             if (writeTask != null && !writeTask.isDone()) {
                 if (--parallelism <= 0) {
                     waitForTask(log, writeTask, startTime, timeoutMs);

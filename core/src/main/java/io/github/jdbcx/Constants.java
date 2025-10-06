@@ -66,6 +66,9 @@ public final class Constants {
     public static final String JSON_PROP_TABLE = "\"table\":";
     public static final String JSON_PROP_TYPE = "\"type\":";
 
+    public static final String PROP_COMPRESSION = "compression";
+    public static final String PROP_FORMAT = "format";
+
     public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
     public static final TimeZone SYS_TIMEZONE = TimeZone.getDefault();
     public static final ZoneId UTC_ZONE = UTC_TIMEZONE.toZoneId();
@@ -82,6 +85,7 @@ public final class Constants {
     public static final String YES_EXPR = "yes";
     public static final String ONE_EXPR = "1";
 
+    public static final String EMPTY_EXPR = "''";
     public static final String NULL_EXPR = "NULL";
     public static final String NAN_EXPR = "NaN";
     public static final String INF_EXPR = "Inf";

@@ -35,7 +35,6 @@ import org.testng.annotations.AfterSuite;
 import org.testng.annotations.BeforeSuite;
 
 import eu.rekawek.toxiproxy.ToxiproxyClient;
-import io.github.jdbcx.executor.Stream;
 
 /**
  * Adaptive integration test environment.

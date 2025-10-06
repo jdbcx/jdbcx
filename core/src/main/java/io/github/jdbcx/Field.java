@@ -24,6 +24,9 @@ public final class Field implements Serializable {
 
     public static final Field DEFAULT = of("results", null, JDBCType.VARCHAR, true, 0, 0, false);
 
+    public static final Field BINARY = of(DEFAULT.name(), null, JDBCType.BLOB, DEFAULT.isNullable(), 0, 0,
+            false);
+
     static int[] normalize(String lowerColumnType, JDBCType type, int precision, int scale, boolean signed) {
         switch (type) {
             case BOOLEAN:
@@ -102,11 +105,11 @@ public final class Field implements Serializable {
                 }
                 signed = false;
                 break;
-            case BLOB:
-            case CLOB:
             case BINARY:
             case VARBINARY:
             case LONGVARBINARY:
+            case BLOB:
+            case CLOB:
             case CHAR:
             case NCHAR:
             case VARCHAR:

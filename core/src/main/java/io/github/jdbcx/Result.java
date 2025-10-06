@@ -41,10 +41,10 @@ import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableRow;
 import io.github.jdbcx.data.IterableWrapper;
-import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 import io.github.jdbcx.format.ArrowSerde;
 import io.github.jdbcx.format.AvroSerde;
+import io.github.jdbcx.format.BinarySerde;
 import io.github.jdbcx.format.BsonSerde;
 import io.github.jdbcx.format.CsvSerde;
 import io.github.jdbcx.format.JsonlSerde;
@@ -208,6 +208,9 @@ public final class Result<T> implements AutoCloseable {
                 serde = new AvroSerde(props);
                 break;
             }
+            case BINARY:
+                serde = new BinarySerde(config);
+                break;
             case BSON:
                 serde = new BsonSerde(config);
                 break;

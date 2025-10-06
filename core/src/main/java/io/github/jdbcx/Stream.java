@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.jdbcx.executor;
+package io.github.jdbcx;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,9 +30,6 @@ import java.nio.Buffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.concurrent.CompletionException;
-
-import io.github.jdbcx.Constants;
-import io.github.jdbcx.Utils;
 
 public final class Stream {
     public static long pipe(InputStream from, OutputStream to) throws IOException {

@@ -33,9 +33,9 @@ import org.testng.annotations.Test;
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.WrappedDriver;
-import io.github.jdbcx.executor.Stream;
 
 public class DbDriverExtensionTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })

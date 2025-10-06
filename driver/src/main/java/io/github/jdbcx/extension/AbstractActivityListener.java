@@ -47,9 +47,10 @@ import io.github.jdbcx.value.StringValue;
 
 abstract class AbstractActivityListener implements JdbcActivityListener {
     private static final List<Field> OUTPUT_FIELDS = Collections
-            .unmodifiableList(Arrays.asList(Field.of("file"), Field.of("format"), Field.of("compress_algorithm"),
-                    Field.of("compress_level", JDBCType.BIGINT), Field.of("compress_buffer", JDBCType.BIGINT),
-                    Field.of("size", null, JDBCType.BIGINT, false, 0, 0, false)));
+            .unmodifiableList(
+                    Arrays.asList(Field.of("file"), Field.of(Constants.PROP_FORMAT), Field.of("compress_algorithm"),
+                            Field.of("compress_level", JDBCType.BIGINT), Field.of("compress_buffer", JDBCType.BIGINT),
+                            Field.of("size", null, JDBCType.BIGINT, false, 0, 0, false)));
 
     protected final Properties config;
     protected final Interpreter interpreter;

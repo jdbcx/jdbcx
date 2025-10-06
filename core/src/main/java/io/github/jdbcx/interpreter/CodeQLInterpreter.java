@@ -38,9 +38,9 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.CommandLineExecutor;
-import io.github.jdbcx.executor.Stream;
 
 public class CodeQLInterpreter extends AbstractInterpreter {
     private static final Logger log = LoggerFactory.getLogger(CodeQLInterpreter.class);
@@ -55,7 +55,7 @@ public class CodeQLInterpreter extends AbstractInterpreter {
             .of(new String[] { "query.args",
                     "Additional command line options except database and search-path for query" });
     static final Option OPTION_FORMAT = Option
-            .of(new String[] { "format", "Output format of query result", "text", "bqrs", "csv", "json" });
+            .of(new String[] { Constants.PROP_FORMAT, "Output format of query result", "text", "bqrs", "csv", "json" });
     static final Option OPTION_DECODE_ARGS = Option
             .of(new String[] { "decode.args", "Additional command line options for decode" });
 

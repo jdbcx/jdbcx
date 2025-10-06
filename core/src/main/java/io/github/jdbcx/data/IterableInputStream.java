@@ -68,7 +68,11 @@ public final class IterableInputStream implements Iterable<Row> {
 
         @Override
         public boolean hasNext() {
-            return read();
+            try {
+                return input.available() > 0 || read();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
 
         @Override
@@ -80,11 +84,8 @@ public final class IterableInputStream implements Iterable<Row> {
             final int len = arr.length;
 
             if (len == 0) {
-                do {
-                    out.write(buffer, position, length);
-                    position = length;
-                } while (read());
-                return Row.of(fields, out.toByteArray());
+                length = -1;
+                return Row.of(fields, input);
             }
 
             int mi = 0;

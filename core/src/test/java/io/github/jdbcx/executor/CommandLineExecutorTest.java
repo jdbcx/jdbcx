@@ -28,6 +28,7 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Stream;
 
 public class CommandLineExecutorTest {
     static Properties newProperties(Charset inputCharset, Charset outputCharset, int timeout, String workDir,

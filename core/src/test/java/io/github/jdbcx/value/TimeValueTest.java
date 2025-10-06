@@ -78,6 +78,7 @@ public class TimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "00:00:00".getBytes(), // binary
                 false, // boolean
                 '\0', // char
                 (byte) 0, // byte
@@ -103,6 +104,7 @@ public class TimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "00:00:01".getBytes(), // binary
                 true, // boolean
                 '\1', // char
                 (byte) 1, // byte
@@ -130,6 +132,7 @@ public class TimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "23:59:58".getBytes(), // binary
                 true, // boolean
                 (char) 86398, // char
                 (byte) 86398, // byte
@@ -156,6 +159,7 @@ public class TimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "23:59:58.12".getBytes(), // binary
                 true, // boolean
                 (char) 86398, // char
                 (byte) 86398, // byte

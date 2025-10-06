@@ -50,9 +50,9 @@ import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.executor.CommandLineExecutor;
-import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.security.SslContextProvider;
 
 public final class ScriptHelper {

@@ -15,26 +15,8 @@
  */
 package io.github.jdbcx;
 
-import java.io.IOException;
-
-public interface QueryExtension {
-    Object[] getArguments();
-
-    Object process(String content) throws IOException;
-}
-
-abstract class FileQueryExtension implements QueryExtension {
-    @Override
-    public Object[] getArguments() {
-        return new Object[] {
-                new Object[] { Constants.PROP_FORMAT, String.class },
-                new Object[] { Constants.PROP_COMPRESSION, String.class }
-        };
-    }
-
-    @Override
-    public Object process(String content) throws IOException {
-        // TODO let's work on this in future release
-        return content;
+public final class ByteArrayClassLoader extends ClassLoader {
+    public Class<?> loadClassFromBytes(String className, byte[] classBytes) {
+        return defineClass(className, classBytes, 0, classBytes.length);
     }
 }

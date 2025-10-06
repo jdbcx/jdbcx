@@ -89,7 +89,7 @@ public class QueryExecutor extends AbstractExecutor {
                             rows += affectedRows;
                         }
                     }
-                } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+                } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
                     break;
                 }
             }

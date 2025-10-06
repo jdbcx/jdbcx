@@ -24,8 +24,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import io.github.jdbcx.executor.Stream;
-
 /**
  * This class represents a query task.
  */

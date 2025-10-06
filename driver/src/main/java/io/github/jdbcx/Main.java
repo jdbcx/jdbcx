@@ -45,7 +45,6 @@ import java.util.jar.Manifest;
 
 import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.driver.QueryParser;
-import io.github.jdbcx.executor.Stream;
 
 public final class Main {
     static final class Arguments {

@@ -43,6 +43,7 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.Executor;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 
@@ -172,6 +173,7 @@ abstract class AbstractExecutor implements Executor {
 
     protected final VariableTag defaultTag;
 
+    protected final boolean defaultBinary;
     protected final boolean defaultDryRun;
     protected final String defaultErrorHandling;
     protected final String defaultInputFile;
@@ -188,6 +190,7 @@ abstract class AbstractExecutor implements Executor {
         String outputCharset = Option.OUTPUT_CHARSET.getValue(props);
         String workDir = Option.WORK_DIRECTORY.getValue(props);
 
+        this.defaultBinary = Option.TYPE_BINARY.equals(Option.RESULT_TYPE.getValue(props));
         this.defaultDryRun = Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(props));
         this.defaultErrorHandling = Option.EXEC_ERROR.getValue(props);
         this.defaultInputFile = Option.INPUT_FILE.getValue(props);
@@ -283,6 +286,10 @@ abstract class AbstractExecutor implements Executor {
                 : scheduler.scheduleAtFixedRate(task, 0L, interval, TimeUnit.MILLISECONDS);
     }
 
+    public final boolean getDefaultBinary() {
+        return defaultBinary;
+    }
+
     public final boolean getDefaultDryRun() {
         return defaultDryRun;
     }
@@ -309,6 +316,11 @@ abstract class AbstractExecutor implements Executor {
 
     public final Path getDefaultWorkDirectory() {
         return defaultWorkDir;
+    }
+
+    public boolean getBinary(Properties props) {
+        String value = props != null ? props.getProperty(Option.RESULT_TYPE.getName()) : null;
+        return value != null ? Option.TYPE_BINARY.equals(value) : defaultBinary;
     }
 
     public boolean getDryRun(Properties props) {

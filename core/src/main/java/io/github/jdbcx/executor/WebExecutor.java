@@ -42,6 +42,7 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.Version;

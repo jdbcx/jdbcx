@@ -79,7 +79,7 @@ public class WrappedConnection implements ManagedConnection {
             if (to.getLargeMaxRows() != l) {
                 to.setLargeMaxRows(l);
             }
-        } catch (UnsupportedOperationException | SQLException e) {
+        } catch (SQLException | UnsupportedOperationException | NoSuchMethodError e) {
             value = from.getMaxRows();
             if (to.getMaxRows() != value) {
                 to.setMaxRows(value);

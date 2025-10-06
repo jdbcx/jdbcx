@@ -86,10 +86,17 @@ public class DefaultMapper implements ResultMapper {
             case TIMESTAMP_WITH_TIMEZONE:
                 type.append("DATETIME");
                 break;
+            // case BINARY:
+            // case VARBINARY:
+            // case LONGVARBINARY:
+            // case BLOB:
+            //     type.append("BLOB");
+            //     break;
             case VARCHAR:
             case NVARCHAR:
             case LONGVARCHAR:
             case LONGNVARCHAR:
+            case CLOB:
                 type.append(TYPE_VARCHAR);
                 if (f.precision() > 0) {
                     type.append('(').append(f.precision()).append(')');
