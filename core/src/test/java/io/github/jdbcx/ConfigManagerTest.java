@@ -27,8 +27,6 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.executor.Stream;
-
 public class ConfigManagerTest {
     public static final class TestConfigManager extends ConfigManager {
         public TestConfigManager(Properties props) {

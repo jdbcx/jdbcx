@@ -37,6 +37,7 @@ public class BooleanValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                String.valueOf(false).getBytes(), // binary
                 false, // boolean
                 '\0', // char
                 (byte) 0, // byte
@@ -62,6 +63,7 @@ public class BooleanValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                String.valueOf(true).getBytes(), // binary
                 true, // boolean
                 '\1', // char
                 (byte) 1, // byte

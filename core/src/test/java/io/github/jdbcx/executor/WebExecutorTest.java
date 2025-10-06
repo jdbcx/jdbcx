@@ -25,6 +25,7 @@ import org.testng.annotations.Test;
 
 import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 
 public class WebExecutorTest extends BaseIntegrationTest {

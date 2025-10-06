@@ -31,9 +31,9 @@ import java.util.Properties;
 import com.google.gson.JsonElement;
 
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
-import io.github.jdbcx.executor.Stream;
 
 final class StringOperations {
     static String[] escape(String[] arr, char target, char escape) {

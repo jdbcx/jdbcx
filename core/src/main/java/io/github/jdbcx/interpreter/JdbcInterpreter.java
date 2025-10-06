@@ -138,7 +138,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                 }
                 builder.append(JsonHelper.encode(rs.getString(3)));
             }
-        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
             // ignore
         }
         return builder.append(']').toString();
@@ -177,7 +177,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                             schema, tablePattern, e.getMessage());
                 }
             }
-        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
             // ignore
         }
         return first ? getDatabaseTables(metaData, catalog, null, tablePattern, tableTypes)
@@ -213,7 +213,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                     log.debug("Failed to get schemas from catalog [%s] due to %s", catalog, e.getMessage());
                 }
             }
-        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+        } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
             // ignore
         }
 
@@ -326,7 +326,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                             break;
                         }
                     }
-                } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+                } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
                     // ignore
                 }
                 if (names.isEmpty()) {
@@ -340,7 +340,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
                                 break;
                             }
                         }
-                    } catch (SQLFeatureNotSupportedException | UnsupportedOperationException e) {
+                    } catch (SQLFeatureNotSupportedException | UnsupportedOperationException | NoSuchMethodError e) {
                         // ignore
                     }
                 }

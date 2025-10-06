@@ -48,6 +48,7 @@ public abstract class BaseValueTest {
         Assert.assertFalse(v.isNaN(), "isNaN");
         Assert.assertTrue(v.isNull(), "isNull");
 
+        Assert.assertNotNull(v.asBinary(), "asBinary");
         Assert.assertEquals(v.asBoolean(), false, "asBoolean");
         Assert.assertEquals(v.asChar(), '\0', "asChar");
         Assert.assertEquals(v.asByte(), (byte) 0, "asByte");
@@ -107,6 +108,7 @@ public abstract class BaseValueTest {
         checkValueOrException(v::isNaN, expected[i++], "isNaN");
         checkValueOrException(v::isNull, expected[i++], "isNull");
 
+        checkValueOrException(v::asBinary, expected[i++], "asBinary");
         checkValueOrException(v::asBoolean, expected[i++], "asBoolean");
         checkValueOrException(v::asChar, expected[i++], "asChar");
         checkValueOrException(v::asByte, expected[i++], "asByte");

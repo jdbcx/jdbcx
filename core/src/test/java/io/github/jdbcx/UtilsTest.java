@@ -608,22 +608,38 @@ public class UtilsTest {
 
     @Test(groups = { "unit" })
     public void testToHex() {
-        Assert.assertEquals(Utils.toHex(null), "");
-        Assert.assertEquals(Utils.toHex(new byte[0]), "");
+        Assert.assertEquals(Utils.toHex(null, false), "");
+        Assert.assertEquals(Utils.toHex(new byte[0], false), "");
 
         char[] chars = "0123456789ABCDEF".toCharArray();
         for (int i = 0; i < 16; i++) {
             int index = i * 16;
             for (char ch : chars) {
-                Assert.assertEquals(Utils.toHex(new byte[] { (byte) index++ }),
+                Assert.assertEquals(Utils.toHex(new byte[] { (byte) index++ }, false),
                         new String(new char[] { chars[i], ch }));
             }
         }
 
-        Assert.assertEquals(Utils.toHex(new byte[1]), "00");
-        Assert.assertEquals(Utils.toHex(new byte[2]), "0000");
-        Assert.assertEquals(Utils.toHex(new byte[3]), "000000");
-        Assert.assertEquals(Utils.toHex(new byte[4]), "00000000");
+        Assert.assertEquals(Utils.toHex(new byte[1], false), "00");
+        Assert.assertEquals(Utils.toHex(new byte[2], false), "0000");
+        Assert.assertEquals(Utils.toHex(new byte[3], false), "000000");
+        Assert.assertEquals(Utils.toHex(new byte[4], false), "00000000");
+
+        Assert.assertEquals(Utils.toHex(null, true), "''");
+        Assert.assertEquals(Utils.toHex(new byte[0], true), "''");
+
+        for (int i = 0; i < 16; i++) {
+            int index = i * 16;
+            for (char ch : chars) {
+                Assert.assertEquals(Utils.toHex(new byte[] { (byte) index++ }, true),
+                        new String(new char[] { '\'', chars[i], ch, '\'' }));
+            }
+        }
+
+        Assert.assertEquals(Utils.toHex(new byte[] { 1 }, true), "'01'");
+        Assert.assertEquals(Utils.toHex(new byte[] { 1, 15 }, true), "'010F'");
+        Assert.assertEquals(Utils.toHex(new byte[] { 1, 100, 3 }, true), "'016403'");
+        Assert.assertEquals(Utils.toHex(new byte[] { 1, 100, 3, 15 }, true), "'0164030F'");
     }
 
     @Test(groups = { "unit" })

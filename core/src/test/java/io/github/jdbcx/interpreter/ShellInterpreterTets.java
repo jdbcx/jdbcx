@@ -24,19 +24,14 @@ import java.util.concurrent.TimeoutException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import io.github.jdbcx.ByteArrayClassLoader;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
-import io.github.jdbcx.executor.Stream;
+import io.github.jdbcx.Stream;
 
 public class ShellInterpreterTets {
-    static final class ByteArrayClassLoader extends ClassLoader {
-        public Class<?> loadClassFromBytes(String className, byte[] classBytes) {
-            return defineClass(className, classBytes, 0, classBytes.length);
-        }
-    }
-
     @Test(groups = "unit")
     public void testBinaryOutput() throws IOException, TimeoutException {
         final String cli = (Constants.IS_WINDOWS ? "type" : "cat") + " target/classes/"

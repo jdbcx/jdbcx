@@ -48,6 +48,7 @@ public class ClickHouseMapper implements ResultMapper {
     static final String FORMAT_JSONEACHROW = "JSONEachRow";
     static final String FORMAT_LINEASSTRING = "LineAsString";
     static final String FORMAT_PARQUET = "Parquet";
+    static final String FORMAT_RAWBLOB = "RawBLOB";
     static final String FORMAT_VALUES = "Values";
 
     static final String TYPE_NULLABLE = "Nullable";
@@ -85,6 +86,9 @@ public class ClickHouseMapper implements ResultMapper {
                 break;
             case AVRO:
                 format = FORMAT_AVRO;
+                break;
+            case BINARY:
+                format = FORMAT_RAWBLOB;
                 break;
             case BSON:
                 format = FORMAT_BSONEACHROW;
@@ -221,10 +225,15 @@ public class ClickHouseMapper implements ResultMapper {
                             .append(')');
                 }
                 break;
+            case BINARY:
+            case VARBINARY:
+            case LONGVARBINARY:
+            case BLOB:
             case VARCHAR:
             case NVARCHAR:
             case LONGVARCHAR:
             case LONGNVARCHAR:
+            case CLOB:
                 type.append(TYPE_STRING);
                 break;
             // case ARRAY:

@@ -41,7 +41,6 @@ import io.github.jdbcx.data.IterableReader;
 import io.github.jdbcx.data.IterableResultSet;
 import io.github.jdbcx.data.IterableRow;
 import io.github.jdbcx.data.IterableWrapper;
-import io.github.jdbcx.executor.Stream;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 import io.github.jdbcx.format.ArrowSerde;
 import io.github.jdbcx.format.AvroSerde;

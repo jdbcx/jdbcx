@@ -277,12 +277,19 @@ public class ValueFactory implements Serializable {
             case TIMESTAMP_WITH_TIMEZONE:
                 value = Values.ofTimestamp(this, nullable, scale, null);
                 break;
+            case BINARY:
+            case VARBINARY:
+            case LONGVARBINARY:
+            case BLOB:
+                value = Values.ofBinary(this, nullable, null);
+                break;
             case ARRAY:
             case OTHER:
             case VARCHAR:
             case NVARCHAR:
             case LONGVARCHAR:
             case LONGNVARCHAR:
+            case CLOB:
                 value = Values.ofString(this, nullable, 0, null);
                 break;
             case NULL:

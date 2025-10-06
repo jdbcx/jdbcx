@@ -95,6 +95,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "1970-01-01 00:00:00".getBytes(), // binary
                 false, // boolean
                 '\0', // char
                 (byte) 0, // byte
@@ -122,6 +123,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "1970-01-01 00:00:01".getBytes(), // binary
                 true, // boolean
                 '\1', // char
                 (byte) 1, // byte
@@ -149,6 +151,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "1969-12-31 23:59:58".getBytes(), // binary
                 true, // boolean
                 (char) -2, // char
                 (byte) -2, // byte
@@ -177,6 +180,7 @@ public class DateTimeValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                "1969-12-31 23:59:58.12".getBytes(), // binary
                 true, // boolean
                 (char) -2, // char
                 (byte) -2, // byte

@@ -172,22 +172,24 @@ public class DuckDBMapper implements ResultMapper {
             case TIMESTAMP_WITH_TIMEZONE:
                 type.append(TYPE_TIMESTAMPTZ);
                 break;
+            case BINARY:
+            case VARBINARY:
+            case LONGVARBINARY:
+            case BLOB:
+                type.append(TYPE_BLOB);
+                break;
             case CHAR:
             case NCHAR:
             case VARCHAR:
             case NVARCHAR:
             case LONGVARCHAR:
             case LONGNVARCHAR:
+            case CLOB:
                 type.append(TYPE_VARCHAR);
                 if (f.precision() > 0) {
                     // The maximum length n has no effect and is only provided for compatibility.
                     type.append('(').append(f.precision()).append(')');
                 }
-                break;
-            case BINARY:
-            case BLOB:
-            case VARBINARY:
-                type.append(TYPE_BLOB);
                 break;
             // case ARRAY:
             // case OTHER:

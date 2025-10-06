@@ -20,6 +20,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -43,7 +48,7 @@ public class BinarySerdeTest {
     }
 
     @Test(groups = { "unit" })
-    public void testSerde() throws IOException {
+    public void testSerde() throws IOException, SQLException {
         Properties config = new Properties();
         BinarySerde serde = new BinarySerde(config);
         Assert.assertThrows(UnsupportedOperationException.class,
@@ -57,6 +62,16 @@ public class BinarySerdeTest {
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(Result.of("123"), out);
+            Assert.assertEquals(out.toByteArray(), new byte[] { 49, 50, 51 });
+        }
+
+        Properties props = new Properties();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:", props);
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("select '123'");
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            serde.serialize(Result.of(rs), out);
+            Assert.assertFalse(rs.next());
             Assert.assertEquals(out.toByteArray(), new byte[] { 49, 50, 51 });
         }
     }

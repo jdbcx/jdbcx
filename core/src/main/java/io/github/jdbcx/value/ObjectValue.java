@@ -26,6 +26,8 @@ import io.github.jdbcx.Constants;
 import io.github.jdbcx.ValueFactory;
 
 public abstract class ObjectValue<T extends Serializable> extends AbstractValue {
+    static final String UNSUPPORTED_RESET_TO_DEFAULT = "Reset to default is not supported.";
+
     private T value;
 
     protected ObjectValue<T> set(T value) {
@@ -130,7 +132,7 @@ public abstract class ObjectValue<T extends Serializable> extends AbstractValue 
 
     @Override
     public ObjectValue<T> resetToDefault() {
-        throw new UnsupportedOperationException("Unsupport to reset to default value");
+        throw new UnsupportedOperationException(UNSUPPORTED_RESET_TO_DEFAULT);
     }
 
     @Override

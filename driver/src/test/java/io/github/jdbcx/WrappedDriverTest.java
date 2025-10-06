@@ -32,8 +32,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import io.github.jdbcx.executor.Stream;
-
 public class WrappedDriverTest extends BaseIntegrationTest {
     private ResultSet executeQuery(Statement stmt, String query, boolean useExecuteQuery) throws SQLException {
         final ResultSet rs;

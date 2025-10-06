@@ -31,7 +31,7 @@ import io.github.jdbcx.Field;
 import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
-import io.github.jdbcx.executor.Stream;
+import io.github.jdbcx.Stream;
 
 public class ScriptHelperTest extends BaseIntegrationTest {
     private final ScriptHelper helper = ScriptHelper.getInstance();

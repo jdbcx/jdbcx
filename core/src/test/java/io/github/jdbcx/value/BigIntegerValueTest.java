@@ -57,6 +57,7 @@ public class BigIntegerValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x30 }, // binary
                 false, // boolean
                 '\0', // char
                 (byte) 0, // byte
@@ -82,6 +83,7 @@ public class BigIntegerValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x31 }, // binary
                 true, // boolean
                 '\1', // char
                 (byte) 1, // byte
@@ -107,6 +109,7 @@ public class BigIntegerValueTest extends BaseValueTest {
                 false, // isInfinity
                 false, // isNan
                 false, // isNull
+                new byte[] { 0x2D, 0x32 }, // binary
                 true, // boolean
                 (char) -2, // char
                 (byte) -2, // byte

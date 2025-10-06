@@ -15,6 +15,10 @@
  */
 package io.github.jdbcx;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -23,6 +27,7 @@ import java.time.LocalTime;
 
 import io.github.jdbcx.value.BigDecimalValue;
 import io.github.jdbcx.value.BigIntegerValue;
+import io.github.jdbcx.value.BinaryValue;
 import io.github.jdbcx.value.BooleanValue;
 import io.github.jdbcx.value.ByteValue;
 import io.github.jdbcx.value.DateTimeValue;
@@ -100,7 +105,9 @@ final class Values {
         if (value == null) {
             v = StringValue.of(null, true, 0, (String) null);
         } else if (value instanceof byte[]) {
-            v = StringValue.of(null, true, 0, (byte[]) value);
+            v = BinaryValue.of(null, true, (byte[]) value);
+        } else if (value instanceof char[]) {
+            v = StringValue.of(null, true, 0, new String((char[]) value));
         } else if (value instanceof Byte) {
             v = ByteValue.of(null, true, true, (byte) value);
         } else if (value instanceof Short) {
@@ -117,10 +124,22 @@ final class Values {
             v = BigIntegerValue.of(null, true, (BigInteger) value);
         } else if (value instanceof BigDecimal) {
             v = BigDecimalValue.of(null, true, (BigDecimal) value);
+        } else if (value instanceof InputStream) {
+            v = BinaryValue.of(null, true, (InputStream) value);
+        } else if (value instanceof Reader) {
+            try {
+                v = StringValue.of(null, true, 0, Stream.readAllAsString((Reader) value));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         } else {
             v = StringValue.of(null, true, 0, value.toString());
         }
         return v;
+    }
+
+    static BinaryValue ofBinary(ValueFactory factory, boolean nullable, InputStream value) {
+        return BinaryValue.of(factory, nullable, value);
     }
 
     static Value ofBoolean(ValueFactory factory, boolean nullable, boolean value) {

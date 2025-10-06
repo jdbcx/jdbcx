@@ -105,16 +105,23 @@ public final class QueryBuilder {
             ExecutableBlock block = this.blocks[i];
             if (block.useBridge()) {
                 Properties props = manager.getBridgeContext();
+                VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
+                String expression = block.hasOutput() ? tag.function(block.getContent())
+                        : tag.procedure(block.getContent());
                 if (ExecutableBlock.KEYWORD_VALUES.equals(block.getExtensionName())) {
                     StringBuilder builder = new StringBuilder(QueryMode.DIRECT.path()).append('/')
                             .append(UUID.randomUUID().toString()).append(Format.VALUES.fileExtension(true));
                     props.setProperty(DriverExtension.PROPERTY_PATH, builder.toString());
                 } else {
                     props.setProperty(DriverExtension.PROPERTY_PATH, QueryMode.ASYNC.path());
+                    Properties p = new Properties(props);
+                    ParsedQuery q = QueryParser.parse(expression, tag, p, manager.getConfigManager());
+                    if (Option.TYPE_BINARY
+                            .equals(Option.RESULT_TYPE.getValue(q.getExecutableBlocks().get(0).getProperties()))) {
+                        props.setProperty(Constants.PROP_FORMAT, Format.BINARY.fileExtension(false));
+                    }
                 }
-                VariableTag tag = VariableTag.valueOf(Option.TAG.getValue(props));
-                this.blocks[i] = new ExecutableBlock(block.getIndex(), QueryContext.KEY_BRIDGE, tag, props,
-                        block.hasOutput() ? tag.function(block.getContent()) : tag.procedure(block.getContent()),
+                this.blocks[i] = new ExecutableBlock(block.getIndex(), QueryContext.KEY_BRIDGE, tag, props, expression,
                         block.hasOutput());
             }
         }

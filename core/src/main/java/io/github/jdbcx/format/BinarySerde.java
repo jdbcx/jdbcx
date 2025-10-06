@@ -22,6 +22,8 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Properties;
 
 import io.github.jdbcx.Checker;
@@ -31,7 +33,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Serialization;
-import io.github.jdbcx.executor.Stream;
+import io.github.jdbcx.Stream;
 
 public final class BinarySerde implements Serialization {
     private static final Logger log = LoggerFactory.getLogger(BinarySerde.class);
@@ -53,7 +55,24 @@ public final class BinarySerde implements Serialization {
     @Override
     public void serialize(Result<?> result, OutputStream out) throws IOException {
         final Object obj;
-        if (result.fields().isEmpty() || (obj = result.get()) == null) {
+        if (result.fields().isEmpty()) {
+            obj = null;
+        } else {
+            Object o = result.get();
+            if (o instanceof ResultSet) {
+                try (ResultSet rs = (ResultSet) o) {
+                    o = null;
+                    if (rs.next()) {
+                        o = rs.getObject(1);
+                    }
+                } catch (SQLException e) {
+                    throw new IOException(e);
+                }
+            }
+            obj = o;
+        }
+
+        if (obj == null) {
             log.warn("Nothing to write due to no field or no value defined in the given result");
             return;
         }
