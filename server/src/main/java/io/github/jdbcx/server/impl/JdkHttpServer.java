@@ -128,7 +128,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     }
 
     @Override
-    protected void redirect(Request request) throws IOException {
+    protected int redirect(Request request) throws IOException {
         HttpExchange exchange = request.getImplementation(HttpExchange.class);
         StringBuilder builder = new StringBuilder(baseUrl).append(request.getQueryId())
                 .append(request.getFormat().fileExtension(true));
@@ -141,11 +141,11 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
         final Headers respHeaders = exchange.getResponseHeaders();
         respHeaders.set(HEADER_LOCATION, newUrl);
-        respond(request, HttpURLConnection.HTTP_MOVED_TEMP, newUrl);
+        return respond(request, HttpURLConnection.HTTP_MOVED_TEMP, newUrl);
     }
 
     @Override
-    protected void respond(Request request, int code, String message) throws IOException {
+    protected int respond(Request request, int code, String message) throws IOException {
         log.debug("Responding %d to %s: %s", code, request, message);
         HttpExchange exchange = request.getImplementation(HttpExchange.class);
         if (Checker.isNullOrEmpty(message)) {
@@ -164,6 +164,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
                 out.write(bytes);
             }
         }
+        return code;
     }
 
     @Override

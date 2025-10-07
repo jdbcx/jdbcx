@@ -31,10 +31,12 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
@@ -232,6 +234,7 @@ public final class Main {
         println("  decrypt [ENCRYPTED TEXT]  Decrypt the text from standard input or command-line argument");
         println("  encrypt [ORIGINAL TEXT]   Encrypt the text from standard input or command-line argument");
         println("  keygen                    Generate secure key for encryption");
+        println("  jwt [KEY1=VALUE1,...]     Generate signed JWT for access control");
         println("  URL [@FILE or QUERY...]   Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
@@ -405,6 +408,31 @@ public final class Main {
         return Utils.split(ConfigManager.OPTION_ALGORITHM.getValue(props), '/', true, true, false).get(0);
     }
 
+    static int generateJwt(String kvps, boolean verbose) throws SQLException {
+        Map<String, String> params = new HashMap<>();
+        params.putAll(Utils.toKeyValuePairs(kvps));
+        String issuer = params.remove("issuer");
+        String subject = params.remove("subject");
+        if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
+            throw new IllegalArgumentException("Non-blank issuer and subject are required");
+        } else {
+            issuer = issuer.trim();
+            subject = subject.trim();
+        }
+
+        String expires = params.remove("expires");
+        int expirationMinutes = 0;
+        if (!Checker.isNullOrBlank(expires)) {
+            expirationMinutes = Integer.parseInt(expires.trim());
+        }
+        ConfigManager manager = getConfigManager();
+        if (verbose) {
+            println(Utils.format("* Generating JWT(issuer=%s, subject=%s)...", issuer, subject));
+        }
+        println(manager.generateJwt(issuer, subject, expirationMinutes, params));
+        return 0;
+    }
+
     static int generateKey(boolean verbose) throws SQLException {
         Properties props = System.getProperties();
         ConfigManager manager = getConfigManager();
@@ -475,6 +503,8 @@ public final class Main {
             return decryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
         } else if ("encrypt".equals(args.url)) {
             return encryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
+        } else if ("jwt".equals(args.url)) {
+            return generateJwt(arguments[1], args.verbose);
         }
         if (args.queries.isEmpty()) {
             if (args.verbose) {

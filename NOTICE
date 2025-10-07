@@ -63,6 +63,7 @@ This project includes:
   Jackson-core under The Apache Software License, Version 2.0
   jackson-databind under The Apache Software License, Version 2.0
   janino under BSD-3-Clause
+  java jwt under The MIT License (MIT)
   Java MCP SDK under MIT License
   Java Native Access under LGPL-2.1-or-later or Apache-2.0
   jcommander under Apache License, Version 2.0

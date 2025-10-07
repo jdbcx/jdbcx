@@ -48,6 +48,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
             <optional>true</optional>

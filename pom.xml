@@ -105,6 +105,7 @@
         <janino.version>3.1.12</janino.version>
         <jctools.version>4.0.5</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
+        <jwt.version>4.5.0</jwt.version>
         <lz4.version>1.8.0</lz4.version>
         <mariadb.version>3.5.5</mariadb.version>
         <mcp.version>0.11.3</mcp.version>
@@ -206,6 +207,17 @@
                 <groupId>com.aayushatharva.brotli4j</groupId>
                 <artifactId>native-windows-x86_64</artifactId>
                 <version>${brotli4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>${jwt.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>com.clickhouse</groupId>

@@ -224,6 +224,8 @@ public final class Option implements Serializable {
     public static final Option SERVER_PORT = Option.of("server.port", "Bridge server port.", "8080");
     public static final Option SERVER_CONTEXT = Option.of("server.context",
             "Server web context starts and ends with backslash", "/");
+    public static final Option SERVER_SECRET = Option
+            .of(new String[] { "server.secret", "Server secret for JWT token generation and verification." });
     public static final Option SERVER_TOKEN = Option.of(new String[] { "server.token",
             "Token required to access bridge server with authentication and authorization enabled." });
     public static final Option SERVER_FORMAT = Option.ofEnum("server.format", "Server response format", null,
@@ -437,6 +439,10 @@ public final class Option implements Serializable {
     }
 
     public static Option ofInt(String name, String description, int defaultValue) {
+        return of(name, description, String.valueOf(defaultValue));
+    }
+
+    public static Option ofLong(String name, String description, long defaultValue) {
         return of(name, description, String.valueOf(defaultValue));
     }
 

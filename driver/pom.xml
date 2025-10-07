@@ -32,6 +32,11 @@
             <optional>true</optional>
         </dependency>
         <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <optional>true</optional>
@@ -196,6 +201,7 @@
                             <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
                             <artifactSet>
                                 <includes>
+                                    <include>com.auth0:java-jwt</include>
                                     <include>com.google.code.gson:gson</include>
                                     <include>io.burt:jmespath-core</include>
                                     <include>io.burt:jmespath-gson</include>
@@ -203,6 +209,10 @@
                                 </includes>
                             </artifactSet>
                             <relocations>
+                                <relocation>
+                                    <pattern>com.auth0.jwt</pattern>
+                                    <shadedPattern>${shade.base}.jwt</shadedPattern>
+                                </relocation>
                                 <relocation>
                                     <pattern>com.google.gson</pattern>
                                     <shadedPattern>${shade.base}.gson</shadedPattern>

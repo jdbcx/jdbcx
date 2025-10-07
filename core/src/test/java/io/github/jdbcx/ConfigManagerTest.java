@@ -22,10 +22,14 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 public class ConfigManagerTest {
     public static final class TestConfigManager extends ConfigManager {
@@ -81,6 +85,44 @@ public class ConfigManagerTest {
         Assert.assertEquals(ConfigManager.concatenate(new byte[0], new byte[0]), new byte[0]);
         Assert.assertEquals(ConfigManager.concatenate(new byte[] { 1, 2, 3 }, new byte[] { 4, 5 }),
                 new byte[] { 1, 2, 3, 4, 5 });
+    }
+
+    @Test(groups = { "unit" })
+    public void testCreateAlgorithm() {
+        Assert.assertEquals(ConfigManager.createAlgorithm(null).getName(), "none");
+        Assert.assertEquals(ConfigManager.createAlgorithm("").getName(), "none");
+        Assert.assertEquals(ConfigManager.createAlgorithm(" ").getName(), "HS256");
+        Assert.assertEquals(ConfigManager.createAlgorithm("123").getName(), "HS256");
+
+        Assert.assertEquals(ConfigManager.createAlgorithm("HS256:12:3").getName(), "HS256");
+        Assert.assertEquals(ConfigManager.createAlgorithm("HS384:1: 2:3").getName(), "HS384");
+        Assert.assertEquals(ConfigManager.createAlgorithm("HS512::1:2:3").getName(), "HS512");
+    }
+
+    @Test(groups = { "unit" })
+    public void testJwt() {
+        Properties props = new Properties();
+        TestConfigManager manager = new TestConfigManager(props);
+        String token = manager.generateJwt("me", "you", 5, null);
+        DecodedJWT jwt = manager.getJwtVerifier("me").verify(token);
+        Assert.assertEquals(jwt.getAlgorithm(), "none");
+        Assert.assertEquals(jwt.getClaims().size(), manager.verifyJwt("me", token).size());
+        Assert.assertEquals(jwt.getIssuer(), "me");
+        Assert.assertEquals(jwt.getSubject(), "you");
+
+        Option.SERVER_SECRET.setJdbcxValue(props, "HS512:6iCHselBF+Ba7NpU4IkQj8WYDY6ZTh1d");
+        manager = new TestConfigManager(props);
+        Map<String, String> claims = new HashMap<>();
+        claims.put("a1", "b");
+        claims.put("b2", "x");
+        token = manager.generateJwt("you", "me", 5, claims);
+        jwt = manager.getJwtVerifier("you").verify(token);
+        Assert.assertEquals(jwt.getAlgorithm(), "HS512");
+        Assert.assertEquals(jwt.getClaims().size(), manager.verifyJwt("you", token).size());
+        Assert.assertEquals(jwt.getIssuer(), "you");
+        Assert.assertEquals(jwt.getSubject(), "me");
+        Assert.assertEquals(jwt.getClaim("a1").asString(), "b");
+        Assert.assertEquals(jwt.getClaim("b2").asString(), "x");
     }
 
     @Test(groups = { "unit" })

@@ -100,20 +100,17 @@ final class ServerAcl {
         return true;
     }
 
-    final String token;
     final boolean allowAll;
     final Set<String> allowedHosts;
     final Set<String> allowedIPs;
     final List<IPRange> ipRanges;
 
-    ServerAcl(String token, String allowedHosts, String allowedIPs) {
-        this.token = Checker.nonEmpty(token, "Token").trim();
-
+    ServerAcl(String allowedHosts, String allowedIPs) {
         if (Checker.isNullOrEmpty(allowedHosts)) {
             this.allowedHosts = Collections.emptySet();
         } else {
             Set<String> set = new HashSet<>();
-            for (String host : Utils.split(allowedHosts, ',')) {
+            for (String host : Utils.split(allowedHosts, ',', true, true, true)) {
                 set.add(host.trim().toLowerCase(Locale.ROOT));
             }
             this.allowedHosts = Collections.unmodifiableSet(set);
@@ -125,12 +122,12 @@ final class ServerAcl {
         } else {
             Set<String> set = new HashSet<>();
             List<IPRange> list = new ArrayList<>();
-            for (String ip : Utils.split(allowedIPs, ',')) {
+            for (String ip : Utils.split(allowedIPs, ',', true, true, true)) {
                 if (ip.indexOf('/') == -1) {
                     set.add(ip.trim());
                     continue;
                 }
-                List<String> parts = Utils.split(ip, '/');
+                List<String> parts = Utils.split(ip, '/', true, true, true);
                 if (parts.size() == 2) {
                     try {
                         InetAddress start = InetAddress.getByName(parts.get(0).trim());
@@ -203,8 +200,7 @@ final class ServerAcl {
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = prime + token.hashCode();
-        result = prime * result + (allowAll ? 1231 : 1237);
+        int result = prime + (allowAll ? 1231 : 1237);
         result = prime * result + allowedHosts.hashCode();
         result = prime * result + allowedIPs.hashCode();
         result = prime * result + ipRanges.hashCode();
@@ -220,7 +216,7 @@ final class ServerAcl {
         }
 
         ServerAcl other = (ServerAcl) obj;
-        return token.equals(other.token) && allowAll == other.allowAll && allowedHosts.equals(other.allowedHosts)
+        return allowAll == other.allowAll && allowedHosts.equals(other.allowedHosts)
                 && allowedIPs.equals(other.allowedIPs) && ipRanges.equals(other.ipRanges);
     }
 

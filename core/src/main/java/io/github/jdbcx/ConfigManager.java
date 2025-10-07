@@ -29,10 +29,16 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -42,6 +48,14 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -82,7 +96,7 @@ public abstract class ConfigManager {
 
     static final Option OPTION_CONFIG_PROVIDER = Option.of("config.provider", "The class to manage configuration.",
             ConfigManager.class.getPackage().getName() + ".config.PropertyFile" + ConfigManager.class.getSimpleName());
-    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file",
+    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file for configuration encryption.",
             Constants.CONF_DIR + "/secret.key");
     static final Option OPTION_KEY_SIZE_BITS = Option
             .ofInt("encryption.key.bits", "Key size in bits", 256); // 32 bytes
@@ -235,6 +249,38 @@ public abstract class ConfigManager {
         return bytes;
     }
 
+    static final Algorithm createAlgorithm(String secret) {
+        List<String> parts = Checker.isNullOrEmpty(secret) ? Collections.emptyList()
+                : new ArrayList<>(Utils.split(secret, ':', true, false, false));
+        final String algorithmName;
+        if (parts.isEmpty()) {
+            return Algorithm.none();
+        } else if (parts.size() < 2) {
+            algorithmName = "";
+        } else {
+            algorithmName = parts.remove(0).trim().toUpperCase(Locale.ROOT);
+            secret = String.join(":", parts);
+        }
+
+        final Algorithm algorithm;
+        switch (algorithmName) {
+            case "HS512":
+                algorithm = Algorithm.HMAC512(secret);
+                break;
+            case "HS384":
+                algorithm = Algorithm.HMAC384(secret);
+                break;
+            case "HS256":
+            default:
+                algorithm = Algorithm.HMAC256(secret);
+                break;
+        }
+
+        return algorithm;
+    }
+
+    private final Algorithm secretAlg;
+    private final AtomicReference<JWTVerifier> verifierRef;
     private final Path secretKeyFile;
     private final int keySizeBits;
     private final int ivLengthBytes;
@@ -244,6 +290,8 @@ public abstract class ConfigManager {
     private final Function<byte[], AlgorithmParameterSpec> paramSpecFunc;
 
     protected ConfigManager(Properties props) {
+        this.secretAlg = createAlgorithm(Option.SERVER_SECRET.getJdbcxValue(props));
+        this.verifierRef = new AtomicReference<JWTVerifier>(null);
         this.secretKeyFile = Utils.getPath(OPTION_SECRET_FILE.getJdbcxValue(props), true);
         this.keySizeBits = Integer.parseInt(OPTION_KEY_SIZE_BITS.getJdbcxValue(props));
         this.ivLengthBytes = Integer.parseInt(OPTION_IV_LENGTH_BYTES.getJdbcxValue(props));
@@ -404,6 +452,51 @@ public abstract class ConfigManager {
         }
         return new StringBuilder(category.length() + id.length() + 1).append(category).append('/').append(id)
                 .toString();
+    }
+
+    protected final JWTVerifier getJwtVerifier(String issuer) {
+        return JWT.require(secretAlg).withIssuer(issuer).build();
+    }
+
+    public String generateJwt(String issuer, String subject, int expirationMinutes, Map<String, String> claims) {
+        if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
+            throw new IllegalArgumentException("Non-blank issuer and subject are required");
+        }
+
+        JWTCreator.Builder builder = JWT.create().withIssuer(issuer.trim()).withSubject(subject.trim());
+        if (expirationMinutes > 0) {
+            builder = builder.withExpiresAt(OffsetDateTime.now().plusMinutes(expirationMinutes).toInstant());
+        }
+        if (claims != null) {
+            for (Entry<String, String> e : claims.entrySet()) {
+                String key = e.getKey();
+                String val = e.getValue();
+                if (!Checker.isNullOrBlank(key) && !Checker.isNullOrBlank(val)) {
+                    builder = builder.withClaim(key.trim(), val.trim());
+                }
+            }
+        }
+        return builder.sign(secretAlg);
+    }
+
+    public Map<String, String> verifyJwt(String issuer, String token) {
+        JWTVerifier verifier = verifierRef.get();
+        // TODO use cache if we have multiple issuers
+        if (verifier == null) {
+            verifierRef.compareAndSet(null, verifier = getJwtVerifier(issuer));
+        }
+
+        try {
+            DecodedJWT jwt = verifier.verify(token);
+            Map<String, String> claims = new HashMap<>();
+            for (Entry<String, Claim> e : jwt.getClaims().entrySet()) {
+                claims.put(e.getKey(), e.getValue().asString());
+            }
+            return Collections.unmodifiableMap(claims);
+        } catch (JWTVerificationException e) {
+            log.warn("JWT verification failed: %s", e.getMessage());
+        }
+        return Collections.emptyMap();
     }
 
     public List<String> getAllIDs(String category) { // NOSONAR

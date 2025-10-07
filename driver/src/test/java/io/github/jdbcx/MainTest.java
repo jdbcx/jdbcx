@@ -253,4 +253,17 @@ public class MainTest {
 
         Assert.assertEquals(Main.process(new String[] { "jdbcx:", "{{ script: 1}}" }), 0);
     }
+
+    @Test(groups = { "unit" })
+    public void testGenerateJwt() throws Exception {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt(null, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("issuer=a", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("subject=a", false));
+
+        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b", false), 0);
+        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=3", false), 0);
+        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=-1,role=guest", false), 0);
+        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=-1,role=guest,host=localhost", false), 0);
+    }
 }
