@@ -64,7 +64,7 @@ public final class BinaryValue extends AbstractValue {
         return of(value == null ? null : ValueFactory.toJson(value));
     }
 
-    private InputStream value;
+    private transient InputStream value;
 
     protected BinaryValue(ValueFactory factory, boolean nullable, InputStream value) {
         super(factory, nullable);
