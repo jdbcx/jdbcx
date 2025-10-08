@@ -58,6 +58,16 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-gson</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
             <artifactId>mcp</artifactId>
             <scope>provided</scope>
@@ -196,6 +206,7 @@
                             <promoteTransitiveDependencies>true</promoteTransitiveDependencies>
                             <artifactSet>
                                 <includes>
+                                    <include>io.jsonwebtoken:*</include>
                                     <include>com.google.code.gson:gson</include>
                                     <include>io.burt:jmespath-core</include>
                                     <include>io.burt:jmespath-gson</include>
@@ -203,6 +214,10 @@
                                 </includes>
                             </artifactSet>
                             <relocations>
+                                <relocation>
+                                    <pattern>io.jsonwebtoken</pattern>
+                                    <shadedPattern>${shade.base}.jjwt</shadedPattern>
+                                </relocation>
                                 <relocation>
                                     <pattern>com.google.gson</pattern>
                                     <shadedPattern>${shade.base}.gson</shadedPattern>

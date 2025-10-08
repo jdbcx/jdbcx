@@ -202,6 +202,8 @@ $ docker run --rm -i -d -p8080:8080 -v `pwd`/secret.key:/app/.jdbcx/secret.key j
 $ curl -s -d 'select * from {{table.db.mysql1: show processlist}}' 'http://localhost:8080/query'
 ```
 
+For server authentication, please refer to [here](server/README.md#authentication).
+
 ## Performance
 
 ### Test Environment

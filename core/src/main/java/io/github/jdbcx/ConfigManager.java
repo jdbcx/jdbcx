@@ -29,19 +29,39 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParser;
+import io.jsonwebtoken.JwtParserBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SecureDigestAlgorithm;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -61,6 +81,35 @@ import javax.crypto.spec.SecretKeySpec;
  * category/ID values. The underlying storage mechanism is abstracted.
  */
 public abstract class ConfigManager {
+    static final class JwtAlgorithm {
+        final SecureDigestAlgorithm<? super SecretKey, ?> alg;
+        final SecretKey key;
+
+        JwtAlgorithm(SecureDigestAlgorithm<? super SecretKey, ?> alg, SecretKey key) {
+            this.alg = alg;
+            this.key = key;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = prime + alg.hashCode();
+            result = prime * result + ((key == null) ? 0 : key.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            JwtAlgorithm other = (JwtAlgorithm) obj;
+            return alg.equals(other.alg) && Objects.equals(key, other.key);
+        }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
 
     private static final SecureRandom random = new SecureRandom();
@@ -82,7 +131,7 @@ public abstract class ConfigManager {
 
     static final Option OPTION_CONFIG_PROVIDER = Option.of("config.provider", "The class to manage configuration.",
             ConfigManager.class.getPackage().getName() + ".config.PropertyFile" + ConfigManager.class.getSimpleName());
-    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file",
+    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file for configuration encryption.",
             Constants.CONF_DIR + "/secret.key");
     static final Option OPTION_KEY_SIZE_BITS = Option
             .ofInt("encryption.key.bits", "Key size in bits", 256); // 32 bytes
@@ -235,6 +284,54 @@ public abstract class ConfigManager {
         return bytes;
     }
 
+    static final JwtAlgorithm createAlgorithm(String secret) {
+        final List<String> parts;
+        if (Checker.isNullOrEmpty(secret)) {
+            log.warn(
+                    "Set %s to a secure randomly generated key to protect access token. You can create one using the command: \"openssl rand -base64 64 | tr -d '\\n'\".",
+                    Option.SERVER_SECRET.getJdbcxName());
+            parts = Collections.emptyList();
+        } else {
+            parts = new ArrayList<>(2);
+            int index = secret.indexOf(':');
+            if (index != -1) {
+                parts.add(secret.substring(0, index));
+                parts.add(secret.substring(index + 1));
+            } else {
+                parts.add(secret);
+            }
+        }
+
+        final String algorithmName;
+        if (parts.isEmpty()) {
+            return new JwtAlgorithm(Jwts.SIG.NONE, null);
+        } else if (parts.size() < 2) {
+            algorithmName = "";
+        } else {
+            algorithmName = parts.remove(0).toUpperCase(Locale.ROOT);
+            secret = parts.remove(0);
+        }
+
+        final SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(Constants.DEFAULT_CHARSET));
+        final JwtAlgorithm algorithm;
+        switch (algorithmName) {
+            case "HS512":
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS512, key);
+                break;
+            case "HS384":
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS384, key);
+                break;
+            case "HS256":
+            default:
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS256, key);
+                break;
+
+        }
+        return algorithm;
+    }
+
+    private final JwtAlgorithm secretAlg;
+    private final AtomicReference<JwtParser> verifierRef;
     private final Path secretKeyFile;
     private final int keySizeBits;
     private final int ivLengthBytes;
@@ -244,6 +341,8 @@ public abstract class ConfigManager {
     private final Function<byte[], AlgorithmParameterSpec> paramSpecFunc;
 
     protected ConfigManager(Properties props) {
+        this.secretAlg = createAlgorithm(Option.SERVER_SECRET.getJdbcxValue(props));
+        this.verifierRef = new AtomicReference<JwtParser>(null);
         this.secretKeyFile = Utils.getPath(OPTION_SECRET_FILE.getJdbcxValue(props), true);
         this.keySizeBits = Integer.parseInt(OPTION_KEY_SIZE_BITS.getJdbcxValue(props));
         this.ivLengthBytes = Integer.parseInt(OPTION_IV_LENGTH_BYTES.getJdbcxValue(props));
@@ -404,6 +503,68 @@ public abstract class ConfigManager {
         }
         return new StringBuilder(category.length() + id.length() + 1).append(category).append('/').append(id)
                 .toString();
+    }
+
+    protected final JwtParser getTokenVerifier(String issuer) {
+        JwtParserBuilder builder = Jwts.parser();
+        if (secretAlg.key == null) {
+            builder = builder.unsecured();
+        } else {
+            builder = builder.verifyWith(secretAlg.key);
+        }
+        return builder.requireIssuer(issuer).build();
+    }
+
+    public String generateToken(String issuer, String subject, String audience, int expirationMinutes,
+            Map<String, String> claims) {
+        if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
+            throw new IllegalArgumentException("Non-blank issuer and subject are required");
+        }
+
+        Instant now = Instant.now();
+        JwtBuilder builder = Jwts.builder().issuer(issuer.trim()).subject(subject.trim())
+                .id(UUID.randomUUID().toString()).issuedAt(Date.from(now));
+        List<String> list = Utils.split(audience, ',', true, true, true);
+        if (!list.isEmpty()) {
+            builder = builder.audience().add(list).and();
+        }
+        if (expirationMinutes > 0) {
+            builder = builder.expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)));
+        }
+        if (claims != null) {
+            for (Entry<String, String> e : claims.entrySet()) {
+                String key = e.getKey();
+                String val = e.getValue();
+                if (!Checker.isNullOrBlank(key) && !Checker.isNullOrBlank(val)) {
+                    builder = builder.claim(key.trim(), val.trim());
+                }
+            }
+        }
+        if (secretAlg.key != null) {
+            builder = builder.signWith(secretAlg.key, secretAlg.alg);
+        }
+        return builder.compact();
+    }
+
+    public Map<String, String> verifyToken(String issuer, String token) {
+        JwtParser verifier = verifierRef.get();
+        // TODO use cache if we have multiple issuers
+        if (verifier == null) {
+            verifierRef.compareAndSet(null, verifier = getTokenVerifier(issuer));
+        }
+
+        try {
+            Claims jwt = secretAlg.key == null ? verifier.parseUnsecuredClaims(token).getPayload()
+                    : verifier.parseSignedClaims(token).getPayload();
+            Map<String, String> claims = new HashMap<>();
+            for (Entry<String, Object> e : jwt.entrySet()) {
+                claims.put(e.getKey(), e.getValue() == null ? Constants.EMPTY_STRING : e.getValue().toString());
+            }
+            return Collections.unmodifiableMap(claims);
+        } catch (IllegalArgumentException | JwtException e) {
+            log.warn("JWT verification failed: %s", e.getMessage());
+        }
+        return Collections.emptyMap();
     }
 
     public List<String> getAllIDs(String category) { // NOSONAR

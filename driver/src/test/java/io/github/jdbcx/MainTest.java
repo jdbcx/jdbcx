@@ -253,4 +253,18 @@ public class MainTest {
 
         Assert.assertEquals(Main.process(new String[] { "jdbcx:", "{{ script: 1}}" }), 0);
     }
+
+    @Test(groups = { "unit" })
+    public void testGenerateToken() throws Exception {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken(null, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("issuer=a", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("subject=a", false));
+
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=3", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest,admin;host=localhost", false),
+                0);
+    }
 }

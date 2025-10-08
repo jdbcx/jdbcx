@@ -22,10 +22,19 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.lang.Collections;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
 
 public class ConfigManagerTest {
     public static final class TestConfigManager extends ConfigManager {
@@ -81,6 +90,68 @@ public class ConfigManagerTest {
         Assert.assertEquals(ConfigManager.concatenate(new byte[0], new byte[0]), new byte[0]);
         Assert.assertEquals(ConfigManager.concatenate(new byte[] { 1, 2, 3 }, new byte[] { 4, 5 }),
                 new byte[] { 1, 2, 3, 4, 5 });
+    }
+
+    @Test(groups = { "unit" })
+    public void testCreateAlgorithm() {
+        Assert.assertEquals(ConfigManager.createAlgorithm(null), new ConfigManager.JwtAlgorithm(Jwts.SIG.NONE, null));
+        Assert.assertEquals(ConfigManager.createAlgorithm(""), new ConfigManager.JwtAlgorithm(Jwts.SIG.NONE, null));
+        Assert.assertThrows(WeakKeyException.class, () -> ConfigManager.createAlgorithm(" "));
+
+        String key;
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(key = " 123456789012345678901234567890123456789012345678901234567890 "),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(key = "x123456789012345678901234567890123456789012345678901234567890"),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS256:" + (key = "12:3123456789012345678901234567890123456789012345678901234567890")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS384:" + (key = "1: 2:3123456789012345678901234567890123456789012345678901234567890")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS384, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS512:" + (key = ": 1:2:3123456789012345678901234567890123456789012345678901234567890: ")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS512, Keys.hmacShaKeyFor(key.getBytes())));
+    }
+
+    @Test(groups = { "unit" })
+    public void testJwt() {
+        Properties props = new Properties();
+        TestConfigManager manager = new TestConfigManager(props);
+        String token = manager.generateToken("me", "you", "audience1,audience2", 5, null);
+        Jwt<?, ?> jws = manager.getTokenVerifier("me").parse(token);
+        Assert.assertEquals(jws.getHeader().getAlgorithm(), "none");
+        Assert.assertEquals(((Claims) jws.getPayload()).getAudience(), Collections.setOf("audience1", "audience2"));
+        Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("me", token).size());
+        Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "me");
+        Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "you");
+
+        Option.SERVER_SECRET.setJdbcxValue(props,
+                "HS512:2ZPaxiFaz7TFM1wgxfktxCaoGlZ2VptVo5XcD/11G4HwTnV4GpbFYxEnejylPuNM/39cT3Xg20VBzXCwElWORTQpkCdPalD7CtYT/l9UuK8JdYXWBTipxxVzzA6mYXgd59exEwnnmacxibHcVt0ZuxZCQiNok9bQhtVY/yoIa75mWLHOZnO5to0HAdjy7BS/CwmmCaia4sV6neZJjt8xPlAyARoT1FNniUERDh1vkjQOjB3oc5aocsF316u54uyIvnYBS0dKLITQpmKqflxhhKMkVINNk+FLF6fwe0o+Tc6Ps/5PrEABg+C3Y974O67yQQ6BKUms/NvvOiUj7CKSkReF8SrTVrTl4nQ6STbJDrusKBisOAqKA3NDfBbAi9K/hIF/TpALR7fwWdlUbP7hshYDvYN20hje9wcswqxXjqT115Jyw6v2+Bzv7q8FMulbEAw7p+7vYe6ma5zWToR33doJzqYOETu9787xLrrKpHfDgrdyDvZsB1EsuxNuExjOl+g3yYjHwC4JIorgGLkX+pyANVnD3JaCOhgd5b0lMDfBLWJmthraoiSwaThoY0xrPBUzJ3Q0zyYsn6mrxi/K1jSb52BXKL7yeqIiE8xp2Ychtgyvf/s6YU1f4gAXTDS/4ZjEBsHhp5f7op/MdeyvhhRSGqAdT/yBNMLOzvI0gak=");
+        manager = new TestConfigManager(props);
+        Map<String, String> claims = new HashMap<>();
+        claims.put("a1", "b");
+        claims.put("b2", "x");
+        token = manager.generateToken("you", "me", null, 5, claims);
+        jws = manager.getTokenVerifier("you").parse(token);
+        Assert.assertEquals(jws.getHeader().getAlgorithm(), "HS512");
+        Assert.assertEquals(((Claims) jws.getPayload()).getAudience(), null);
+        Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("you", token).size());
+        Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "you");
+        Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "me");
+        Assert.assertEquals(((Claims) jws.getPayload()).get("a1", String.class), "b");
+        Assert.assertEquals(((Claims) jws.getPayload()).get("b2", String.class), "x");
+
+        // Option.SERVER_SECRET.setJdbcxValue(props,
+        // "HS512:tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==");
+        // manager.generateToken("https://my.company.com", "my@email.address", null,
+        // 1440, java.util.Collections.singletonMap("allowed_ips", "192.168.1.0/24"));
     }
 
     @Test(groups = { "unit" })

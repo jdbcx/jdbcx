@@ -26,12 +26,7 @@ import org.testng.annotations.Test;
 public class ServerAclTest {
     @Test(groups = { "unit" })
     public void testConstructor() throws UnknownHostException {
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ServerAcl(null, null, null));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ServerAcl("", null, null));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ServerAcl("token", null, "192.168.1.1/3a"));
-        Assert.assertThrows(IllegalArgumentException.class, () -> new ServerAcl("token", null, "192.168.1.1/1/2"));
-
-        ServerAcl acl = new ServerAcl("123", null, null);
+        ServerAcl acl = new ServerAcl(null, null);
         Assert.assertTrue(acl.allowAll);
         Assert.assertEquals(acl.allowedHosts, Collections.emptyList());
         Assert.assertEquals(acl.allowedIPs, Collections.emptyList());
@@ -39,7 +34,7 @@ public class ServerAclTest {
         Assert.assertTrue(acl.isValidHost("unknown.host"));
         Assert.assertTrue(acl.isValidIP("192.168.5.6"));
 
-        acl = new ServerAcl("123", " host.1 , host.2 ", "");
+        acl = new ServerAcl(" host.1 , host.2 ", null);
         Assert.assertFalse(acl.allowAll);
         Assert.assertEquals(acl.allowedHosts, Arrays.asList("host.1", "host.2"));
         Assert.assertEquals(acl.allowedIPs, Collections.emptyList());
@@ -49,7 +44,7 @@ public class ServerAclTest {
         Assert.assertTrue(acl.isValidHost("host.2"));
         Assert.assertTrue(acl.isValidIP("192.168.5.6"));
 
-        acl = new ServerAcl("123", "", " 192.168.3.1 , 192.168.1.2 / 24 ");
+        acl = new ServerAcl(null, " 192.168.3.1 , 192.168.1.2 / 24 ");
         Assert.assertFalse(acl.allowAll);
         Assert.assertEquals(acl.allowedHosts, Collections.emptyList());
         Assert.assertEquals(acl.allowedIPs, Arrays.asList("192.168.3.1"));
