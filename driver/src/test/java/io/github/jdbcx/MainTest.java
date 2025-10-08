@@ -255,15 +255,16 @@ public class MainTest {
     }
 
     @Test(groups = { "unit" })
-    public void testGenerateJwt() throws Exception {
-        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt(null, false));
-        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("", false));
-        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("issuer=a", false));
-        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateJwt("subject=a", false));
+    public void testGenerateToken() throws Exception {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken(null, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("issuer=a", false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("subject=a", false));
 
-        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b", false), 0);
-        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=3", false), 0);
-        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=-1,role=guest", false), 0);
-        Assert.assertEquals(Main.generateJwt("issuer=a,subject=b,expires=-1,role=guest,host=localhost", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b", false), 1);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=3", false), 1);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest", false), 1);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest,admin;host=localhost", false),
+                1);
     }
 }

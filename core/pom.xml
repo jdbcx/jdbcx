@@ -48,11 +48,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>com.auth0</groupId>
-            <artifactId>java-jwt</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.github.luben</groupId>
             <artifactId>zstd-jni</artifactId>
             <scope>provided</scope>
@@ -82,6 +77,16 @@
                     <artifactId>gson</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-gson</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>

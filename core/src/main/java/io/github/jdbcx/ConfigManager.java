@@ -29,14 +29,17 @@ import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
-import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Properties;
@@ -45,17 +48,19 @@ import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTCreator;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.Claim;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParser;
+import io.jsonwebtoken.JwtParserBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SecureDigestAlgorithm;
 
 /**
  * Manages application configurations using a two-tier structure.
@@ -75,6 +80,35 @@ import com.auth0.jwt.interfaces.DecodedJWT;
  * category/ID values. The underlying storage mechanism is abstracted.
  */
 public abstract class ConfigManager {
+    static final class JwtAlgorithm {
+        final SecureDigestAlgorithm<? super SecretKey, ?> alg;
+        final SecretKey key;
+
+        JwtAlgorithm(SecureDigestAlgorithm<? super SecretKey, ?> alg, SecretKey key) {
+            this.alg = alg;
+            this.key = key;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = prime + alg.hashCode();
+            result = prime * result + ((key == null) ? 0 : key.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            JwtAlgorithm other = (JwtAlgorithm) obj;
+            return alg.equals(other.alg) && Objects.equals(key, other.key);
+        }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(ConfigManager.class);
 
     private static final SecureRandom random = new SecureRandom();
@@ -249,38 +283,51 @@ public abstract class ConfigManager {
         return bytes;
     }
 
-    static final Algorithm createAlgorithm(String secret) {
-        List<String> parts = Checker.isNullOrEmpty(secret) ? Collections.emptyList()
-                : new ArrayList<>(Utils.split(secret, ':', true, false, false));
+    static final JwtAlgorithm createAlgorithm(String secret) {
+        final List<String> parts;
+        if (Checker.isNullOrEmpty(secret)) {
+            parts = Collections.emptyList();
+        } else {
+            parts = new ArrayList<>(2);
+            int index = secret.indexOf(':');
+            if (index != -1) {
+                parts.add(secret.substring(0, index));
+                parts.add(secret.substring(index + 1));
+            } else {
+                parts.add(secret);
+            }
+        }
+
         final String algorithmName;
         if (parts.isEmpty()) {
-            return Algorithm.none();
+            return new JwtAlgorithm(Jwts.SIG.NONE, null);
         } else if (parts.size() < 2) {
             algorithmName = "";
         } else {
-            algorithmName = parts.remove(0).trim().toUpperCase(Locale.ROOT);
-            secret = String.join(":", parts);
+            algorithmName = parts.remove(0).toUpperCase(Locale.ROOT);
+            secret = parts.remove(0);
         }
 
-        final Algorithm algorithm;
+        final SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(Constants.DEFAULT_CHARSET));
+        final JwtAlgorithm algorithm;
         switch (algorithmName) {
             case "HS512":
-                algorithm = Algorithm.HMAC512(secret);
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS512, key);
                 break;
             case "HS384":
-                algorithm = Algorithm.HMAC384(secret);
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS384, key);
                 break;
             case "HS256":
             default:
-                algorithm = Algorithm.HMAC256(secret);
+                algorithm = new JwtAlgorithm(Jwts.SIG.HS256, key);
                 break;
-        }
 
+        }
         return algorithm;
     }
 
-    private final Algorithm secretAlg;
-    private final AtomicReference<JWTVerifier> verifierRef;
+    private final JwtAlgorithm secretAlg;
+    private final AtomicReference<JwtParser> verifierRef;
     private final Path secretKeyFile;
     private final int keySizeBits;
     private final int ivLengthBytes;
@@ -291,7 +338,7 @@ public abstract class ConfigManager {
 
     protected ConfigManager(Properties props) {
         this.secretAlg = createAlgorithm(Option.SERVER_SECRET.getJdbcxValue(props));
-        this.verifierRef = new AtomicReference<JWTVerifier>(null);
+        this.verifierRef = new AtomicReference<JwtParser>(null);
         this.secretKeyFile = Utils.getPath(OPTION_SECRET_FILE.getJdbcxValue(props), true);
         this.keySizeBits = Integer.parseInt(OPTION_KEY_SIZE_BITS.getJdbcxValue(props));
         this.ivLengthBytes = Integer.parseInt(OPTION_IV_LENGTH_BYTES.getJdbcxValue(props));
@@ -454,46 +501,57 @@ public abstract class ConfigManager {
                 .toString();
     }
 
-    protected final JWTVerifier getJwtVerifier(String issuer) {
-        return JWT.require(secretAlg).withIssuer(issuer).build();
+    protected final JwtParser getTokenVerifier(String issuer) {
+        JwtParserBuilder builder = Jwts.parser();
+        if (secretAlg.key == null) {
+            builder = builder.unsecured();
+        } else {
+            builder = builder.verifyWith(secretAlg.key);
+        }
+        return builder.requireIssuer(issuer).build();
     }
 
-    public String generateJwt(String issuer, String subject, int expirationMinutes, Map<String, String> claims) {
+    public String generateToken(String issuer, String subject, int expirationMinutes, Map<String, String> claims) {
         if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
             throw new IllegalArgumentException("Non-blank issuer and subject are required");
         }
 
-        JWTCreator.Builder builder = JWT.create().withIssuer(issuer.trim()).withSubject(subject.trim());
+        Instant now = Instant.now();
+        JwtBuilder builder = Jwts.builder().issuer(issuer.trim()).subject(subject.trim());
         if (expirationMinutes > 0) {
-            builder = builder.withExpiresAt(OffsetDateTime.now().plusMinutes(expirationMinutes).toInstant());
+            builder = builder.expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)));
         }
         if (claims != null) {
             for (Entry<String, String> e : claims.entrySet()) {
                 String key = e.getKey();
                 String val = e.getValue();
                 if (!Checker.isNullOrBlank(key) && !Checker.isNullOrBlank(val)) {
-                    builder = builder.withClaim(key.trim(), val.trim());
+                    builder = builder.claim(key.trim(), val.trim());
                 }
             }
         }
-        return builder.sign(secretAlg);
+        if (secretAlg.key != null) {
+            builder = builder.signWith(secretAlg.key, secretAlg.alg);
+        }
+        return builder.compact();
     }
 
-    public Map<String, String> verifyJwt(String issuer, String token) {
-        JWTVerifier verifier = verifierRef.get();
+    public Map<String, String> verifyToken(String issuer, String token) {
+        JwtParser verifier = verifierRef.get();
         // TODO use cache if we have multiple issuers
         if (verifier == null) {
-            verifierRef.compareAndSet(null, verifier = getJwtVerifier(issuer));
+            verifierRef.compareAndSet(null, verifier = getTokenVerifier(issuer));
         }
 
         try {
-            DecodedJWT jwt = verifier.verify(token);
+            Claims jwt = secretAlg.key == null ? verifier.parseUnsecuredClaims(token).getPayload()
+                    : verifier.parseSignedClaims(token).getPayload();
             Map<String, String> claims = new HashMap<>();
-            for (Entry<String, Claim> e : jwt.getClaims().entrySet()) {
-                claims.put(e.getKey(), e.getValue().asString());
+            for (Entry<String, Object> e : jwt.entrySet()) {
+                claims.put(e.getKey(), e.getValue() == null ? Constants.EMPTY_STRING : e.getValue().toString());
             }
             return Collections.unmodifiableMap(claims);
-        } catch (JWTVerificationException e) {
+        } catch (IllegalArgumentException | JwtException e) {
             log.warn("JWT verification failed: %s", e.getMessage());
         }
         return Collections.emptyMap();

@@ -234,7 +234,7 @@ public final class Main {
         println("  decrypt [ENCRYPTED TEXT]  Decrypt the text from standard input or command-line argument");
         println("  encrypt [ORIGINAL TEXT]   Encrypt the text from standard input or command-line argument");
         println("  keygen                    Generate secure key for encryption");
-        println("  jwt [KEY1=VALUE1,...]     Generate signed JWT for access control");
+        println("  token [KEY1=VALUE1;...]   Create encrypted and digitally signed access token");
         println("  URL [@FILE or QUERY...]   Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
@@ -255,6 +255,8 @@ public final class Main {
         println();
         println("Examples:");
         println("  -  %s keygen", execFile);
+        println("  -  %s token 'issuer=me;subject=you;allowed_ips=127.0.0.1,192.168.1.0/24'",
+                Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s encrypt 'plain text to encrypt'", Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s 'jdbcx:duckdb:' 'select 1'", Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s 'jdbcx:script:ch://localhost' '@*.js'", execFile);
@@ -408,9 +410,9 @@ public final class Main {
         return Utils.split(ConfigManager.OPTION_ALGORITHM.getValue(props), '/', true, true, false).get(0);
     }
 
-    static int generateJwt(String kvps, boolean verbose) throws SQLException {
+    static int generateToken(String kvps, boolean verbose) throws SQLException {
         Map<String, String> params = new HashMap<>();
-        params.putAll(Utils.toKeyValuePairs(kvps));
+        params.putAll(Utils.toKeyValuePairs(kvps, ';', false));
         String issuer = params.remove("issuer");
         String subject = params.remove("subject");
         if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
@@ -429,8 +431,15 @@ public final class Main {
         if (verbose) {
             println(Utils.format("* Generating JWT(issuer=%s, subject=%s)...", issuer, subject));
         }
-        println(manager.generateJwt(issuer, subject, expirationMinutes, params));
-        return 0;
+        String token = manager.generateToken(issuer, subject, expirationMinutes, params);
+        try {
+            println(encryptText(token, issuer, verbose));
+            return 0;
+        } catch (IllegalArgumentException e) {
+            println("* Failed to encrypt token due to: " + e.getMessage());
+            println(token);
+            return 1;
+        }
     }
 
     static int generateKey(boolean verbose) throws SQLException {
@@ -503,8 +512,8 @@ public final class Main {
             return decryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
         } else if ("encrypt".equals(args.url)) {
             return encryptText(arguments[1], arguments.length > 2 ? arguments[2] : null, args.verbose);
-        } else if ("jwt".equals(args.url)) {
-            return generateJwt(arguments[1], args.verbose);
+        } else if ("token".equals(args.url)) {
+            return generateToken(arguments[1], args.verbose);
         }
         if (args.queries.isEmpty()) {
             if (args.verbose) {

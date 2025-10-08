@@ -29,7 +29,11 @@ import java.util.Properties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
 
 public class ConfigManagerTest {
     public static final class TestConfigManager extends ConfigManager {
@@ -89,40 +93,57 @@ public class ConfigManagerTest {
 
     @Test(groups = { "unit" })
     public void testCreateAlgorithm() {
-        Assert.assertEquals(ConfigManager.createAlgorithm(null).getName(), "none");
-        Assert.assertEquals(ConfigManager.createAlgorithm("").getName(), "none");
-        Assert.assertEquals(ConfigManager.createAlgorithm(" ").getName(), "HS256");
-        Assert.assertEquals(ConfigManager.createAlgorithm("123").getName(), "HS256");
+        Assert.assertEquals(ConfigManager.createAlgorithm(null), new ConfigManager.JwtAlgorithm(Jwts.SIG.NONE, null));
+        Assert.assertEquals(ConfigManager.createAlgorithm(""), new ConfigManager.JwtAlgorithm(Jwts.SIG.NONE, null));
+        Assert.assertThrows(WeakKeyException.class, () -> ConfigManager.createAlgorithm(" "));
 
-        Assert.assertEquals(ConfigManager.createAlgorithm("HS256:12:3").getName(), "HS256");
-        Assert.assertEquals(ConfigManager.createAlgorithm("HS384:1: 2:3").getName(), "HS384");
-        Assert.assertEquals(ConfigManager.createAlgorithm("HS512::1:2:3").getName(), "HS512");
+        String key;
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(key = " 123456789012345678901234567890123456789012345678901234567890 "),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(key = "x123456789012345678901234567890123456789012345678901234567890"),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS256:" + (key = "12:3123456789012345678901234567890123456789012345678901234567890")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS256, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS384:" + (key = "1: 2:3123456789012345678901234567890123456789012345678901234567890")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS384, Keys.hmacShaKeyFor(key.getBytes())));
+        Assert.assertEquals(
+                ConfigManager.createAlgorithm(
+                        "HS512:" + (key = ": 1:2:3123456789012345678901234567890123456789012345678901234567890: ")),
+                new ConfigManager.JwtAlgorithm(Jwts.SIG.HS512, Keys.hmacShaKeyFor(key.getBytes())));
     }
 
     @Test(groups = { "unit" })
     public void testJwt() {
         Properties props = new Properties();
         TestConfigManager manager = new TestConfigManager(props);
-        String token = manager.generateJwt("me", "you", 5, null);
-        DecodedJWT jwt = manager.getJwtVerifier("me").verify(token);
-        Assert.assertEquals(jwt.getAlgorithm(), "none");
-        Assert.assertEquals(jwt.getClaims().size(), manager.verifyJwt("me", token).size());
-        Assert.assertEquals(jwt.getIssuer(), "me");
-        Assert.assertEquals(jwt.getSubject(), "you");
+        String token = manager.generateToken("me", "you", 5, null);
+        Jwt<?, ?> jws = manager.getTokenVerifier("me").parse(token);
+        Assert.assertEquals(jws.getHeader().getAlgorithm(), "none");
+        Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("me", token).size());
+        Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "me");
+        Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "you");
 
-        Option.SERVER_SECRET.setJdbcxValue(props, "HS512:6iCHselBF+Ba7NpU4IkQj8WYDY6ZTh1d");
+        Option.SERVER_SECRET.setJdbcxValue(props,
+                "HS512:2ZPaxiFaz7TFM1wgxfktxCaoGlZ2VptVo5XcD/11G4HwTnV4GpbFYxEnejylPuNM/39cT3Xg20VBzXCwElWORTQpkCdPalD7CtYT/l9UuK8JdYXWBTipxxVzzA6mYXgd59exEwnnmacxibHcVt0ZuxZCQiNok9bQhtVY/yoIa75mWLHOZnO5to0HAdjy7BS/CwmmCaia4sV6neZJjt8xPlAyARoT1FNniUERDh1vkjQOjB3oc5aocsF316u54uyIvnYBS0dKLITQpmKqflxhhKMkVINNk+FLF6fwe0o+Tc6Ps/5PrEABg+C3Y974O67yQQ6BKUms/NvvOiUj7CKSkReF8SrTVrTl4nQ6STbJDrusKBisOAqKA3NDfBbAi9K/hIF/TpALR7fwWdlUbP7hshYDvYN20hje9wcswqxXjqT115Jyw6v2+Bzv7q8FMulbEAw7p+7vYe6ma5zWToR33doJzqYOETu9787xLrrKpHfDgrdyDvZsB1EsuxNuExjOl+g3yYjHwC4JIorgGLkX+pyANVnD3JaCOhgd5b0lMDfBLWJmthraoiSwaThoY0xrPBUzJ3Q0zyYsn6mrxi/K1jSb52BXKL7yeqIiE8xp2Ychtgyvf/s6YU1f4gAXTDS/4ZjEBsHhp5f7op/MdeyvhhRSGqAdT/yBNMLOzvI0gak=");
         manager = new TestConfigManager(props);
         Map<String, String> claims = new HashMap<>();
         claims.put("a1", "b");
         claims.put("b2", "x");
-        token = manager.generateJwt("you", "me", 5, claims);
-        jwt = manager.getJwtVerifier("you").verify(token);
-        Assert.assertEquals(jwt.getAlgorithm(), "HS512");
-        Assert.assertEquals(jwt.getClaims().size(), manager.verifyJwt("you", token).size());
-        Assert.assertEquals(jwt.getIssuer(), "you");
-        Assert.assertEquals(jwt.getSubject(), "me");
-        Assert.assertEquals(jwt.getClaim("a1").asString(), "b");
-        Assert.assertEquals(jwt.getClaim("b2").asString(), "x");
+        token = manager.generateToken("you", "me", 5, claims);
+        jws = manager.getTokenVerifier("you").parse(token);
+        Assert.assertEquals(jws.getHeader().getAlgorithm(), "HS512");
+        Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("you", token).size());
+        Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "you");
+        Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "me");
+        Assert.assertEquals(((Claims) jws.getPayload()).get("a1", String.class), "b");
+        Assert.assertEquals(((Claims) jws.getPayload()).get("b2", String.class), "x");
     }
 
     @Test(groups = { "unit" })
