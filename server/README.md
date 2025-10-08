@@ -89,17 +89,17 @@ To enable authentication, set the property `jdbcx.server.auth` to `true`. It's h
 
 ```bash
 # generate a secure key
-$ openssl rand -base64 64 | tr -d '\n'
-tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==
+$ openssl rand -base64 66 | tr -d '\n'
+QXk18EEgn9r2xf2NF6PXUf9L9kI7srS4L89lXJp9f+iVkp6ugZICjAu5iD4LOdFEyXHcXp/mnJ3K4wu85D77kV1w
 
 $ grep 'jdbcx.server.' config.properties
 ...
 jdbcx.server.auth=true
-jdbcx.server.secret=HS512:tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==
+jdbcx.server.secret=HS512:QXk18EEgn9r2xf2NF6PXUf9L9kI7srS4L89lXJp9f+iVkp6ugZICjAu5iD4LOdFEyXHcXp/mnJ3K4wu85D77kV1w
 ...
 
-# genearte access token for a client
+# create a temporary access token for the client, valid for one day (1,440 minutes).
 $ docker run --rm -it -v `pwd`/config.properties:/app/.jdbcx/config.properties jdbcx/jdbcx \
   token 'issuer=https://my.company.com;subject=my@email.address;expires=1440;allowed_ips=192.168.1.0/24'
-eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJodHRwczovL215LmNvbXBhbnkuY29tIiwic3ViIjoibXlAZW1haWwuYWRkcmVzcyIsImp0aSI6ImM1YzVlYWJjLTIyNzYtNDk3My1hNTJhLWRhMzNlNDdiNGI2NSIsImlhdCI6MTc1OTkyNTU0MywiZXhwIjoxNzYwMDExOTQzLCJhbGxvd2VkX2lwcyI6IjE5Mi4xNjguMS4wLzI0In0.o97AEgK3E31pK_ITQOBXqaEweRArpr9ZlqvRQ6VHLWjRr_2uX5_KDJTCcvM_EomrhWMY_F-5SeMESSAto6CACw
+eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJodHRwczovL215LmNvbXBhbnkuY29tIiwic3ViIjoibXlAZW1haWwuYWRkcmVzcyIsImp0aSI6Ijk2ZWNkMjk1LTUxYmMtNGFjMy04MTkzLWYxMDY5MTRkNThiYSIsImlhdCI6MTc1OTk2Mjk1MywiZXhwIjoxNzYwMDQ5MzUzLCJhbGxvd2VkX2lwcyI6IjE5Mi4xNjguMS4wLzI0In0.ME9i19RUME6NGwLfoP_nayqfXLrm6uFsQ-9Ghcv03gyXyGoL86XW-AdUgstaJIUwa6QoU2WydOWM25yo5UOiug
 ```

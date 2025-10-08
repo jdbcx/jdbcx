@@ -288,7 +288,7 @@ public abstract class ConfigManager {
         final List<String> parts;
         if (Checker.isNullOrEmpty(secret)) {
             log.warn(
-                    "Set %s to a secure randomly generated key to protect access token. You can create one using the command: \"openssl rand -base64 64 | tr -d '\\n'\".",
+                    "Please set '%s' to a secure, randomly generated key to protect access tokens. You can create one using the command: \"openssl rand -base64 66 | tr -d '\\n'\".",
                     Option.SERVER_SECRET.getJdbcxName());
             parts = Collections.emptyList();
         } else {

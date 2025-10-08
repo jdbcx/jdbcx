@@ -149,7 +149,7 @@ public class ConfigManagerTest {
         Assert.assertEquals(((Claims) jws.getPayload()).get("b2", String.class), "x");
 
         // Option.SERVER_SECRET.setJdbcxValue(props,
-        // "HS512:tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==");
+        // "HS512:QXk18EEgn9r2xf2NF6PXUf9L9kI7srS4L89lXJp9f+iVkp6ugZICjAu5iD4LOdFEyXHcXp/mnJ3K4wu85D77kV1w");
         // manager.generateToken("https://my.company.com", "my@email.address", null,
         // 1440, java.util.Collections.singletonMap("allowed_ips", "192.168.1.0/24"));
     }
