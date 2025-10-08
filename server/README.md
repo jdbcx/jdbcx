@@ -3,7 +3,6 @@
 A web server that exposes remote datasets based on specified data formats and compression algorithms. When used with the JDBCX driver, it greatly simplifies federated queries. Here's a diagram showing how it works.
 ![image](https://github.com/jdbcx/jdbcx/assets/4270380/4dc3b215-16d9-4d40-8b94-778f68529919)
 
-
 ## Quick Start
 
 Docker is the easiest way to start with.
@@ -71,24 +70,36 @@ select * from {{ table.db.ch-play: select '1' a }}
 
 Bridge server uses the same `~/.jdbcx/config.properties` file for configuration. Please refer to [this](/docker/app/.jdbcx/config.properties) used in docker image, and named database connections configured at [here](/docker/app/.jdbcx/db).
 
-| Key | Value | Remark |
-| --- | ----- | ------ |
-| jdbcx.server.auth | Defaults to `false` | Whether to enable authentication |
-| jdbcx.server.host | Defaults to `0.0.0.0` | Listen address of the server |
-| jdbcx.server.port | Defaults to `8080` | Listen port of the server |
-| jdbcx.server.context | Defaults to `/` | Web context of the server, must be ends with `/` |
-| jdbcx.server.url | Defaults to `http://127.0.0.1:8080/` | Bridge server URL that can be accessed remotely, must be ends with `/` |
+| Key                  | Value                                | Remark                                                                    |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| jdbcx.server.auth    | Defaults to `false`                  | Whether to enable authentication                                          |
+| jdbcx.server.secret  | Defaults to empty string             | Secret key to sign and verify access token when authentication is enabled |
+| jdbcx.server.host    | Defaults to `0.0.0.0`                | Listen address of the server                                              |
+| jdbcx.server.port    | Defaults to `8080`                   | Listen port of the server                                                 |
+| jdbcx.server.context | Defaults to `/`                      | Web context of the server, must be ends with `/`                          |
+| jdbcx.server.url     | Defaults to `http://127.0.0.1:8080/` | Bridge server URL that can be accessed remotely, must be ends with `/`    |
 
 ### Datasource
 
 `datasource.properties` defines the default database used by bridge server. Please refer to [this](/docker/app/datasource.properties) used in docker image.
 
-### Access Control
+### Authentication
 
-`acl.properties` must be specified when authentication is enabled. Please refer to [this](/docker/app/acl.properties) used in docker image. ACL will be ignored when `jdbcx.server.auth` is set to `false`.
+To enable authentication, set the property `jdbcx.server.auth` to `true`. It's highly recommended to also configure a secure `jdbcx.server.secret`, which should be 512-bit or longer for security. Authentication is disabled when `jdbcx.server.auth` is set to `false`.
 
-| Key | Value | Remark |
-| --- | ----- | ------ |
-| _prefix_.token | Access token | |
-| _prefix_.hosts | Authorized host names | Comma separated host names, it's recommended to use `.ips` instead |
-| _prefix_.ips | Authorized IP addreses | Comma separated IP addresses or IP ranges |
+```bash
+# generate a secure key
+$ openssl rand -base64 64 | tr -d '\n'
+tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==
+
+$ grep 'jdbcx.server.' config.properties
+...
+jdbcx.server.auth=true
+jdbcx.server.secret=HS512:tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==
+...
+
+# genearte access token for a client
+$ docker run --rm -it -v `pwd`/config.properties:/app/.jdbcx/config.properties jdbcx/jdbcx \
+  token 'issuer=https://my.company.com;subject=my@email.address;expires=1440;allowed_ips=192.168.1.0/24'
+eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJodHRwczovL215LmNvbXBhbnkuY29tIiwic3ViIjoibXlAZW1haWwuYWRkcmVzcyIsImp0aSI6ImM1YzVlYWJjLTIyNzYtNDk3My1hNTJhLWRhMzNlNDdiNGI2NSIsImlhdCI6MTc1OTkyNTU0MywiZXhwIjoxNzYwMDExOTQzLCJhbGxvd2VkX2lwcyI6IjE5Mi4xNjguMS4wLzI0In0.o97AEgK3E31pK_ITQOBXqaEweRArpr9ZlqvRQ6VHLWjRr_2uX5_KDJTCcvM_EomrhWMY_F-5SeMESSAto6CACw
+```

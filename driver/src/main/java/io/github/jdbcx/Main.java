@@ -234,7 +234,7 @@ public final class Main {
         println("  decrypt [ENCRYPTED TEXT]  Decrypt the text from standard input or command-line argument");
         println("  encrypt [ORIGINAL TEXT]   Encrypt the text from standard input or command-line argument");
         println("  keygen                    Generate secure key for encryption");
-        println("  token [KEY1=VALUE1;...]   Create encrypted and digitally signed access token");
+        println("  token [KEY1=VALUE1;...]   Create digitally signed access token");
         println("  URL [@FILE or QUERY...]   Execute queries against the specified URL, sourcing them from files, standard input, or command-line arguments");
         println();
         println("Properties: -Dkey=value [-Dkey=value]*");
@@ -255,7 +255,7 @@ public final class Main {
         println();
         println("Examples:");
         println("  -  %s keygen", execFile);
-        println("  -  %s token 'issuer=me;subject=you;allowed_ips=127.0.0.1,192.168.1.0/24'",
+        println("  -  %s token 'issuer=me;subject=you;audience=a1,a2;expires=1440;allowed_ips=127.0.0.1,192.168.1.0/24'",
                 Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s encrypt 'plain text to encrypt'", Utils.format(cliTemplate, " -Dverbose=true"));
         println("  -  %s 'jdbcx:duckdb:' 'select 1'", Utils.format(cliTemplate, " -Dverbose=true"));
@@ -415,6 +415,7 @@ public final class Main {
         params.putAll(Utils.toKeyValuePairs(kvps, ';', false));
         String issuer = params.remove("issuer");
         String subject = params.remove("subject");
+        String audience = params.remove("audience");
         if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
             throw new IllegalArgumentException("Non-blank issuer and subject are required");
         } else {
@@ -431,15 +432,8 @@ public final class Main {
         if (verbose) {
             println(Utils.format("* Generating JWT(issuer=%s, subject=%s)...", issuer, subject));
         }
-        String token = manager.generateToken(issuer, subject, expirationMinutes, params);
-        try {
-            println(encryptText(token, issuer, verbose));
-            return 0;
-        } catch (IllegalArgumentException e) {
-            println("* Failed to encrypt token due to: " + e.getMessage());
-            println(token);
-            return 1;
-        }
+        println(manager.generateToken(issuer, subject, audience, expirationMinutes, params));
+        return 0;
     }
 
     static int generateKey(boolean verbose) throws SQLException {

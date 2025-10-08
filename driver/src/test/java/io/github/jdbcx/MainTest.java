@@ -261,10 +261,10 @@ public class MainTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("issuer=a", false));
         Assert.assertThrows(IllegalArgumentException.class, () -> Main.generateToken("subject=a", false));
 
-        Assert.assertEquals(Main.generateToken("issuer=a;subject=b", false), 1);
-        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=3", false), 1);
-        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest", false), 1);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=3", false), 0);
+        Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest", false), 0);
         Assert.assertEquals(Main.generateToken("issuer=a;subject=b;expires=-1;role=guest,admin;host=localhost", false),
-                1);
+                0);
     }
 }

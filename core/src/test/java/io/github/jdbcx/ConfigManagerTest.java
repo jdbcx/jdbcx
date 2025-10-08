@@ -32,6 +32,7 @@ import org.testng.annotations.Test;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwt;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.lang.Collections;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.WeakKeyException;
 
@@ -123,9 +124,10 @@ public class ConfigManagerTest {
     public void testJwt() {
         Properties props = new Properties();
         TestConfigManager manager = new TestConfigManager(props);
-        String token = manager.generateToken("me", "you", 5, null);
+        String token = manager.generateToken("me", "you", "audience1,audience2", 5, null);
         Jwt<?, ?> jws = manager.getTokenVerifier("me").parse(token);
         Assert.assertEquals(jws.getHeader().getAlgorithm(), "none");
+        Assert.assertEquals(((Claims) jws.getPayload()).getAudience(), Collections.setOf("audience1", "audience2"));
         Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("me", token).size());
         Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "me");
         Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "you");
@@ -136,14 +138,20 @@ public class ConfigManagerTest {
         Map<String, String> claims = new HashMap<>();
         claims.put("a1", "b");
         claims.put("b2", "x");
-        token = manager.generateToken("you", "me", 5, claims);
+        token = manager.generateToken("you", "me", null, 5, claims);
         jws = manager.getTokenVerifier("you").parse(token);
         Assert.assertEquals(jws.getHeader().getAlgorithm(), "HS512");
+        Assert.assertEquals(((Claims) jws.getPayload()).getAudience(), null);
         Assert.assertEquals(((Claims) jws.getPayload()).size(), manager.verifyToken("you", token).size());
         Assert.assertEquals(((Claims) jws.getPayload()).getIssuer(), "you");
         Assert.assertEquals(((Claims) jws.getPayload()).getSubject(), "me");
         Assert.assertEquals(((Claims) jws.getPayload()).get("a1", String.class), "b");
         Assert.assertEquals(((Claims) jws.getPayload()).get("b2", String.class), "x");
+
+        // Option.SERVER_SECRET.setJdbcxValue(props,
+        // "HS512:tD2I+VXw+aKpbnGjpRU2KdsQyhdWcQ7qESAG9216shly/p6w7WaETQ8qVk5lxET7XAy+qgtY1VAbA3RDMJgcVA==");
+        // manager.generateToken("https://my.company.com", "my@email.address", null,
+        // 1440, java.util.Collections.singletonMap("allowed_ips", "192.168.1.0/24"));
     }
 
     @Test(groups = { "unit" })

@@ -43,6 +43,7 @@ import java.util.Objects;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -286,6 +287,9 @@ public abstract class ConfigManager {
     static final JwtAlgorithm createAlgorithm(String secret) {
         final List<String> parts;
         if (Checker.isNullOrEmpty(secret)) {
+            log.warn(
+                    "Set %s to a secure randomly generated key to protect access token. You can create one using the command: \"openssl rand -base64 64 | tr -d '\\n'\".",
+                    Option.SERVER_SECRET.getJdbcxName());
             parts = Collections.emptyList();
         } else {
             parts = new ArrayList<>(2);
@@ -511,13 +515,19 @@ public abstract class ConfigManager {
         return builder.requireIssuer(issuer).build();
     }
 
-    public String generateToken(String issuer, String subject, int expirationMinutes, Map<String, String> claims) {
+    public String generateToken(String issuer, String subject, String audience, int expirationMinutes,
+            Map<String, String> claims) {
         if (Checker.isNullOrBlank(issuer) || Checker.isNullOrBlank(subject)) {
             throw new IllegalArgumentException("Non-blank issuer and subject are required");
         }
 
         Instant now = Instant.now();
-        JwtBuilder builder = Jwts.builder().issuer(issuer.trim()).subject(subject.trim());
+        JwtBuilder builder = Jwts.builder().issuer(issuer.trim()).subject(subject.trim())
+                .id(UUID.randomUUID().toString()).issuedAt(Date.from(now));
+        List<String> list = Utils.split(audience, ',', true, true, true);
+        if (!list.isEmpty()) {
+            builder = builder.audience().add(list).and();
+        }
         if (expirationMinutes > 0) {
             builder = builder.expiration(Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES)));
         }

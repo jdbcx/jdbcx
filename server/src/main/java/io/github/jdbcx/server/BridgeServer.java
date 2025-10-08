@@ -600,7 +600,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         }
 
         log.debug("Checking ACL...");
-        Map<String, String> claims = cm.verifyToken(baseUrl, cm.decrypt(token, baseUrl, Constants.DEFAULT_CHARSET));
+        Map<String, String> claims = cm.verifyToken(baseUrl, token);
         ServerAcl acl = acls.getIfPresent(token);
         if (acl == null) {
             acls.put(token, acl = new ServerAcl(claims.get(CLAIM_ALLOWED_HOSTS), claims.get(CLAIM_ALLOWED_IPS)));

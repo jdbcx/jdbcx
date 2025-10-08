@@ -225,7 +225,7 @@ public final class Option implements Serializable {
     public static final Option SERVER_CONTEXT = Option.of("server.context",
             "Server web context starts and ends with backslash", "/");
     public static final Option SERVER_SECRET = Option
-            .of(new String[] { "server.secret", "Server secret for JWT token generation and verification." });
+            .of(new String[] { "server.secret", "The key used by the server to generate and verify access tokens." });
     public static final Option SERVER_TOKEN = Option.of(new String[] { "server.token",
             "Token required to access bridge server with authentication and authorization enabled." });
     public static final Option SERVER_FORMAT = Option.ofEnum("server.format", "Server response format", null,
