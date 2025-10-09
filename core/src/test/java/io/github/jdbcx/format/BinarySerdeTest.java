@@ -71,6 +71,7 @@ public class BinarySerdeTest {
                 ResultSet rs = stmt.executeQuery("select '123'");
                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(Result.of(rs), out);
+            Assert.assertFalse(rs.isClosed());
             Assert.assertFalse(rs.next());
             Assert.assertEquals(out.toByteArray(), new byte[] { 49, 50, 51 });
         }

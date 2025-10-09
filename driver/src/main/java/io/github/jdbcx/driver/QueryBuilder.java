@@ -30,6 +30,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.UUID;
 
+import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Format;
@@ -116,8 +117,23 @@ public final class QueryBuilder {
                     props.setProperty(DriverExtension.PROPERTY_PATH, QueryMode.ASYNC.path());
                     Properties p = new Properties(props);
                     ParsedQuery q = QueryParser.parse(expression, tag, p, manager.getConfigManager());
-                    if (Option.TYPE_BINARY
-                            .equals(Option.RESULT_TYPE.getValue(q.getExecutableBlocks().get(0).getProperties()))) {
+                    // FIXME check overriable parameters
+                    ExecutableBlock b = q.getExecutableBlocks().get(0);
+                    boolean isBin = Option.TYPE_BINARY.equals(Option.RESULT_TYPE.getValue(b.getProperties()));
+                    if (!isBin) {
+                        ConfigManager cm = manager.getConfigManager();
+                        for (String id : b.getIds()) {
+                            if (id.isEmpty()) {
+                                continue;
+                            }
+                            if (Option.TYPE_BINARY.equals(
+                                    cm.getConfig(b.getExtensionName(), id).getProperty(Option.RESULT_TYPE.getName()))) {
+                                isBin = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isBin) {
                         props.setProperty(Constants.PROP_FORMAT, Format.BINARY.fileExtension(false));
                     }
                 }

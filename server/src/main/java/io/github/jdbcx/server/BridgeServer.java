@@ -600,16 +600,23 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         }
 
         log.debug("Checking ACL...");
-        Map<String, String> claims = cm.verifyToken(baseUrl, token);
-        ServerAcl acl = acls.getIfPresent(token);
-        if (acl == null) {
-            acls.put(token, acl = new ServerAcl(claims.get(CLAIM_ALLOWED_HOSTS), claims.get(CLAIM_ALLOWED_IPS)));
+        if (Checker.isNullOrEmpty(token)) {
+            log.warn("Missing access token from [%s]", address);
+        } else {
+            Map<String, String> claims = cm.verifyToken(baseUrl, token);
+            if (!claims.isEmpty()) {
+                ServerAcl acl = acls.getIfPresent(token);
+                if (acl == null) {
+                    acls.put(token,
+                            acl = new ServerAcl(claims.get(CLAIM_ALLOWED_HOSTS), claims.get(CLAIM_ALLOWED_IPS)));
+                }
+                if (acl.isValid(address)) {
+                    log.debug("Authorized request from user [%s] at [%s]", claims.get(CLAIM_SUBJECT), address);
+                    return true;
+                }
+            }
+            log.warn("Unauthorized request from [%s]", address);
         }
-        if (acl.isValid(address)) {
-            log.debug("Authorized request from user [%s] at [%s]", claims.get(CLAIM_SUBJECT), address.getAddress());
-            return true;
-        }
-        log.warn("Unauthorized request from [%s]", address.getAddress());
         return false;
     }
 

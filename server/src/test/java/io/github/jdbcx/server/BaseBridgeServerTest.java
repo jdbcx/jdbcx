@@ -575,7 +575,7 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     @Test(groups = { "integration" })
     public void testBridgedQuery() throws Exception {
         Properties props = new Properties();
-        // props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
 
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
@@ -892,6 +892,15 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Class<?> clazz = loader.loadClassFromBytes(QueryInfo.class.getName(),
                         Stream.readAllBytes((InputStream) rs.getBinaryStream(1)));
                 Assert.assertEquals(clazz.getName(), QueryInfo.class.getName());
+                Assert.assertFalse(rs.next());
+            }
+
+            try (ResultSet rs = stmt.executeQuery(
+                    "select * from {{ table.web(result.type=binary,base.url=https://avatars.githubusercontent.com/u/137983508) }}")) {
+                Assert.assertEquals(rs.getMetaData().getColumnCount(), 1);
+                Assert.assertEquals(rs.getMetaData().getColumnTypeName(1), "Nullable(String)");
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getBytes(1).length, 4866);
                 Assert.assertFalse(rs.next());
             }
         }

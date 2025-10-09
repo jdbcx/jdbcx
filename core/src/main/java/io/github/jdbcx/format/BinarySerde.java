@@ -52,6 +52,7 @@ public final class BinarySerde implements Serialization {
         throw new UnsupportedOperationException("Unimplemented method 'deserialize'");
     }
 
+    @SuppressWarnings("resource")
     @Override
     public void serialize(Result<?> result, OutputStream out) throws IOException {
         final Object obj;
@@ -60,7 +61,8 @@ public final class BinarySerde implements Serialization {
         } else {
             Object o = result.get();
             if (o instanceof ResultSet) {
-                try (ResultSet rs = (ResultSet) o) {
+                try {
+                    ResultSet rs = (ResultSet) o;
                     o = null;
                     if (rs.next()) {
                         o = rs.getObject(1);
