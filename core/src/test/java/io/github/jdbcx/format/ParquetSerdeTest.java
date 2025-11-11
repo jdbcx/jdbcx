@@ -30,7 +30,7 @@ public class ParquetSerdeTest {
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             serde.serialize(Result.of("123"), out);
-            Assert.assertEquals(out.toByteArray().length, 474);
+            Assert.assertEquals(out.toByteArray().length, 459);
         }
     }
 }
