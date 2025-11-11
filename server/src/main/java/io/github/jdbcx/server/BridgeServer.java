@@ -492,6 +492,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         log.debug("Executing query [%s]...", info.qid);
         int responseCode = HttpURLConnection.HTTP_OK;
         String errorMessage = "Unknown error";
+        boolean responded = false;
         try (Connection conn = datasource.getConnection();
                 Statement stmt = conn.createStatement();
                 // request.isMutation()
@@ -503,6 +504,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 if (warning != null) {
                     log.warn("SQLWarning from [%s]", stmt, warning);
                 }
+                responded = true;
                 Result.writeTo(result, info.format, config, out);
             }
             // in case the query took too long
@@ -517,8 +519,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             errorMessage = e.getMessage();
             throw e;
         } finally {
-            if (errorMessage != null) {
-                responseCode = respond(request, HttpURLConnection.HTTP_INTERNAL_ERROR, errorMessage);
+            if (errorMessage != null && !responded) {
+                respond(request, responseCode = HttpURLConnection.HTTP_INTERNAL_ERROR, errorMessage);
             }
         }
         log.debug("Query [%s] finished successfully", info.qid);
