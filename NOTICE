@@ -20,7 +20,7 @@ This project includes:
   aircompressor under Apache License 2.0
   Apache Avro under Apache-2.0
   Apache Commons Codec under Apache-2.0
-  Apache Commons Collections under Apache License, Version 2.0
+  Apache Commons Collections under Apache-2.0
   Apache Commons Compress under Apache-2.0
   Apache Commons IO under Apache-2.0
   Apache Commons Lang under Apache-2.0
@@ -36,6 +36,7 @@ This project includes:
   Apache Parquet Format Structures under The Apache Software License, Version 2.0
   Apache Parquet Hadoop under The Apache Software License, Version 2.0
   Apache Parquet Jackson under The Apache Software License, Version 2.0
+  Apache Parquet Variant under The Apache Software License, Version 2.0
   Arrow Flight SQL JDBC Driver under Apache-2.0
   Arrow Format under Apache-2.0
   Arrow Memory - Core under Apache-2.0
@@ -78,6 +79,7 @@ This project includes:
   JMESPath Core under BSD 3-Clause
   JMESPath GSON under BSD 3-Clause
   jquery under MIT License
+  JSpecify annotations under The Apache License, Version 2.0
   JUnit under Eclipse Public License 1.0
   LatencyUtils under Public Domain, per Creative Commons CC0
   LZ4 and xxHash under The Apache Software License, Version 2.0
@@ -90,6 +92,7 @@ This project includes:
   Neo4j JDBC Driver (Bundle) under The Apache Software License, Version 2.0
   Non-Blocking Reactive Foundation for the JVM under Apache License, Version 2.0
   org.brotli:dec under MIT License
+  org.locationtech.jts:jts-core under Eclipse Public License, Version 2.0 or Eclipse Distribution License - v 1.0
   PostgreSQL JDBC Driver under BSD-2-Clause
   Prometheus Metrics Config under The Apache Software License, Version 2.0
   Prometheus Metrics Core under The Apache Software License, Version 2.0
