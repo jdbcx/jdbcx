@@ -154,6 +154,14 @@ public class QueryParserTest {
         Assert.assertEquals(props, expected);
 
         props.clear();
+        expected.setProperty("cc", "b=2&c=3");
+        expected.setProperty("dd", "d=4,e=5");
+        Assert.assertEquals(
+                QueryParser.extractProperties(str = " a.b = ,cc =b=2&c=3, dd=d=4\\,e=5 )", 0, str.length(), null, props),
+                str.length() - 1);
+        Assert.assertEquals(props, expected);
+
+        props.clear();
         expected.setProperty("cc", "233");
         expected.setProperty("dd", "322");
         expected.setProperty("e.e", "5");
