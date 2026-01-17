@@ -216,6 +216,16 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <legacyMode>true</legacyMode>
+                            <skipIfNoSources>true</skipIfNoSources>
+                            <!-- nonModularJars>
+                                <nonModularJar>io.modelcontextprotocol.sdk:mcp-core:0.17.1</nonModularJar>
+                                <nonModularJar>io.modelcontextprotocol.sdk:mcp-json:0.17.1</nonModularJar>
+                                <nonModularJar>io.modelcontextprotocol.sdk:mcp-json-jackson2:0.17.1</nonModularJar>
+                            </nonModularJars -->
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
