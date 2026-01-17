@@ -84,7 +84,7 @@
         <avro.version>1.12.1</avro.version>
         <brotli.version>0.1.2</brotli.version>
         <brotli4j.version>1.20.0</brotli4j.version>
-        <bson.version>5.6.1</bson.version>
+        <bson.version>5.6.2</bson.version>
         <caffeine.version>3.2.3</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
         <codec.version>1.20.0</codec.version>
@@ -96,9 +96,9 @@
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.6.3</dnsjava.version>
-        <duckdb.version>1.4.1.0</duckdb.version>
+        <duckdb.version>1.4.3.0</duckdb.version>
         <graphql.version>25.0</graphql.version>
-        <groovy.version>5.0.2</groovy.version>
+        <groovy.version>5.0.3</groovy.version>
         <gson.version>2.13.2</gson.version>
         <hadoop.version>3.4.2</hadoop.version>
         <hikaricp.version>7.0.2</hikaricp.version>
@@ -107,57 +107,55 @@
         <jctools.version>4.0.5</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <lz4.version>1.8.0</lz4.version>
-        <mariadb.version>3.5.6</mariadb.version>
-        <!-- https://github.com/modelcontextprotocol/java-sdk/issues/560 -->
-        <mcp.version>0.12.1</mcp.version>
-        <micrometer.version>1.16.0</micrometer.version>
-        <msgpack.version>0.9.10</msgpack.version>
+        <lz4.version>1.10.2</lz4.version>
+        <mariadb.version>3.5.7</mariadb.version>
+        <micrometer.version>1.16.2</micrometer.version>
+        <msgpack.version>0.9.11</msgpack.version>
         <mysql.version>9.5.0</mysql.version>
-        <neo4j.version>6.9.1</neo4j.version>
-        <parquet.version>1.16.0</parquet.version>
+        <neo4j.version>6.10.3</neo4j.version>
+        <parquet.version>1.17.0</parquet.version>
         <postgresql.version>42.7.8</postgresql.version>
-        <reactor.version>3.8.0</reactor.version>
-        <sqlite.version>3.51.0.0</sqlite.version>
-        <rhino.version>1.8.0</rhino.version>
+        <repacked.version>1.0.0</repacked.version>
+        <reactor.version>3.8.2</reactor.version>
+        <sqlite.version>3.51.1.0</sqlite.version>
+        <rhino.version>1.9.0</rhino.version>
         <roaring-bitmap.version>1.3.0</roaring-bitmap.version>
         <slf4j.version>2.0.17</slf4j.version>
         <snappy.version>1.1.10.8</snappy.version>
-        <xz.version>1.10</xz.version>
+        <xz.version>1.11</xz.version>
         <zstd-jni.version>1.5.7-6</zstd-jni.version>
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <testng.version>7.11.0</testng.version>
 
         <shade.base>${project.groupId}.internal</shade.base>
 
-        <antrun-plugin.version>3.1.0</antrun-plugin.version>
-        <assembly-plugin.version>3.7.1</assembly-plugin.version>
-        <clean-plugin.version>3.4.1</clean-plugin.version>
-        <compiler-plugin.version>3.14.0</compiler-plugin.version>
-        <dependency-plugin.version>3.8.1</dependency-plugin.version>
+        <antrun-plugin.version>3.2.0</antrun-plugin.version>
+        <assembly-plugin.version>3.8.0</assembly-plugin.version>
+        <clean-plugin.version>3.5.0</clean-plugin.version>
+        <compiler-plugin.version>3.14.1</compiler-plugin.version>
+        <dependency-plugin.version>3.9.0</dependency-plugin.version>
         <deploy-plugin.version>3.1.4</deploy-plugin.version>
-        <enforcer-plugin.version>3.5.0</enforcer-plugin.version>
-        <exec-plugin.version>3.5.0</exec-plugin.version>
-        <failsafe-plugin.version>3.5.3</failsafe-plugin.version>
-        <flatten-plugin.version>1.7.0</flatten-plugin.version>
-        <git-plugin.version>9.0.1</git-plugin.version>
-        <gpg-plugin.version>3.2.7</gpg-plugin.version>
-        <helper-plugin.version>3.6.0</helper-plugin.version>
-        <jacoco-plugin.version>0.8.13</jacoco-plugin.version>
-        <jar-plugin.version>3.4.2</jar-plugin.version>
-        <javadoc-plugin.version>3.11.2</javadoc-plugin.version>
+        <enforcer-plugin.version>3.6.2</enforcer-plugin.version>
+        <exec-plugin.version>3.6.3</exec-plugin.version>
+        <failsafe-plugin.version>3.5.4</failsafe-plugin.version>
+        <flatten-plugin.version>1.7.3</flatten-plugin.version>
+        <git-plugin.version>9.0.2</git-plugin.version>
+        <gpg-plugin.version>3.2.8</gpg-plugin.version>
+        <helper-plugin.version>3.6.1</helper-plugin.version>
+        <jacoco-plugin.version>0.8.14</jacoco-plugin.version>
+        <jar-plugin.version>3.5.0</jar-plugin.version>
+        <javadoc-plugin.version>3.12.0</javadoc-plugin.version>
         <license-plugin.version>5.0.0</license-plugin.version>
-        <native-plugin.version>0.10.6</native-plugin.version>
+        <native-plugin.version>0.11.3</native-plugin.version>
         <notice-plugin.version>2.0.0</notice-plugin.version>
         <os-plugin.version>1.7.1</os-plugin.version>
-        <resources-plugin.version>3.3.1</resources-plugin.version>
-        <shade-plugin.version>3.6.0</shade-plugin.version>
-        <sonatype-plugin.version>0.8.0</sonatype-plugin.version>
-        <source-plugin.version>3.3.1</source-plugin.version>
-        <staging-plugin.version>1.7.0</staging-plugin.version>
-        <surefire-plugin.version>3.5.3</surefire-plugin.version>
+        <resources-plugin.version>3.4.0</resources-plugin.version>
+        <shade-plugin.version>3.6.1</shade-plugin.version>
+        <sonatype-plugin.version>0.10.0</sonatype-plugin.version>
+        <source-plugin.version>3.4.0</source-plugin.version>
+        <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <toolchains-plugin.version>3.2.0</toolchains-plugin.version>
-        <versions-plugin.version>2.18.0</versions-plugin.version>
+        <versions-plugin.version>2.20.1</versions-plugin.version>
 
         <minJdk>8</minJdk>
         <skipTests>false</skipTests>
@@ -175,7 +173,8 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.projectVersion>0.8.0</sonar.projectVersion>
         <sonar.coverage.jacoco.xmlReportPaths>**/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.cpd.exclusions>**/*0*.java,**/value/*Value.java,**/value/array/*Value.java,**/stream/*Stream.java</sonar.cpd.exclusions>
+        <sonar.cpd.exclusions>
+            **/*0*.java,**/value/*Value.java,**/value/array/*Value.java,**/stream/*Stream.java</sonar.cpd.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -311,9 +310,9 @@
                 <version>${micrometer.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.modelcontextprotocol.sdk</groupId>
-                <artifactId>mcp</artifactId>
-                <version>${mcp.version}</version>
+                <groupId>io.github.jdbcx</groupId>
+                <artifactId>io.modelcontextprotocol</artifactId>
+                <version>${repacked.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>*</groupId>
@@ -582,7 +581,7 @@
                 <version>${duckdb.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.lz4</groupId>
+                <groupId>at.yawk.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>${lz4.version}</version>
             </dependency>
@@ -1168,6 +1167,7 @@
                 <caffeine.version>2.9.2</caffeine.version>
                 <groovy.version>4.0.29</groovy.version>
                 <hikaricp.version>4.0.3</hikaricp.version>
+                <parquet.version>1.16.0</parquet.version>
                 <rhino.version>1.7.15</rhino.version>
                 <testng.version>7.5.1</testng.version>
                 <git-plugin.version>4.9.9</git-plugin.version>

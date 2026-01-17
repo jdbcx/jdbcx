@@ -31,6 +31,7 @@ import io.github.jdbcx.ResourceManager;
 import io.github.jdbcx.Row;
 import io.github.jdbcx.executor.jdbc.ReadOnlyResultSet;
 
+// npx -y @modelcontextprotocol/inspector npx @modelcontextprotocol/server-everything
 public class McpExecutorTest extends BaseIntegrationTest {
     static final class ClientManager implements ResourceManager {
         final List<AutoCloseable> clients;
@@ -135,35 +136,30 @@ public class McpExecutorTest extends BaseIntegrationTest {
         Assert.assertThrows(SQLException.class, () -> exec.execute("{}", props, null));
         Assert.assertThrows(SQLException.class, () -> exec.execute("{\"name\":null}", props, null));
         count = 0;
-        for (Row row : exec.execute("{\"name\": \"simple_prompt\"}", props, null).rows()) {
+        for (Row row : exec.execute("{\"name\": \"simple-prompt\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
         count = 0;
-        for (Row row : exec.execute("{\"name\": \"complex_prompt\"}", props, null).rows()) {
-            count++;
-        }
-        Assert.assertTrue(count > 1, "Should have more than one row");
-        count = 0;
         for (Row row : exec
-                .execute("{\"name\": \"complex_prompt\", \"arguments\":{\"temperature\":\"0.95\",\"style\":\"json\"}}",
+                .execute("{\"name\": \"args-prompt\", \"arguments\":{\"city\":\"Shanghai\"}}",
                         props, null)
                 .rows()) {
             count++;
         }
-        Assert.assertTrue(count > 1, "Should have more than one row");
+        Assert.assertEquals(count, 1);
         props.remove(McpExecutor.OPTION_SERVER_TARGET.getName());
 
         // prompt in request body
         McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "a");
         count = 0;
-        for (Row row : exec.execute(" simple_prompt ", props, null).rows()) {
+        for (Row row : exec.execute(" simple-prompt ", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
 
         // prompt argument
-        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
+        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple-prompt");
         count = 0;
         for (Row row : exec.execute("", props, null).rows()) {
             count++;
@@ -171,15 +167,11 @@ public class McpExecutorTest extends BaseIntegrationTest {
         Assert.assertEquals(count, 1);
 
         // prompt argument mixed with request body
-        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "simple_prompt");
+        McpExecutor.OPTION_SERVER_PROMPT.setValue(props, "args-prompt");
         Assert.assertThrows(SQLException.class, () -> exec.execute(" non-exitsing-prompt", props, null));
+        Assert.assertThrows(SQLException.class, () -> exec.execute("args-prompt", props, null));
         count = 0;
-        for (Row row : exec.execute("complex_prompt", props, null).rows()) {
-            count++;
-        }
-        Assert.assertTrue(count > 1, "Should have more than one row");
-        count = 0;
-        for (Row row : exec.execute("{\"a\":\"1\"}", props, null).rows()) {
+        for (Row row : exec.execute("{\"city\":\"Chengdu\", \"state\":\"Sichuan\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -202,9 +194,10 @@ public class McpExecutorTest extends BaseIntegrationTest {
         }
         Assert.assertTrue(count > 1, "Should have more than one row");
 
+        final String resource_url = "demo://resource/static/document/extension.md";
         // resource in request body
         count = 0;
-        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props, null).rows()) {
+        for (Row row : exec.execute("{\"uri\": \"" + resource_url + "\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);
@@ -214,7 +207,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
         Assert.assertThrows(SQLException.class, () -> exec.execute("", props, null));
 
-        McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/7");
+        McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, resource_url);
         count = 0;
         for (Row row : exec.execute("", props, null).rows()) {
             count++;
@@ -229,7 +222,7 @@ public class McpExecutorTest extends BaseIntegrationTest {
         // resource argument mixed with request body
         McpExecutor.OPTION_SERVER_RESOURCE.setValue(props, "test://static/resource/non-existing");
         count = 0;
-        for (Row row : exec.execute("{\"uri\": \"test://static/resource/7\"}", props, null).rows()) {
+        for (Row row : exec.execute("{\"uri\": \"" + resource_url + "\"}", props, null).rows()) {
             count++;
         }
         Assert.assertEquals(count, 1);

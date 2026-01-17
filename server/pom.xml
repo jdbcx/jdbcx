@@ -84,8 +84,19 @@
         </dependency>
         <dependency>
             <groupId>io.github.jdbcx</groupId>
+            <artifactId>jdbcx-core</artifactId>
+            <version>${revision}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.jdbcx</groupId>
             <artifactId>jdbcx-driver</artifactId>
             <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.jdbcx</groupId>
+            <artifactId>io.modelcontextprotocol</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>io.burt</groupId>
@@ -103,19 +114,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>io.github.jdbcx</groupId>
-            <artifactId>jdbcx-core</artifactId>
-            <version>${revision}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.modelcontextprotocol.sdk</groupId>
-            <artifactId>mcp</artifactId>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -164,7 +164,7 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.lz4</groupId>
+            <groupId>at.yawk.lz4</groupId>
             <artifactId>lz4-java</artifactId>
             <optional>true</optional>
         </dependency>
@@ -324,7 +324,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <excludeGroupIds>${project.groupId}</excludeGroupIds>
+                            <excludeArtifactIds>jdbcx-core,jdbcx-driver</excludeArtifactIds>
                             <includeScope>runtime</includeScope>
                             <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
                         </configuration>

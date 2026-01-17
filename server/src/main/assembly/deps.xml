@@ -13,7 +13,8 @@
                 <exclude>com.zaxxer:*</exclude>
                 <exclude>io.micrometer:*</exclude>
                 <exclude>io.prometheus:*</exclude>
-                <exclude>${project.groupId}:*</exclude>
+                <exclude>${project.groupId}:jdbcx-core</exclude>
+                <exclude>${project.groupId}:jdbcx-driver</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>

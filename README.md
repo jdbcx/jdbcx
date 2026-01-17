@@ -40,7 +40,7 @@ num
 $ curl -s -d "select * from {{ table.mcp.everything(target=prompt) }}
 where name like 'simple%'" 'http://localhost:8080/query'
 name,description,arguments
-simple_prompt,A prompt without arguments,
+simple-prompt,A prompt without arguments,
 $ curl -s -d 'select c.name
 from {{ table.db.ch-play: show databases }} c
 left outer join {{ table.db.ch-altinity: show databases }} a
