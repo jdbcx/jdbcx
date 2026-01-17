@@ -29,7 +29,7 @@ jobs:
             -e 's|${parent.groupId}|io.github.jdbcx|g' -e 's|${project.parent.groupId}|io.github.jdbcx|g' '{}' \;
           find . -type f -name "simplelogger.*" -exec rm -fv '{}' \;
       - name: Release Maven package
-        run: cd third-party-libs && mvn -q --batch-mode deploy -Prelease
+        run: mvn -f third-party-libs/pom.xml -q --batch-mode deploy -Prelease
         env:
           MAVEN_USERNAME: ${{ secrets.SONATYPE_USER }}
           MAVEN_CENTRAL_TOKEN: ${{ secrets.SONATYPE_PASSWD }}
