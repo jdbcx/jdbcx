@@ -324,7 +324,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <excludeGroupIds>${project.groupId}</excludeGroupIds>
+                            <excludeArtifactIds>jdbcx-core,jdbcx-driver</excludeArtifactIds>
                             <includeScope>runtime</includeScope>
                             <outputDirectory>${project.build.directory}/dependency-jars/</outputDirectory>
                         </configuration>
