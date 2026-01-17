@@ -32,6 +32,11 @@
             <optional>true</optional>
         </dependency>
         <dependency>
+            <groupId>io.github.jdbcx</groupId>
+            <artifactId>io.modelcontextprotocol</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <optional>true</optional>
@@ -66,11 +71,6 @@
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-gson</artifactId>
             <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.modelcontextprotocol.sdk</groupId>
-            <artifactId>mcp</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>

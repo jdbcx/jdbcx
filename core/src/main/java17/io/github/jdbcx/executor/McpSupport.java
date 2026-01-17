@@ -50,6 +50,7 @@ import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema.BlobResourceContents;
@@ -69,8 +70,7 @@ import io.modelcontextprotocol.spec.McpSchema.TextResourceContents;
 
 public final class McpSupport {
     private static final Logger log = LoggerFactory.getLogger(McpSupport.class);
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
+    private static final Type MAP_TYPE=new TypeToken<Map<String,Object>>(){}.getType();
 
     private static final Field FIELD_CONTENT = Field.of("content");
     private static final Field FIELD_NAME = Field.of("name");
@@ -111,10 +111,12 @@ public final class McpSupport {
     static final String STR_SERVER = "server";
 
     static final record ManagedSession(String cli, String url, McpSyncClient client) implements AutoCloseable {
-        @Override
-        public void close() {
-            client.close();
-        }
+
+    @Override
+    public void close() {
+        client.close();
+    }
+
     }
 
     static final void addContentAsValues(Content obj, List<Value> values) {
@@ -313,7 +315,8 @@ public final class McpSupport {
             }
             serverCli = new StringBuilder(cmd).append(' ').append(args.toString()).toString();
             transport = new StdioClientTransport(
-                    ServerParameters.builder(cmd).args(args).env(executor.getServerEnvironment(props)).build());
+                    ServerParameters.builder(cmd).args(args).env(executor.getServerEnvironment(props)).build(),
+                    McpJsonMapper.getDefault());
         } else if (!Checker.isNullOrEmpty(serverUrl)) {
             serverCli = Constants.EMPTY_STRING;
             final String serverKey = executor.getServerKey(props);

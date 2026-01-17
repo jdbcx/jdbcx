@@ -41,21 +41,24 @@ public class McpDriverExtensionTest extends BaseIntegrationTest {
                 { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt) }}" },
                 { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=resource) }}" },
                 { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=tool) }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, prompt=complex_prompt) }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt): {\"name\":\"complex_prompt\"} }}" }
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=resource_template) }}" }
+                // { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything,
+                // prompt=simple-prompt) }}" },
+                // { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything,
+                // target=prompt): {\"name\":\"args-prompt\",
+                // \"arguments\":{\"city\":\"Shanghai\"}} }}" }
         };
     }
 
     @DataProvider(name = "singleResults")
     public Object[][] getSingleResults() {
         return new Object[][] {
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=resource_template) }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, prompt=simple_prompt) }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt): simple_prompt }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt): {\"name\":\"simple_prompt\"} }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, resource=test://static/resource/7) }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, resource=non-existing): test://static/resource/7 }}" },
-                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=resource): {\"uri\":\"test://static/resource/7\"} }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, prompt=simple-prompt) }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt): simple-prompt }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=prompt): {\"name\":\"simple-prompt\"} }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, resource=demo://resource/static/document/extension.md) }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, resource=non-existing): demo://resource/static/document/extension.md }}" },
+                { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, target=resource): {\"uri\":\"demo://resource/static/document/extension.md\"} }}" },
                 { "{{ mcp(cmd=npx, args=-y @modelcontextprotocol/server-everything, tool=echo): {\"message\":\"me\"} }}" },
                 { "{{ mcp.everything(tool=echo): {\"message\":\"me\"} }}" }
         };

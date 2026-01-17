@@ -28,7 +28,7 @@ module io.github.jdbcx.core {
     requires static com.google.gson;
     requires static com.github.benmanes.caffeine;
     requires static org.slf4j;
-    requires static io.modelcontextprotocol.sdk.mcp;
+    requires static io.modelcontextprotocol;
 
     uses io.github.jdbcx.LoggerFactory;
 }
