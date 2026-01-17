@@ -30,7 +30,9 @@ replay_pid*
 
 # Generated
 .DS_Store
+.bloop
 .flattened-pom.xml
+.metals
 .vscode
 dependency-reduced-pom.xml
 target

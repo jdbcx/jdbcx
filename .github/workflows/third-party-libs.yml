@@ -1,0 +1,36 @@
+name: ThirdPartyLibs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        required: true
+        default: "1.0.0"
+
+jobs:
+  release:
+    name: "Build and Publish Repackaged Third Party Libraries"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+      - name: Install Java and Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: 21
+          cache: "maven"
+      - name: Update pom files and reduce logs
+        run: |
+          find . -type f -name "pom.xml" -exec sed -i -e 's|${revision}|${{ github.event.inputs.version }}|g' \
+            -e 's|^\(    <version>\).*\(</version>\)$|\1${{ github.event.inputs.version }}\2|' \
+            -e 's|${parent.groupId}|io.github.jdbcx|g' -e 's|${project.parent.groupId}|io.github.jdbcx|g' '{}' \;
+          find . -type f -name "simplelogger.*" -exec rm -fv '{}' \;
+      - name: Release Maven package
+        run: cd third-party-libs && mvn -q --batch-mode deploy -Prelease
+        env:
+          MAVEN_USERNAME: ${{ secrets.SONATYPE_USER }}
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.SONATYPE_PASSWD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
