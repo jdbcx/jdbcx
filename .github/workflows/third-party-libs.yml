@@ -8,6 +8,9 @@ on:
         required: true
         default: "1.0.0"
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: "Build and Publish Repackaged Third Party Libraries"
