@@ -76,7 +76,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <mcp.version>0.17.1</mcp.version>
+        <mcp.version>0.17.2</mcp.version>
 
         <antrun-plugin.version>3.2.0</antrun-plugin.version>
         <compiler-plugin.version>3.14.1</compiler-plugin.version>
