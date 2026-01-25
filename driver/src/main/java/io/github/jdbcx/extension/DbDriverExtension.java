@@ -98,8 +98,7 @@ public class DbDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props),
-                loader);
+        return new ActivityListener(context, getConfig(context, props), loader);
     }
 
     @Override

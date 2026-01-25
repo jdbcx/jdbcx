@@ -147,11 +147,64 @@ public interface DriverExtension extends Comparable<DriverExtension> {
     /**
      * Gets configuration for this extension.
      *
-     * @param manager optional configuration manager
+     * @param context optional query context
      * @param props   optional properties to merge into the configuration, could be
      *                null
      * @return non-null configuration for this extension
      */
+    default Properties getConfig(QueryContext context, Properties props) {
+        final ConfigManager manager;
+        final String tenant;
+        if (context != null) {
+            manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
+            tenant = (String) context.get(QueryContext.KEY_TENENT);
+        } else if (props == null) {
+            return getDefaultConfig();
+        } else {
+            return props;
+        }
+
+        Properties defined = new Properties();
+        String id = Option.ID.getValue(props);
+        if (!Checker.isNullOrEmpty(id)) {
+            defined = manager.getConfig(getName(), id, context.getVariableTag(), tenant);
+        }
+
+        final String overridableParams = (String) defined.remove(Option.OVERRIDEABLE_PARAMS.getName());
+        final List<String> overridables = Checker.isNullOrBlank(overridableParams) ? Collections.emptyList()
+                : Utils.split(overridableParams, ',', true, true, true);
+
+        // ensures the configured properties won't be overrided
+        Properties config = new Properties(props);
+        for (Option option : getOptions(props)) {
+            String name = option.getName();
+            Object value = defined.remove(name);
+            config.put(name, value != null ? value : option.getDefaultValue());
+        }
+
+        // and then the overridable properties
+        for (String s : overridables) {
+            if (config.getProperty(s) != null) {
+                defined.remove(s);
+            }
+        }
+
+        if (!defined.isEmpty()) {
+            config.putAll(defined);
+        }
+        return config;
+    }
+
+    /**
+     * Gets configuration for this extension.
+     *
+     * @param manager optional configuration manager
+     * @param props   optional properties to merge into the configuration, could be
+     *                null
+     * @return non-null configuration for this extension
+     * @deprecated
+     */
+    @Deprecated
     default Properties getConfig(ConfigManager manager, Properties props) {
         if (props == null) {
             return getDefaultConfig();

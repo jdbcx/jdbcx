@@ -31,10 +31,12 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -53,10 +55,12 @@ import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.driver.ConnectionManager;
@@ -96,6 +100,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String PARAM_EXPIRES = "expires";
 
     public static final String PATH_CONFIG = "config";
+    public static final String PATH_ENCRYPT = "encrypt";
     public static final String PATH_ERROR = "error/";
     public static final String PATH_METRICS = "metrics";
 
@@ -228,7 +233,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver
             // FIXME needs a better way to pass all JDBCX properties from server to driver
             for (Option o : new Option[] { Option.CONFIG_PATH, Option.SERVER_AUTH, Option.SERVER_URL,
-                    Option.SERVER_TOKEN }) {
+                    Option.SERVER_TOKEN, Option.TENANT }) {
                 config.addDataSourceProperty(o.getJdbcxName(), o.getJdbcxValue(props));
             }
         }
@@ -287,13 +292,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     }
 
     protected Request create(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
-            Format format, Compression compress, String token, String user, String client, Object implementation)
-            throws IOException { // NOSONAR
+            Format format, Compression compress, String token, String user, String client, String tenant,
+            Object implementation) throws IOException { // NOSONAR
         final QueryInfo info;
         final Request request;
         if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid) && (info = queries.getIfPresent(qid)) != null) {
             log.debug("Loaded query from cache: %s", info);
-            request = new Request(method, mode, info, ConnectionManager.findDialect(info.client), implementation);
+            request = new Request(method, mode, info, tenant, ConnectionManager.findDialect(info.client),
+                    implementation);
         } else {
             if (!Checker.isNullOrEmpty(token)) {
                 try {
@@ -303,7 +309,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 }
             }
             request = new Request(method, mode, rawParams, qid, query, txid, format, compress, token, user, client,
-                    ConnectionManager.findDialect(client), implementation);
+                    tenant, ConnectionManager.findDialect(client), implementation);
         }
         return request;
     }
@@ -538,6 +544,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             conn = datasource.getConnection();
             stmt = conn.createStatement();
 
+            if (request.hasTenantId()) {
+                QueryContext.getCurrentContext().put(QueryContext.KEY_TENENT, request.getTenant());
+            }
+
             final Result<?> result;
             if (stmt.execute(info.query)) {
                 rs = stmt.getResultSet();
@@ -641,6 +651,36 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected final Writer getResponseWriter(Object implementation, String... headers) throws IOException {
         return new OutputStreamWriter(getResponseStream(implementation, headers), Constants.DEFAULT_CHARSET);
+    }
+
+    protected final int respondEncrypt(InetSocketAddress clientAddress, Request request) throws IOException {
+        log.debug("Sending encrypted secrets to %s", clientAddress);
+        final String tenant = request.getTenant();
+        if (tenant.isEmpty()) {
+            return respond(request, HttpURLConnection.HTTP_BAD_REQUEST);
+        } else if (!checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+            return respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+        }
+
+        try (Writer writer = getResponseWriter(request.implementation, HEADER_CONTENT_TYPE, Format.JSON.mimeType())) {
+            Map<String, String> secrets = ValueFactory.flatMapFromJson(request.getQuery());
+            Map<String, String> encrypted = new LinkedHashMap<>();
+            for (Entry<String, String> s : secrets.entrySet()) {
+                final String key = s.getKey();
+                final String val = s.getValue();
+                if (Checker.isNullOrEmpty(val)) {
+                    continue;
+                }
+
+                if (key.endsWith(ConfigManager.PROPERTY_ENCRYPTED_SUFFIX)) {
+                    encrypted.put(key, val);
+                } else {
+                    encrypted.put(key + ConfigManager.PROPERTY_ENCRYPTED_SUFFIX, cm.encrypt(val, tenant, null));
+                }
+            }
+            writer.write(ValueFactory.toJson(encrypted));
+        }
+        return HttpURLConnection.HTTP_OK;
     }
 
     protected final int respondMetrics(InetSocketAddress clientAddress, Object implementation) throws IOException {
@@ -799,6 +839,18 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             return respondError(path, clientAddress, implementation);
         }
 
+        final Map<String, String> params = Utils.toKeyValuePairs(rawParams, '&', true);
+        String qid = RequestParameter.QUERY_ID.getValue(headers, params, Constants.EMPTY_STRING);
+        String txid = RequestParameter.TRANSACTION_ID.getValue(headers, params, Constants.EMPTY_STRING);
+
+        if (PATH_ENCRYPT.equals(path)) {
+            return respondEncrypt(clientAddress,
+                    create(method, QueryMode.DIRECT, rawParams, qid, Constants.EMPTY_STRING, txid, Format.JSON,
+                            Compression.NONE, encodedToken, RequestParameter.USER.getValue(headers, params),
+                            RequestParameter.AGENT.getValue(headers, params),
+                            RequestParameter.TENANT_ID.getValue(headers, params), implementation));
+        }
+
         final QueryMode defaultMode;
         final int index = path.indexOf('/');
         QueryMode m = QueryMode.fromPath(index > 0 ? path.substring(0, index) : path, null);
@@ -812,10 +864,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         } else {
             defaultMode = null;
         }
-
-        final Map<String, String> params = Utils.toKeyValuePairs(rawParams, '&', true);
-        String qid = RequestParameter.QUERY_ID.getValue(headers, params, Constants.EMPTY_STRING);
-        String txid = RequestParameter.TRANSACTION_ID.getValue(headers, params, Constants.EMPTY_STRING);
 
         // priorities: header > parameter > path > default
         final String compressParam = RequestParameter.COMPRESSION.getValue(null, params, Constants.EMPTY_STRING);
@@ -872,7 +920,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return respondQuery(clientAddress, extractConfig(params), create(method, mode, rawParams, qid,
                 RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
                 encodedToken, RequestParameter.USER.getValue(headers, params),
-                RequestParameter.AGENT.getValue(headers, params), implementation));
+                RequestParameter.AGENT.getValue(headers, params), RequestParameter.TENANT_ID.getValue(headers, params),
+                implementation));
     }
 
     public final String getBaseUrl() {

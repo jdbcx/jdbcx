@@ -20,12 +20,14 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.UUID;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.interpreter.JdbcInterpreter;
 
 public class PropertyFileConfigManagerTest {
@@ -36,6 +38,24 @@ public class PropertyFileConfigManagerTest {
         Assert.assertEquals(
                 ConfigManager.newInstance(new Properties()).getClass(),
                 PropertyFileConfigManager.class);
+    }
+
+    @Test(groups = { "integration" })
+    public void testGetConfig() throws Exception {
+        Properties config = new Properties();
+        PropertyFileConfigManager.OPTION_BASE_DIR.setJdbcxValue(config, "target/test-classes/config");
+        final ConfigManager manager = ConfigManager.newInstance(config);
+        final String tenant = UUID.randomUUID().toString();
+        Properties props = manager.getConfig("db", "sqlite-template");
+        Assert.assertEquals(props.get("jdbcx.url"), "jdbc:${custom_connection_string}");
+        props = manager.getConfig("db", "sqlite-template", VariableTag.BRACE, tenant);
+        Assert.assertEquals(props.get("jdbcx.url"), "jdbc:${custom_connection_string}");
+
+        Properties secrets = new Properties();
+        secrets.setProperty("custom_connection_string", "sqlite::memory:");
+        manager.register(tenant, secrets);
+        props = manager.getConfig("db", "sqlite-template", VariableTag.BRACE, tenant);
+        Assert.assertEquals(props.get("jdbcx.url"), "jdbc:sqlite::memory:");
     }
 
     @Test(groups = { "integration" })

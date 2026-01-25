@@ -251,13 +251,14 @@ public final class Option implements Serializable {
 
     public static final Option TAG = Option.ofEnum("tag",
             "Variable tags used in SQL templating and dynamic queries.", null, VariableTag.class);
+    public static final Option TENANT = Option.ofOptional("tenant", "Tenant ID");
 
     /**
      * The Builder class is used to construct options.
      */
     public static final class Builder {
         private String name;
-        private String description;
+        private String desc;
         private String defaultValue;
         private List<String> choices;
 
@@ -269,7 +270,7 @@ public final class Option implements Serializable {
 
         Builder(Option template) {
             this.name = template.name;
-            this.description = template.description;
+            this.desc = template.desc;
             this.defaultValue = template.defaultValue;
             this.choices = new ArrayList<>(template.choices);
 
@@ -281,8 +282,8 @@ public final class Option implements Serializable {
             return this;
         }
 
-        public Builder description(String description) {
-            this.description = description;
+        public Builder description(String desc) {
+            this.desc = desc;
             return this;
         }
 
@@ -316,11 +317,11 @@ public final class Option implements Serializable {
             if (choices == null) {
                 choices = Collections.emptyList();
             }
-            if (template != null && template.name.equals(name) && template.description.equals(description)
+            if (template != null && template.name.equals(name) && template.desc.equals(desc)
                     && template.defaultValue.equals(defaultValue) && template.choices.equals(choices)) {
                 return template;
             }
-            return Option.of(name, description, defaultValue, choices.toArray(new String[0]));
+            return Option.of(name, desc, defaultValue, choices.toArray(new String[0]));
         }
     }
 
@@ -483,13 +484,13 @@ public final class Option implements Serializable {
     }
 
     private final String name;
-    private final String description;
+    private final String desc;
     private final String defaultValue;
     private final List<String> choices;
 
-    private Option(String name, String description, String defaultValue, List<String> choices) {
+    private Option(String name, String desc, String defaultValue, List<String> choices) {
         this.name = name;
-        this.description = description;
+        this.desc = desc;
         this.defaultValue = defaultValue;
         this.choices = choices;
     }
@@ -518,7 +519,7 @@ public final class Option implements Serializable {
      * @return non-null description of the option
      */
     public String getDescription() {
-        return description;
+        return desc;
     }
 
     /**
@@ -673,7 +674,7 @@ public final class Option implements Serializable {
     public int hashCode() {
         final int prime = 31;
         int result = prime + name.hashCode();
-        result = prime * result + description.hashCode();
+        result = prime * result + desc.hashCode();
         result = prime * result + defaultValue.hashCode();
         result = prime * result + choices.hashCode();
         return result;
@@ -688,7 +689,7 @@ public final class Option implements Serializable {
         }
 
         Option other = (Option) obj;
-        return name.equals(other.name) && description.equals(other.description)
+        return name.equals(other.name) && desc.equals(other.desc)
                 && defaultValue.equals(other.defaultValue)
                 && choices.equals(other.choices);
     }

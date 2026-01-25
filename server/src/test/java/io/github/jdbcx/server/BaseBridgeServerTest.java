@@ -41,6 +41,7 @@ import io.github.jdbcx.Format;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.WrappedDriver;
 import io.github.jdbcx.executor.WebExecutor;
@@ -903,6 +904,27 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                 Assert.assertEquals(rs.getBytes(1).length, 4866);
                 Assert.assertFalse(rs.next());
             }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testEncryption() throws Exception {
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(VariableTag.BRACE, config);
+        final String secrets = "{\"a\":\"123\",\"b.encrypted\":\"321\", \"c\":null, \"d\":\"\"}";
+        try (InputStream in = web.post(Utils.toURL(this.server.getBaseUrl() + "encrypt"), secrets, config, headers)) {
+            Assert.fail("Shoud not success");
+        } catch (IOException e) {
+            // ignore
+        }
+
+        headers.put("x-tenant-id", "123");
+        try (InputStream in = web.post(Utils.toURL(this.server.getBaseUrl() + "encrypt"), secrets, config, headers)) {
+            Map<String, String> map = ValueFactory.flatMapFromJson(Stream.readAllAsString(in));
+            Assert.assertEquals(map.size(), 2);
+            Assert.assertNotNull(map.get("a.encrypted"), "Should have a.encrypted");
+            Assert.assertEquals(map.get("b.encrypted"), "321");
         }
     }
 }

@@ -452,7 +452,7 @@ public final class Main {
         Properties props = System.getProperties();
         ConfigManager manager = getConfigManager();
         String algorithm = getAlgorithmName(props);
-        String keyFile = ConfigManager.OPTION_SECRET_FILE.getValue(props);
+        String keyFile = ConfigManager.OPTION_KEY_FILE.getValue(props);
         if (verbose) {
             println(Utils.format("* Decrypting text(algorithm=%s, keyFile=%s)...", algorithm, keyFile));
         }
@@ -465,7 +465,7 @@ public final class Main {
         Properties props = System.getProperties();
         ConfigManager manager = getConfigManager();
         String algorithm = getAlgorithmName(props);
-        String keyFile = ConfigManager.OPTION_SECRET_FILE.getValue(props);
+        String keyFile = ConfigManager.OPTION_KEY_FILE.getValue(props);
         if (verbose) {
             println(Utils.format("* Encrypting text(algorithm=%s, keyFile=%s)...", algorithm, keyFile));
         }

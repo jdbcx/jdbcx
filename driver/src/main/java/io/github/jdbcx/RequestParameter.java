@@ -46,6 +46,10 @@ public enum RequestParameter {
      */
     MODE("x-query-mode", "m", QueryMode.SUBMIT.path()),
     /**
+     * Tenant ID.
+     */
+    TENANT_ID("x-tenant-id", "tid", Constants.EMPTY_STRING),
+    /**
      * Transaction ID.
      */
     TRANSACTION_ID("x-transaction-id", "txid", Constants.EMPTY_STRING),

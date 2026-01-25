@@ -97,13 +97,13 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
     @Override
     protected Request create(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
-            Format format, Compression compress, String token, String user, String client, Object implementation)
-            throws IOException {
+            Format format, Compression compress, String token, String user, String client, String tenant,
+            Object implementation) throws IOException {
         if (mode != QueryMode.MUTATION && Checker.isNullOrBlank(query)) {
             HttpExchange exchange = (HttpExchange) implementation;
             query = Stream.readAllAsString(exchange.getRequestBody());
         }
-        return super.create(method, mode, rawParams, qid, query, txid, format, compress, token, user, client,
+        return super.create(method, mode, rawParams, qid, query, txid, format, compress, token, user, client, tenant,
                 implementation);
     }
 

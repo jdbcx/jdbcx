@@ -718,6 +718,17 @@ public class JdbcInterpreter extends AbstractInterpreter {
     protected Connection getConnection(Properties props) throws SQLException {
         String str = OPTION_URL.getJdbcxValue(props);
         if (!Checker.isNullOrBlank(str)) {
+            final String tenant = (String) getContext().get(QueryContext.KEY_TENENT);
+            if (!Checker.isNullOrEmpty(tenant)) {
+                final VariableTag tag = getContext().getVariableTag();
+                final Properties vars = new Properties();
+
+                for (Entry<Object, Object> e : props.entrySet()) {
+                    String key = (String) e.getKey();
+                    String val = (String) e.getValue();
+                    String newVal = Utils.applyVariables(key, tag, props)
+                }
+            }
             return getConnectionByConfig(props, loader);
         }
 

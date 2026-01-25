@@ -41,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Properties;
 import java.util.UUID;
@@ -131,8 +132,10 @@ public abstract class ConfigManager {
 
     static final Option OPTION_CONFIG_PROVIDER = Option.of("config.provider", "The class to manage configuration.",
             ConfigManager.class.getPackage().getName() + ".config.PropertyFile" + ConfigManager.class.getSimpleName());
-    static final Option OPTION_SECRET_FILE = Option.of("secret.file", "Secret key file for configuration encryption.",
+    static final Option OPTION_KEY_FILE = Option.of("key.file", "Secret key file for configuration encryption.",
             Constants.CONF_DIR + "/secret.key");
+    static final Option OPTION_SECRETS_FILE = Option.of("secrets.file", "Secrets JSON file.",
+            Constants.CONF_DIR + "/secrets.json");
     static final Option OPTION_KEY_SIZE_BITS = Option
             .ofInt("encryption.key.bits", "Key size in bits", 256); // 32 bytes
     static final Option OPTION_IV_LENGTH_BYTES = Option
@@ -340,10 +343,12 @@ public abstract class ConfigManager {
     private final String algorithmName;
     private final Function<byte[], AlgorithmParameterSpec> paramSpecFunc;
 
+    protected final Map<String, Properties> tenants;
+
     protected ConfigManager(Properties props) {
         this.secretAlg = createAlgorithm(Option.SERVER_SECRET.getJdbcxValue(props));
-        this.verifierRef = new AtomicReference<JwtParser>(null);
-        this.secretKeyFile = Utils.getPath(OPTION_SECRET_FILE.getJdbcxValue(props), true);
+        this.verifierRef = new AtomicReference<>(null);
+        this.secretKeyFile = Utils.getPath(OPTION_KEY_FILE.getJdbcxValue(props), true);
         this.keySizeBits = Integer.parseInt(OPTION_KEY_SIZE_BITS.getJdbcxValue(props));
         this.ivLengthBytes = Integer.parseInt(OPTION_IV_LENGTH_BYTES.getJdbcxValue(props));
         this.tagLengthBits = Integer.parseInt(OPTION_TAG_LENGTH_BITS.getJdbcxValue(props));
@@ -364,6 +369,8 @@ public abstract class ConfigManager {
                         Utils.format("Unsupported algorithm [%s], please use either %s or %s.", transformationNames,
                                 ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_CHACHA20_POLY1305));
         }
+
+        tenants = new ConcurrentHashMap<>();
     }
 
     protected final Key loadKey(Path keyFile, String algorithm) {
@@ -590,7 +597,11 @@ public abstract class ConfigManager {
         return false;
     }
 
-    public Properties getConfig(String category, String id) {
+    public final Properties getConfig(String category, String id) {
+        return getConfig(category, id, null, null);
+    }
+
+    public Properties getConfig(String category, String id, VariableTag tag, String tenant) {
         throw new UnsupportedOperationException();
     }
 
@@ -626,5 +637,13 @@ public abstract class ConfigManager {
 
     public final void decrypt(Properties props, String associatedData) {
         decrypt(null, props, associatedData, null);
+    }
+
+    public final void register(String tenant, Properties secrets) {
+        if (tenant == null || secrets == null || secrets.size() == 0) {
+            throw new IllegalArgumentException("Non-null tenant and secrets are required");
+        }
+
+        tenants.put(tenant, secrets);
     }
 }

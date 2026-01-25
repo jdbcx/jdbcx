@@ -42,7 +42,7 @@ public class DriverExtensionTest {
         }
 
         @Override
-        public Properties getConfig(String category, String id) {
+        public Properties getConfig(String category, String id, VariableTag tag, String tenant) {
             Properties props = new Properties();
             Properties defined = config.get(id);
             if (defined != null) {

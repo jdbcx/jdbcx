@@ -117,7 +117,7 @@ public final class QueryBuilder {
                     props.setProperty(DriverExtension.PROPERTY_PATH, QueryMode.ASYNC.path());
                     Properties p = new Properties(props);
                     ParsedQuery q = QueryParser.parse(expression, tag, p, manager.getConfigManager());
-                    // FIXME check overriable parameters
+                    // FIXME check overridable parameters
                     ExecutableBlock b = q.getExecutableBlocks().get(0);
                     boolean isBin = Option.TYPE_BINARY.equals(Option.RESULT_TYPE.getValue(b.getProperties()));
                     if (!isBin) {
