@@ -82,7 +82,7 @@ This project includes:
   JSpecify annotations under The Apache License, Version 2.0
   JUnit under Eclipse Public License 1.0
   LatencyUtils under Public Domain, per Creative Commons CC0
-  LZ4 and xxHash under The Apache Software License, Version 2.0
+  LZ4 Java Compression under Apache License, Version 2.0
   mariadb-java-client under LGPL-2.1-or-later
   micrometer-commons under The Apache Software License, Version 2.0
   micrometer-core under The Apache Software License, Version 2.0

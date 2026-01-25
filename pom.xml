@@ -98,7 +98,7 @@
         <dnsjava.version>3.6.3</dnsjava.version>
         <duckdb.version>1.4.3.0</duckdb.version>
         <graphql.version>25.0</graphql.version>
-        <groovy.version>5.0.3</groovy.version>
+        <groovy.version>5.0.4</groovy.version>
         <gson.version>2.13.2</gson.version>
         <hadoop.version>3.4.2</hadoop.version>
         <hikaricp.version>7.0.2</hikaricp.version>
@@ -107,15 +107,15 @@
         <jctools.version>4.0.5</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <lz4.version>1.10.2</lz4.version>
+        <lz4.version>1.10.3</lz4.version>
         <mariadb.version>3.5.7</mariadb.version>
         <micrometer.version>1.16.2</micrometer.version>
         <msgpack.version>0.9.11</msgpack.version>
         <mysql.version>9.5.0</mysql.version>
-        <neo4j.version>6.10.3</neo4j.version>
+        <neo4j.version>6.10.4</neo4j.version>
         <parquet.version>1.17.0</parquet.version>
-        <postgresql.version>42.7.8</postgresql.version>
-        <repacked.version>1.0.0</repacked.version>
+        <postgresql.version>42.7.9</postgresql.version>
+        <repacked.version>1.0.1</repacked.version>
         <reactor.version>3.8.2</reactor.version>
         <sqlite.version>3.51.1.0</sqlite.version>
         <rhino.version>1.9.0</rhino.version>
