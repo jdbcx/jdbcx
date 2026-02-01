@@ -127,6 +127,8 @@ public abstract class ConfigManager {
     private static final String ALGORITHM_AES = "AES";
     private static final String ALGORITHM_CHACHA20 = "ChaCha20";
 
+    private static final Map<String, Properties> tenants = new ConcurrentHashMap<>();
+
     static final String ALGORITHM_AES_GCM_NOPADDING = ALGORITHM_AES + "/GCM/NoPadding";
     static final String ALGORITHM_CHACHA20_POLY1305 = ALGORITHM_CHACHA20 + "-Poly1305";
 
@@ -343,8 +345,6 @@ public abstract class ConfigManager {
     private final String algorithmName;
     private final Function<byte[], AlgorithmParameterSpec> paramSpecFunc;
 
-    protected final Map<String, Properties> tenants;
-
     protected ConfigManager(Properties props) {
         this.secretAlg = createAlgorithm(Option.SERVER_SECRET.getJdbcxValue(props));
         this.verifierRef = new AtomicReference<>(null);
@@ -369,8 +369,6 @@ public abstract class ConfigManager {
                         Utils.format("Unsupported algorithm [%s], please use either %s or %s.", transformationNames,
                                 ALGORITHM_AES_GCM_NOPADDING, ALGORITHM_CHACHA20_POLY1305));
         }
-
-        tenants = new ConcurrentHashMap<>();
     }
 
     protected final Key loadKey(Path keyFile, String algorithm) {
@@ -637,6 +635,24 @@ public abstract class ConfigManager {
 
     public final void decrypt(Properties props, String associatedData) {
         decrypt(null, props, associatedData, null);
+    }
+
+    public final void applySecrets(String tenant, VariableTag tag, Properties props) {
+        if (Checker.isNullOrEmpty(tenant) || props == null) {
+            return;
+        }
+
+        final Properties vars = tenants.get(tenant);
+        if (vars != null && vars.size() > 0) {
+            for (Entry<Object, Object> e : props.entrySet()) {
+                String key = (String) e.getKey();
+                String val = (String) e.getValue();
+                String newVal = Utils.applyVariables(val, tag, vars);
+                if (val != newVal) { // NOSONAR
+                    props.setProperty(key, newVal);
+                }
+            }
+        }
     }
 
     public final void register(String tenant, Properties secrets) {

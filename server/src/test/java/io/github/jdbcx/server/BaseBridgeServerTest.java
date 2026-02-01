@@ -38,12 +38,14 @@ import io.github.jdbcx.BaseIntegrationTest;
 import io.github.jdbcx.ByteArrayClassLoader;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.Format;
+import io.github.jdbcx.Option;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Stream;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.VariableTag;
 import io.github.jdbcx.WrappedDriver;
+import io.github.jdbcx.driver.ManagedConnection;
 import io.github.jdbcx.executor.WebExecutor;
 import io.github.jdbcx.server.impl.JdkHttpServer;
 
@@ -925,6 +927,41 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
             Assert.assertEquals(map.size(), 2);
             Assert.assertNotNull(map.get("a.encrypted"), "Should have a.encrypted");
             Assert.assertEquals(map.get("b.encrypted"), "321");
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testTenantQuery() throws SQLException {
+        final String tenant = UUID.randomUUID().toString();
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        Properties secrets = new Properties();
+        secrets.setProperty("custom_connection_string", "sqlite::memory:");
+        Option.TENANT.setJdbcxValue(props, tenant);
+        try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
+                ManagedConnection managedConn = (ManagedConnection) conn;) {
+            managedConn.getManager().getConfigManager().register(tenant, secrets);
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("{{ db.sqlite-template: select 5 }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "5");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery(
+                            "select * from {{ bridge(path=async): {{ db.sqlite-template: select 7 \\}} }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "7");
+                Assert.assertFalse(rs.next());
+            }
+
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("select * from {{ table.db.sqlite-template: select 9 }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "9");
+                Assert.assertFalse(rs.next());
+            }
         }
     }
 }

@@ -15,6 +15,7 @@
                 <exclude>io.prometheus:*</exclude>
                 <exclude>${project.groupId}:jdbcx-core</exclude>
                 <exclude>${project.groupId}:jdbcx-driver</exclude>
+                <exclude>${project.groupId}:jdbcx-server</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>

@@ -278,17 +278,7 @@ public class PropertyFileConfigManager extends ConfigManager {
             throw new IllegalArgumentException(
                     Utils.format("Could not find configuration for named %s [%s]", category, id));
         } else if (tag != null && tenant != null) {
-            Properties tenantSecrets = tenants.get(tenant);
-            if (tenantSecrets != null && tenantSecrets.size() > 0) {
-                for (Entry<Object, Object> e : props.entrySet()) {
-                    String key = (String) e.getKey();
-                    String val = (String) e.getValue();
-                    String newVal = Utils.applyVariables(val, tag, tenantSecrets);
-                    if (newVal != val) { // NOSONAR
-                        props.setProperty(key, newVal);
-                    }
-                }
-            }
+            applySecrets(tenant, tag, props);
         }
         return props;
     }
