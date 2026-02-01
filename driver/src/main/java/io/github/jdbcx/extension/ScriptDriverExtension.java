@@ -120,8 +120,7 @@ public class ScriptDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, conn,
-                getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props), loader);
+        return new ActivityListener(context, conn, getConfig(context, props), loader);
     }
 
     @Override

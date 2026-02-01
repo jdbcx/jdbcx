@@ -81,7 +81,7 @@ public class PromptDriverExtension implements DriverExtension {
 
     @Override
     public JdbcActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props));
+        return new ActivityListener(context, getConfig(context, props));
     }
 
     @Override

@@ -31,27 +31,31 @@ public class Request {
     protected final String rawParams;
     protected final boolean hasQid;
     protected final QueryInfo info;
+    protected final String tenant;
     protected final JdbcDialect dialect;
     protected final Object implementation;
 
-    protected Request(String method, QueryMode mode, QueryInfo info, JdbcDialect dialect, Object implementation) {
+    protected Request(String method, QueryMode mode, QueryInfo info, String tenant, JdbcDialect dialect,
+            Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
         this.rawParams = Constants.EMPTY_STRING;
         this.hasQid = true;
         this.info = Checker.nonNull(info, QueryInfo.class);
+        this.tenant = tenant != null ? tenant : Constants.EMPTY_STRING;
         this.dialect = dialect;
         this.implementation = implementation;
     }
 
     protected Request(String method, QueryMode mode, String rawParams, String qid, String query, String txid,
-            Format format, Compression compress, String accessToken, String user, String client, JdbcDialect dialect,
-            Object implementation) {
+            Format format, Compression compress, String accessToken, String user, String client, String tenant,
+            JdbcDialect dialect, Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
         this.rawParams = rawParams != null ? rawParams : Constants.EMPTY_STRING;
         this.hasQid = !Checker.isNullOrEmpty(qid);
         this.info = new QueryInfo(qid, query, txid, format, compress, accessToken, user, client);
+        this.tenant = tenant != null ? tenant : Constants.EMPTY_STRING;
         this.dialect = dialect;
         this.implementation = implementation;
     }
@@ -66,6 +70,10 @@ public class Request {
 
     public boolean hasResult() {
         return info.getResult() != null;
+    }
+
+    public boolean hasTenantId() {
+        return !Checker.isNullOrEmpty(tenant);
     }
 
     public int getResultState() {
@@ -106,6 +114,10 @@ public class Request {
 
     public String getQuery() {
         return info.query;
+    }
+
+    public String getTenant() {
+        return tenant;
     }
 
     public String getTransactionId() {

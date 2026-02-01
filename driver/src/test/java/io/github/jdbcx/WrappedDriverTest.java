@@ -26,11 +26,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import io.github.jdbcx.driver.ManagedConnection;
 
 public class WrappedDriverTest extends BaseIntegrationTest {
     private ResultSet executeQuery(Statement stmt, String query, boolean useExecuteQuery) throws SQLException {
@@ -693,6 +696,47 @@ public class WrappedDriverTest extends BaseIntegrationTest {
                             "0;{{ db(url=jdbc:sqlite::memory:,result.var=x): select 'a' s, 1 n union select 'b', 2}};${x.s};${x.n};${x.x}")) {
                 Assert.assertTrue(rs.next());
                 Assert.assertEquals(rs.getString(1), "0;;a,b;1,2;${x.x}");
+                Assert.assertFalse(rs.next());
+            }
+        }
+    }
+
+    @Test(groups = { "integration" })
+    public void testTenantConnection() throws SQLException {
+        final String tenant = UUID.randomUUID().toString();
+        Properties props = new Properties();
+        props.setProperty("jdbcx.base.dir", "target/test-classes/config");
+        Option.TENANT.setJdbcxValue(props, tenant);
+        WrappedDriver d = new WrappedDriver();
+        ConfigManager configManager = null;
+        try (Connection conn = d.connect("jdbcx:", props);
+                ManagedConnection managedConn = (ManagedConnection) conn;
+                Statement stmt = conn.createStatement()) {
+            Properties secrets = new Properties();
+            secrets.setProperty("custom_connection_string", "sqlite::memory:");
+            configManager = managedConn.getManager().getConfigManager();
+            configManager.register(tenant, secrets);
+            try (ResultSet rs = stmt.executeQuery("{{ db.sqlite-template: select 1 }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "1");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement()) {
+            Assert.assertEquals(configManager, ((ManagedConnection) conn).getManager().getConfigManager());
+            try (ResultSet rs = stmt.executeQuery("{{ db.sqlite-template: select 2 }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "2");
+                Assert.assertFalse(rs.next());
+            }
+        }
+
+        try (Connection conn = d.connect("jdbcx:", props); Statement stmt = conn.createStatement()) {
+            Assert.assertEquals(configManager, ((ManagedConnection) conn).getManager().getConfigManager());
+            try (ResultSet rs = stmt.executeQuery("{{ db.*template: select 3 }}")) {
+                Assert.assertTrue(rs.next());
+                Assert.assertEquals(rs.getString(1), "3");
                 Assert.assertFalse(rs.next());
             }
         }

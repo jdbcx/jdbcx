@@ -26,7 +26,8 @@ import io.github.jdbcx.Result;
 public class RequestTest {
     @Test(groups = { "unit" })
     public void testConstructor() {
-        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null);
+        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null);
         Assert.assertFalse(request.hasQueryId());
         Assert.assertFalse(request.isMutation());
         Assert.assertFalse(request.isTransactional());
@@ -39,10 +40,10 @@ public class RequestTest {
         Assert.assertTrue(qid.length() > 0);
         Assert.assertEquals(request.getQueryId(), qid);
         Assert.assertNull(request.getImplementation(Object.class));
+        Assert.assertEquals(request.getTenant(), "");
 
         request = new Request("HEAD", QueryMode.MUTATION, "a=1&b=2", "123", "321", "tx1", Format.AVRO_JSON,
-                Compression.SNAPPY,
-                null, null, null, null, request);
+                Compression.SNAPPY, null, null, null, "tt", null, request);
         Assert.assertTrue(request.hasQueryId());
         Assert.assertTrue(request.isMutation());
         Assert.assertTrue(request.isTransactional());
@@ -54,11 +55,13 @@ public class RequestTest {
         Assert.assertEquals(request.getCompression(), Compression.SNAPPY);
         Assert.assertEquals(request.getFormat(), Format.AVRO_JSON);
         Assert.assertNotNull(request.getImplementation(Request.class));
+        Assert.assertEquals(request.getTenant(), "tt");
     }
 
     @Test(groups = { "unit" })
     public void testResult() {
-        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null);
+        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null);
         Assert.assertFalse(request.hasResult(), "Should not have result");
         Assert.assertNull(request.getQueryInfo().getResult(), "Should not have result");
         Assert.assertEquals(request.getResultState(), 0);
@@ -77,19 +80,19 @@ public class RequestTest {
     @Test(groups = { "unit" })
     public void testToUrl() {
         final String baseUrl = "http://localhost:1234/";
-        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null);
+        Request request = new Request(null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null);
         Assert.assertEquals(request.toUrl(baseUrl),
                 baseUrl + request.getQueryId() + request.getFormat().fileExtension());
         Assert.assertEquals(request.toUrl(""), request.getQueryId() + request.getFormat().fileExtension());
         Assert.assertEquals(request.toUrl("/"), "/" + request.getQueryId() + request.getFormat().fileExtension());
         request = new Request(null, QueryMode.DIRECT, null, null, null, null, Format.BSON, Compression.LZ4, null, null,
-                null, null, null);
+                null, null, null, null);
         Assert.assertEquals(request.toUrl(baseUrl),
                 baseUrl + request.getQueryId() + request.getFormat().fileExtension()
                         + request.getCompression().fileExtension());
         request = new Request("POST", QueryMode.MUTATION, "a=1", "123", "321", "567", Format.BSON, Compression.LZ4,
-                null, null,
-                null, null, null);
+                null, null, null, null, null, null);
         Assert.assertEquals(request.toUrl(baseUrl), baseUrl + "123.bson.lz4");
         Assert.assertEquals(request.toUrl("http://localhost/"), "http://localhost/123.bson.lz4");
     }

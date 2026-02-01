@@ -716,12 +716,19 @@ public class JdbcInterpreter extends AbstractInterpreter {
 
     @SuppressWarnings("unchecked")
     protected Connection getConnection(Properties props) throws SQLException {
+        final QueryContext context = getContext();
+        final String tenant = (String) context.get(QueryContext.KEY_TENENT);
+        final ConfigManager manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
+        final VariableTag tag = getVariableTag();
+        if (manager != null) {
+            manager.applySecrets(tenant, tag, props);
+        }
+
         String str = OPTION_URL.getJdbcxValue(props);
         if (!Checker.isNullOrBlank(str)) {
             return getConnectionByConfig(props, loader);
         }
 
-        VariableTag tag = getVariableTag();
         str = Utils.applyVariables(OPTION_URL.getValue(props, defaultConnectionUrl), tag, props);
         if (Checker.isNullOrBlank(str)) {
             // log.debug("Reuse current connection since ")

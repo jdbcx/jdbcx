@@ -50,7 +50,7 @@ public class ConfigManagerTest {
 
         String secretFile = "target/test-classes/secret.aes";
         Properties props = new Properties();
-        ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(props, secretFile);
+        ConfigManager.OPTION_KEY_FILE.setJdbcxValue(props, secretFile);
         ConfigManager.OPTION_ALGORITHM.setJdbcxValue(props, ConfigManager.ALGORITHM_AES_GCM_NOPADDING);
 
         TestConfigManager manager = new TestConfigManager(props);
@@ -63,7 +63,7 @@ public class ConfigManagerTest {
         if (Constants.JAVA_MAJOR_VERSION >= 17) {
             secretFile = "target/test-classes/secret.chacha";
             props = new Properties();
-            ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(props, secretFile);
+            ConfigManager.OPTION_KEY_FILE.setJdbcxValue(props, secretFile);
             ConfigManager.OPTION_ALGORITHM.setJdbcxValue(props, ConfigManager.ALGORITHM_CHACHA20_POLY1305);
             manager = new TestConfigManager(props);
             Assert.assertEquals(Utils.toBase64(manager.loadKey().getEncoded()),
@@ -195,7 +195,7 @@ public class ConfigManagerTest {
     @Test(groups = { "unit" })
     public void testLoad() {
         Properties base = new Properties();
-        ConfigManager.OPTION_SECRET_FILE.setJdbcxValue(base, "target/test-classes/secret.test");
+        ConfigManager.OPTION_KEY_FILE.setJdbcxValue(base, "target/test-classes/secret.test");
         TestConfigManager manager = new TestConfigManager(base);
         Properties props = manager.load("target/test-classes/test-load.properties", base);
         Assert.assertEquals(props.size(), 2);
@@ -259,5 +259,11 @@ public class ConfigManagerTest {
 
         Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-bb").matches());
         Assert.assertTrue(ConfigManager.parseGlobPattern("a-[bc]*").matcher("a-cdb").matches());
+    }
+
+    @Test(groups = { "unit" })
+    public void testTenants() {
+        TestConfigManager manager = new TestConfigManager(null);
+        // manager.tenants
     }
 }

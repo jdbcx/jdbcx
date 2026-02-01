@@ -32,10 +32,13 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 
 public class ValueFactory implements Serializable {
     private static final Logger log = LoggerFactory.getLogger(ValueFactory.class);
@@ -97,6 +100,15 @@ public class ValueFactory implements Serializable {
 
     public static ValueFactory newInstance(Properties config, TypeMapping... mappings) {
         return new ValueFactory(config, mappings);
+    }
+
+    public static Map<String, String> flatMapFromJson(String json) {
+        try {
+            return fromJson(json, new TypeToken<Map<String, String>>() {
+            }.getType());
+        } catch (JsonSyntaxException e) {
+            throw new IllegalStateException(e.getCause() != null ? e.getCause() : e);
+        }
     }
 
     public static <T> T fromJson(Reader reader, Class<T> clazz) {

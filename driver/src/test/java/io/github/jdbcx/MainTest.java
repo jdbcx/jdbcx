@@ -242,7 +242,7 @@ public class MainTest {
 
         Assert.assertEquals(Main.process(new String[] { "keygen" }), 0);
 
-        System.setProperty(ConfigManager.OPTION_SECRET_FILE.getName(), "target/test-classes/test.key");
+        System.setProperty(ConfigManager.OPTION_KEY_FILE.getName(), "target/test-classes/test.key");
         Assert.assertEquals(Main.process(new String[] { "decrypt", "zFjzko6vtUk8KRN3GSL1dyFIV4K6ffG5zGl/+tIuLw==" }),
                 0);
         Assert.assertEquals(Main.process(new String[] { "encrypt", "123" }), 0);

@@ -52,6 +52,7 @@ import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Utils;
+import io.github.jdbcx.VariableTag;
 
 public class PropertyFileConfigManager extends ConfigManager {
     private static final Logger log = LoggerFactory.getLogger(PropertyFileConfigManager.class);
@@ -239,7 +240,7 @@ public class PropertyFileConfigManager extends ConfigManager {
     }
 
     @Override
-    public Properties getConfig(String category, String id) {
+    public Properties getConfig(String category, String id, VariableTag tag, String tenant) {
         if (Checker.isNullOrEmpty(category) || Checker.isNullOrEmpty(id)) {
             throw new IllegalArgumentException("Non-empty category and id are required");
         }
@@ -276,6 +277,8 @@ public class PropertyFileConfigManager extends ConfigManager {
         if (props == null) {
             throw new IllegalArgumentException(
                     Utils.format("Could not find configuration for named %s [%s]", category, id));
+        } else if (tag != null && tenant != null) {
+            applySecrets(tenant, tag, props);
         }
         return props;
     }

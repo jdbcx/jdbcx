@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -112,6 +113,15 @@ public class ValueFactoryTest {
         Assert.assertEquals(ValueFactory.getInstance().getDefaultString(), factory.getDefaultString());
 
         Assert.assertEquals(ValueFactory.getInstance().getMappings(), factory.getMappings());
+    }
+
+    @Test(groups = { "unit" })
+    public void testFlatMapFromJson() {
+        Assert.assertEquals(ValueFactory.flatMapFromJson("null"), null);
+        Assert.assertEquals(ValueFactory.flatMapFromJson("{}"), Collections.emptyMap());
+        Assert.assertEquals(ValueFactory.flatMapFromJson("{\"a\":1}"), Collections.singletonMap("a", "1"));
+
+        Assert.assertThrows(IllegalStateException.class, () -> ValueFactory.flatMapFromJson("{\"a\":{\"b\":2}}"));
     }
 
     @Test(groups = { "unit" })

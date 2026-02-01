@@ -56,7 +56,8 @@ public class BridgeDriverExtension implements DriverExtension {
 
     static final String KEY_QUERY_ID = "query_id";
 
-    static final Option OPTION_COMPRESSION = Option.of(new String[] { Constants.PROP_COMPRESSION, "Compression algorithm" });
+    static final Option OPTION_COMPRESSION = Option
+            .of(new String[] { Constants.PROP_COMPRESSION, "Compression algorithm" });
     static final Option OPTION_FORMAT = Option.of(new String[] { Constants.PROP_FORMAT, "Data format" });
     static final Option OPTION_QUERY_MODE = Option.of(new String[] { "mode", "Query mode" });
     static final Option OPTION_PATH = Option.of(new String[] { DriverExtension.PROPERTY_PATH, "URL path" });
@@ -305,6 +306,11 @@ public class BridgeDriverExtension implements DriverExtension {
                     .append(dialect == null ? compress.encoding() : dialect.getEncodings(compress));
         }
 
+        value = (String) context.get(QueryContext.KEY_TENENT);
+        if (!Checker.isNullOrEmpty(value)) {
+            builder.append(',').append(RequestParameter.TENANT_ID.header()).append('=').append(value);
+        }
+
         final String queryId = UUID.randomUUID().toString();
         context.put(KEY_QUERY_ID, queryId);
         builder.append(',').append(RequestParameter.QUERY_ID.header()).append('=').append(queryId);
@@ -325,8 +331,7 @@ public class BridgeDriverExtension implements DriverExtension {
 
     @Override
     public ActivityListener createListener(QueryContext context, Connection conn, Properties props) {
-        return new ActivityListener(context,
-                build(context, getConfig((ConfigManager) context.get(QueryContext.KEY_CONFIG), props)));
+        return new ActivityListener(context, build(context, getConfig(context, props)));
     }
 
     @Override
