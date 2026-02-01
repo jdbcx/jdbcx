@@ -103,6 +103,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String PATH_ENCRYPT = "encrypt";
     public static final String PATH_ERROR = "error/";
     public static final String PATH_METRICS = "metrics";
+    public static final String PATH_REGISTER = "register";
 
     public static final String CONNECTION_CLOSE = "close";
     public static final String RANGE_NONE = "none";
@@ -683,6 +684,37 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return HttpURLConnection.HTTP_OK;
     }
 
+    protected final int respondRegister(InetSocketAddress clientAddress, Request request) throws IOException {
+        log.debug("Sending registration to %s", clientAddress);
+        final String tenant = request.getTenant();
+        if (tenant.isEmpty()) {
+            return respond(request, HttpURLConnection.HTTP_BAD_REQUEST);
+        } else if (!checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+            return respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+        }
+
+        try (Writer writer = getResponseWriter(request.implementation, HEADER_CONTENT_TYPE, Format.JSON.mimeType())) {
+            Map<String, String> encryptedSecrets = ValueFactory.flatMapFromJson(request.getQuery());
+            Properties secrets = new Properties();
+            for (Entry<String, String> s : encryptedSecrets.entrySet()) {
+                final String key = s.getKey();
+                final String val = s.getValue();
+                if (Checker.isNullOrEmpty(val)) {
+                    continue;
+                }
+
+                if (key.endsWith(ConfigManager.PROPERTY_ENCRYPTED_SUFFIX)) {
+                    secrets.put(key.substring(0, key.length() - ConfigManager.PROPERTY_ENCRYPTED_SUFFIX.length()),
+                            cm.decrypt(val, tenant, null));
+                }
+            }
+            if (secrets.size() > 0) {
+                cm.register(tenant, secrets);
+            }
+        }
+        return respond(request, HttpURLConnection.HTTP_OK);
+    }
+
     protected final int respondMetrics(InetSocketAddress clientAddress, Object implementation) throws IOException {
         log.debug("Sending server metrics to %s", clientAddress);
         try (OutputStream out = getResponseStream(implementation, HEADER_CONTENT_TYPE,
@@ -845,6 +877,12 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
         if (PATH_ENCRYPT.equals(path)) {
             return respondEncrypt(clientAddress,
+                    create(method, QueryMode.DIRECT, rawParams, qid, Constants.EMPTY_STRING, txid, Format.JSON,
+                            Compression.NONE, encodedToken, RequestParameter.USER.getValue(headers, params),
+                            RequestParameter.AGENT.getValue(headers, params),
+                            RequestParameter.TENANT_ID.getValue(headers, params), implementation));
+        } else if (PATH_REGISTER.equals(path)) {
+            return respondRegister(clientAddress,
                     create(method, QueryMode.DIRECT, rawParams, qid, Constants.EMPTY_STRING, txid, Format.JSON,
                             Compression.NONE, encodedToken, RequestParameter.USER.getValue(headers, params),
                             RequestParameter.AGENT.getValue(headers, params),
