@@ -637,19 +637,20 @@ public abstract class ConfigManager {
         decrypt(null, props, associatedData, null);
     }
 
-    public final void applySecrets(String tenant, VariableTag tag, Properties props) {
-        if (Checker.isNullOrEmpty(tenant) || props == null) {
+    public final void applySecrets(String tenant, VariableTag tag, Map<?, ?> map) {
+        if (Checker.isNullOrEmpty(tenant) || map == null) {
             return;
         }
 
         final Properties vars = tenants.get(tenant);
-        if (vars != null && vars.size() > 0) {
-            for (Entry<Object, Object> e : props.entrySet()) {
-                String key = (String) e.getKey();
-                String val = (String) e.getValue();
-                String newVal = Utils.applyVariables(val, tag, vars);
+        if (vars != null && !vars.isEmpty()) {
+            @SuppressWarnings("unchecked")
+            Map<Object, Object> typedMap = (Map<Object, Object>) map;
+            for (Entry<Object, Object> e : typedMap.entrySet()) {
+                Object val = e.getValue();
+                Object newVal = Utils.applyVariables((String) val, tag, vars);
                 if (val != newVal) { // NOSONAR
-                    props.setProperty(key, newVal);
+                    e.setValue(newVal);
                 }
             }
         }

@@ -49,13 +49,14 @@ public class QueryInfoTest {
 
     @Test(groups = { "unit" })
     public void testConstructor() {
-        try (QueryInfo info = new QueryInfo(null, null, null, null, null, null, null, null)) {
+        try (QueryInfo info = new QueryInfo(null, null, null, null, null, null, null, null, null)) {
             Assert.assertTrue(info.qid.length() > 0);
             Assert.assertEquals(info.query, "");
             Assert.assertEquals(info.txid, "");
             Assert.assertEquals(info.format, Format.TSV);
             Assert.assertEquals(info.compress, Compression.NONE);
             Assert.assertEquals(info.token, "");
+            Assert.assertEquals(info.tenant, "");
             Assert.assertEquals(info.user, "");
             Assert.assertEquals(info.client, "");
             Assert.assertNull(info.getResult());
@@ -76,13 +77,14 @@ public class QueryInfoTest {
         final String id1 = UUID.randomUUID().toString();
         final String id2 = UUID.randomUUID().toString();
         try (QueryInfo info = new QueryInfo(id1, "select 5", id2, Format.AVRO_BINARY, Compression.SNAPPY, "233",
-                "zhicwu", "JDBCX/1.0")) {
+                "789", "zhicwu", "JDBCX/1.0")) {
             Assert.assertEquals(info.qid, id1);
             Assert.assertEquals(info.query, "select 5");
             Assert.assertEquals(info.txid, id2);
             Assert.assertEquals(info.format, Format.AVRO_BINARY);
             Assert.assertEquals(info.compress, Compression.SNAPPY);
             Assert.assertEquals(info.token, "233");
+            Assert.assertEquals(info.tenant, "789");
             Assert.assertEquals(info.user, "zhicwu");
             Assert.assertEquals(info.client, "JDBCX/1.0");
             Assert.assertNull(info.getResult());
@@ -113,7 +115,7 @@ public class QueryInfoTest {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery("select 1")) {
             Result<?> res = Result.of(rs);
-            QueryInfo info = new QueryInfo(null, null, null, null, null, null, null, null);
+            QueryInfo info = new QueryInfo(null, null, null, null, null, null, null, null, null);
             info.setResult(res);
             Assert.assertFalse(rs.isClosed());
             Assert.assertFalse(stmt.isClosed());

@@ -299,8 +299,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         final Request request;
         if (Checker.isNullOrBlank(query) && !Checker.isNullOrEmpty(qid) && (info = queries.getIfPresent(qid)) != null) {
             log.debug("Loaded query from cache: %s", info);
-            request = new Request(method, mode, info, tenant, ConnectionManager.findDialect(info.client),
-                    implementation);
+            request = new Request(method, mode, info, ConnectionManager.findDialect(info.client), implementation);
         } else {
             if (!Checker.isNullOrEmpty(token)) {
                 try {
@@ -500,12 +499,14 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         int responseCode = HttpURLConnection.HTTP_OK;
         String errorMessage = "Unknown error";
         boolean responded = false;
-        try (Connection conn = datasource.getConnection();
-                Statement stmt = conn.createStatement();
-                // request.isMutation()
-                Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
-                        : Result.of(JdbcExecutor.getUpdateCount(stmt))) {
-            try (OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
+        try (Connection conn = datasource.getConnection(); Statement stmt = conn.createStatement();) {
+            if (request.hasTenantId()) {
+                QueryContext.getCurrentContext().put(QueryContext.KEY_TENANT, request.getTenant());
+            }
+            try (// request.isMutation()
+                    Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
+                            : Result.of(JdbcExecutor.getUpdateCount(stmt));
+                    OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
                 errorMessage = null; // query was a success and we got the response output stream without any issue
                 final SQLWarning warning = stmt.getWarnings();
                 if (warning != null) {
@@ -546,7 +547,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             stmt = conn.createStatement();
 
             if (request.hasTenantId()) {
-                QueryContext.getCurrentContext().put(QueryContext.KEY_TENENT, request.getTenant());
+                QueryContext.getCurrentContext().put(QueryContext.KEY_TENANT, request.getTenant());
             }
 
             final Result<?> result;
@@ -712,7 +713,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
                 cm.register(tenant, secrets);
             }
         }
-        return respond(request, HttpURLConnection.HTTP_OK);
+        return HttpURLConnection.HTTP_OK;
     }
 
     protected final int respondMetrics(InetSocketAddress clientAddress, Object implementation) throws IOException {

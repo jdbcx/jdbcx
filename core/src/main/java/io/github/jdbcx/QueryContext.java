@@ -61,7 +61,7 @@ public final class QueryContext implements AutoCloseable, Serializable {
     /**
      * Key for tenant, usually an ID like UUID.
      */
-    public static final String KEY_TENENT = Option.TENANT.getName();
+    public static final String KEY_TENANT = Option.TENANT.getName();
 
     private static final QueryContext globalContext = new QueryContext(Constants.SCOPE_GLOBAL, null);
     private static final ThreadLocal<QueryContext> instanceHolder = ThreadLocal
