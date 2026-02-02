@@ -30,7 +30,6 @@ import java.util.UUID;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
-import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Format;
@@ -306,7 +305,7 @@ public class BridgeDriverExtension implements DriverExtension {
                     .append(dialect == null ? compress.encoding() : dialect.getEncodings(compress));
         }
 
-        value = (String) context.get(QueryContext.KEY_TENENT);
+        value = (String) context.get(QueryContext.KEY_TENANT);
         if (!Checker.isNullOrEmpty(value)) {
             builder.append(',').append(RequestParameter.TENANT_ID.header()).append('=').append(value);
         }

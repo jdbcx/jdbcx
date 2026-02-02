@@ -157,7 +157,7 @@ public interface DriverExtension extends Comparable<DriverExtension> {
         final String tenant;
         if (context != null) {
             manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
-            tenant = (String) context.get(QueryContext.KEY_TENENT);
+            tenant = (String) context.get(QueryContext.KEY_TENANT);
         } else if (props == null) {
             return getDefaultConfig();
         } else {

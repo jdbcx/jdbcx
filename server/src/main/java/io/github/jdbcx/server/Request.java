@@ -31,18 +31,15 @@ public class Request {
     protected final String rawParams;
     protected final boolean hasQid;
     protected final QueryInfo info;
-    protected final String tenant;
     protected final JdbcDialect dialect;
     protected final Object implementation;
 
-    protected Request(String method, QueryMode mode, QueryInfo info, String tenant, JdbcDialect dialect,
-            Object implementation) {
+    protected Request(String method, QueryMode mode, QueryInfo info, JdbcDialect dialect, Object implementation) {
         this.method = method != null ? method : Constants.EMPTY_STRING;
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
         this.rawParams = Constants.EMPTY_STRING;
         this.hasQid = true;
         this.info = Checker.nonNull(info, QueryInfo.class);
-        this.tenant = tenant != null ? tenant : Constants.EMPTY_STRING;
         this.dialect = dialect;
         this.implementation = implementation;
     }
@@ -54,8 +51,7 @@ public class Request {
         this.mode = mode != null ? mode : QueryMode.SUBMIT;
         this.rawParams = rawParams != null ? rawParams : Constants.EMPTY_STRING;
         this.hasQid = !Checker.isNullOrEmpty(qid);
-        this.info = new QueryInfo(qid, query, txid, format, compress, accessToken, user, client);
-        this.tenant = tenant != null ? tenant : Constants.EMPTY_STRING;
+        this.info = new QueryInfo(qid, query, txid, format, compress, accessToken, tenant, user, client);
         this.dialect = dialect;
         this.implementation = implementation;
     }
@@ -73,7 +69,7 @@ public class Request {
     }
 
     public boolean hasTenantId() {
-        return !Checker.isNullOrEmpty(tenant);
+        return !info.tenant.isEmpty();
     }
 
     public int getResultState() {
@@ -117,7 +113,7 @@ public class Request {
     }
 
     public String getTenant() {
-        return tenant;
+        return info.tenant;
     }
 
     public String getTransactionId() {
@@ -205,8 +201,8 @@ public class Request {
             builder.append('?');
         }
         return builder.append(info.qid).append(", params=").append(rawParams).append(", tx=").append(info.txid)
-                .append(", fmt=").append(info.format).append(", comp=").append(info.compress).append(", user=")
-                .append(info.user).append(", client=").append(info.client).append(", impl=").append(implementation)
-                .append("]:\n").append(info.query).toString();
+                .append(", fmt=").append(info.format).append(", comp=").append(info.compress).append(", tenant=")
+                .append(info.tenant).append(", user=").append(info.user).append(", client=").append(info.client)
+                .append(", impl=").append(implementation).append("]:\n").append(info.query).toString();
     }
 }

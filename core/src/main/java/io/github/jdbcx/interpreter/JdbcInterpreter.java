@@ -717,7 +717,7 @@ public class JdbcInterpreter extends AbstractInterpreter {
     @SuppressWarnings("unchecked")
     protected Connection getConnection(Properties props) throws SQLException {
         final QueryContext context = getContext();
-        final String tenant = (String) context.get(QueryContext.KEY_TENENT);
+        final String tenant = (String) context.get(QueryContext.KEY_TENANT);
         final ConfigManager manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
         final VariableTag tag = getVariableTag();
         if (manager != null) {

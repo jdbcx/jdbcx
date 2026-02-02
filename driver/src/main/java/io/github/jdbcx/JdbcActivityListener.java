@@ -18,7 +18,6 @@ package io.github.jdbcx;
 import java.sql.DatabaseMetaData;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
@@ -43,7 +42,7 @@ public interface JdbcActivityListener {
         return query;
     }
 
-    default Result<?> onResult(Result<?> rs) throws SQLException {
+    default Result<?> onResult(Result<?> rs) throws SQLException { // NOSONAR
         return rs;
     }
 

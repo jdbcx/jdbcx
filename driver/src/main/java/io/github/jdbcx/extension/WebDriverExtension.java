@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
-import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.JdbcActivityListener;
 import io.github.jdbcx.Option;

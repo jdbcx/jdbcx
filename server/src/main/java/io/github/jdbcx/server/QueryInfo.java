@@ -34,14 +34,15 @@ final class QueryInfo implements AutoCloseable, Serializable {
     final Format format;
     final Compression compress;
     final String token;
+    final String tenant;
     final String user;
     final String client;
 
     private transient AtomicReference<Result<?>> result;
     private transient AtomicReference<AutoCloseable[]> resources;
 
-    QueryInfo(String qid, String query, String txid, Format format, Compression compress, String token, String user,
-            String client) {
+    QueryInfo(String qid, String query, String txid, Format format, Compression compress, String token, String tenant,
+            String user, String client) {
         if (Checker.isNullOrEmpty(qid)) {
             this.qid = UUID.randomUUID().toString();
         } else {
@@ -52,6 +53,7 @@ final class QueryInfo implements AutoCloseable, Serializable {
         this.format = format != null ? format : Format.TSV;
         this.compress = compress != null ? compress : Compression.NONE;
         this.token = token != null ? token : Constants.EMPTY_STRING;
+        this.tenant = tenant != null ? tenant : Constants.EMPTY_STRING;
         this.user = user != null ? user : Constants.EMPTY_STRING;
         this.client = client != null ? client : Constants.EMPTY_STRING;
 
@@ -140,6 +142,7 @@ final class QueryInfo implements AutoCloseable, Serializable {
         hash = prime * hash + format.hashCode();
         hash = prime * hash + compress.hashCode();
         hash = prime * hash + token.hashCode();
+        hash = prime * hash + tenant.hashCode();
         hash = prime * hash + user.hashCode();
         hash = prime * hash + client.hashCode();
         return hash;
@@ -155,15 +158,15 @@ final class QueryInfo implements AutoCloseable, Serializable {
 
         QueryInfo other = (QueryInfo) obj;
         return qid.equals(other.qid) && query.equals(other.query) && txid.equals(other.txid) && format == other.format
-                && compress == other.compress && token.equals(other.token) && user.equals(other.user)
-                && client.equals(other.client);
+                && compress == other.compress && token.equals(other.token) && tenant.equals(other.tenant)
+                && user.equals(other.user) && client.equals(other.client);
     }
 
     @Override
     public String toString() {
         return new StringBuilder(getClass().getSimpleName()).append('@').append(hashCode()).append("[id=").append(qid)
                 .append(", tx=").append(txid).append(", fmt=").append(format).append(", comp=").append(compress)
-                .append(", user=").append(user).append(", client=").append(client).append("]:\n").append(query)
-                .toString();
+                .append(", tenant=").append(tenant).append(", user=").append(user).append(", client=").append(client)
+                .append("]:\n").append(query).toString();
     }
 }
