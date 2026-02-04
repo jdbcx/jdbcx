@@ -437,19 +437,19 @@ public final class ConnectionManager implements AutoCloseable {
                 WebExecutor.OPTION_CONNECT_TIMEOUT.setValue(config, timeout);
                 WebExecutor.OPTION_SOCKET_TIMEOUT.setValue(config, timeout);
                 WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
-                try (InputStream input = web.get(Utils.toURL(url), config,
-                        Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
-                    bridgeConfig.load(input);
-                }
                 bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_URL, bridgeUrl);
-                if (!Checker.isNullOrEmpty(bridgeToken)
-                        && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(bridgeConfig))) {
-                    bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_TOKEN, bridgeToken);
-                }
                 ConnectionMetaData md = getMetaData();
                 bridgeConfig.setProperty(DriverExtension.PROPERTY_PRODUCT, md.getProduct());
                 if (md.hasUserName()) {
                     bridgeConfig.setProperty(DriverExtension.PROPERTY_USER, md.getUserName());
+                }
+                try (InputStream input = web.get(Utils.toURL(url), config,
+                        Collections.singletonMap(RequestParameter.FORMAT.header(), Format.TXT.mimeType()))) {
+                    bridgeConfig.load(input);
+                }
+                if (!Checker.isNullOrEmpty(bridgeToken)
+                        && Boolean.parseBoolean(Option.SERVER_AUTH.getValue(bridgeConfig))) {
+                    bridgeConfig.setProperty(DriverExtension.PROPERTY_BRIDGE_TOKEN, bridgeToken);
                 }
             } catch (Exception e) {
                 log.warn(

@@ -117,6 +117,7 @@ public final class Constants {
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
             .optionalEnd().toFormatter();
 
+    public static final int DETECTED_PROCESSORS = Runtime.getRuntime().availableProcessors();
     public static final int MIN_CORE_THREADS = 4;
 
     public static final int JAVA_MAJOR_VERSION;

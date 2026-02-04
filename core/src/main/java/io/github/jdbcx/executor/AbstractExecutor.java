@@ -22,18 +22,13 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
@@ -44,6 +39,7 @@ import io.github.jdbcx.Executor;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.Stream;
+import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 
@@ -125,50 +121,19 @@ abstract class AbstractExecutor implements Executor {
                 Utils.format("The execution was interrupted due to a timeout after waiting for %d ms.", timeout));
     }
 
-    static final ExecutorService newThreadPool(Object owner, int maxThreads, int maxRequests) {
-        return newThreadPool(owner, maxThreads, 0, maxRequests, 0L, true);
-    }
-
-    static final ExecutorService newThreadPool(Object owner, int coreThreads, int maxThreads, int maxRequests,
-            long keepAliveTimeoutMs, boolean allowCoreThreadTimeout) {
-        final BlockingQueue<Runnable> queue;
-        if (coreThreads < Constants.MIN_CORE_THREADS) {
-            coreThreads = Constants.MIN_CORE_THREADS;
-        }
-        if (maxRequests > 0) {
-            queue = new ArrayBlockingQueue<>(maxRequests);
-            if (maxThreads <= coreThreads) {
-                maxThreads = coreThreads * 2;
-            }
-        } else {
-            queue = new LinkedBlockingQueue<>();
-            if (maxThreads != coreThreads) {
-                maxThreads = coreThreads;
-            }
-        }
-        if (keepAliveTimeoutMs <= 0L) {
-            keepAliveTimeoutMs = allowCoreThreadTimeout ? 1000L : 0L;
-        }
-
-        ThreadPoolExecutor pool = new ThreadPoolExecutor(coreThreads, maxThreads, keepAliveTimeoutMs,
-                TimeUnit.MILLISECONDS, queue, new CustomThreadFactory(owner), new ThreadPoolExecutor.AbortPolicy());
-        if (allowCoreThreadTimeout) {
-            pool.allowCoreThreadTimeOut(true);
-        }
-        return pool;
-    }
-
     private static final ExecutorService executor;
     private static final ScheduledExecutorService scheduler;
 
     static {
-        int coreThreads = 2 * Runtime.getRuntime().availableProcessors() + 1;
+        final Option o = Option.of("worker.threads", "Maximum size of the thread pool.",
+                String.valueOf(Constants.DETECTED_PROCESSORS));
+        int coreThreads = Integer.parseInt(o.getJdbcxValue(System.getProperties()));
         if (coreThreads < Constants.MIN_CORE_THREADS) {
             coreThreads = Constants.MIN_CORE_THREADS;
         }
 
-        executor = newThreadPool("JdbcxWorker-", coreThreads, coreThreads, 0, 0, false);
-        scheduler = Executors.newSingleThreadScheduledExecutor(new CustomThreadFactory("JdbcxScheduler-"));
+        executor = Threads.newPool("JdbcxWorker-", coreThreads, coreThreads, 0, 0, false);
+        scheduler = Threads.newSingleThreadScheduler("JdbcxScheduler-");
     }
 
     protected final VariableTag defaultTag;
