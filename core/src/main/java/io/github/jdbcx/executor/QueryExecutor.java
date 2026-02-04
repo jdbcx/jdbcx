@@ -44,6 +44,7 @@ import io.github.jdbcx.QueryGroup;
 import io.github.jdbcx.QueryTask;
 import io.github.jdbcx.Result;
 import io.github.jdbcx.Row;
+import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.VariableTag;
 
@@ -229,7 +230,7 @@ public class QueryExecutor extends AbstractExecutor {
             }
         } else {
             final AtomicBoolean failedRef = new AtomicBoolean(false);
-            final ExecutorService threadPool = newThreadPool(this, parallel, -1); // NOSONAR
+            final ExecutorService threadPool = Threads.newPool(this, parallel, -1); // NOSONAR
             final List<CompletableFuture<Void>> futures = new LinkedList<>();
 
             results = Collections.synchronizedList(new LinkedList<>());

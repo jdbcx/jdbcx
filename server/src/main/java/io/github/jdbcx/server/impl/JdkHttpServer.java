@@ -47,6 +47,7 @@ import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Stream;
+import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.Version;
 import io.github.jdbcx.executor.WebExecutor;
@@ -74,18 +75,21 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         }
         server.createContext(context, this);
 
+        final String desc;
         final Executor pool;
         if (threads <= 0) {
+            desc = "unlimited";
             pool = Executors.newCachedThreadPool();
         } else {
-            int max = 2 * Runtime.getRuntime().availableProcessors() + 1;
+            int max = 2 * Threads.DEFAULT_POOL_SIZE;
             if (max < threads) {
                 max = threads;
             }
-            pool = new ThreadPoolExecutor(threads, max, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+            desc = Utils.format("core: %d, max: %d", threads, max);
+            pool = Threads.newPool("JdbcxServer-", threads, max, 0, 0, false);
         }
         server.setExecutor(pool);
-        log.info("HttpServer instantiated - backlog: %d, threadPool: %s", backlog, pool);
+        log.info("HttpServer instantiated - backlog (%d), threads (%s)", backlog, desc);
     }
 
     private HttpExchange check(Object implementation) throws IOException {

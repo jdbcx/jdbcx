@@ -59,6 +59,7 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
 import io.github.jdbcx.Version;
@@ -129,7 +130,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
     public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
-            String.valueOf(Constants.MIN_CORE_THREADS));
+            String.valueOf(Math.max(Threads.DEFAULT_POOL_SIZE, Constants.MIN_CORE_THREADS * 2)));
 
     protected static final Properties extractConfig(Map<String, String> params) {
         Properties config = new Properties();
@@ -503,17 +504,18 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             if (request.hasTenantId()) {
                 QueryContext.getCurrentContext().put(QueryContext.KEY_TENANT, request.getTenant());
             }
-            try (// request.isMutation()
-                    Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
-                            : Result.of(JdbcExecutor.getUpdateCount(stmt));
-                    OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
-                errorMessage = null; // query was a success and we got the response output stream without any issue
-                final SQLWarning warning = stmt.getWarnings();
-                if (warning != null) {
-                    log.warn("SQLWarning from [%s]", stmt, warning);
+            // request.isMutation()
+            try (Result<?> result = stmt.execute(info.query) ? Result.of(stmt.getResultSet())
+                    : Result.of(JdbcExecutor.getUpdateCount(stmt))) {
+                try (OutputStream out = request.getCompression().provider().compress(prepareResponse(request))) {
+                    errorMessage = null; // query was a success and we got the response output stream without any issue
+                    final SQLWarning warning = stmt.getWarnings();
+                    if (warning != null) {
+                        log.warn("SQLWarning from [%s]", stmt, warning);
+                    }
+                    responded = true;
+                    Result.writeTo(result, info.format, config, out);
                 }
-                responded = true;
-                Result.writeTo(result, info.format, config, out);
             }
             // in case the query took too long
             queries.put(info.qid, info);
