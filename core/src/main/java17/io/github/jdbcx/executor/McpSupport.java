@@ -50,7 +50,7 @@ import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema.BlobResourceContents;
@@ -316,7 +316,7 @@ public final class McpSupport {
             serverCli = new StringBuilder(cmd).append(' ').append(args.toString()).toString();
             transport = new StdioClientTransport(
                     ServerParameters.builder(cmd).args(args).env(executor.getServerEnvironment(props)).build(),
-                    McpJsonMapper.getDefault());
+                    McpJsonDefaults.getMapper());
         } else if (!Checker.isNullOrEmpty(serverUrl)) {
             serverCli = Constants.EMPTY_STRING;
             final String serverKey = executor.getServerKey(props);
