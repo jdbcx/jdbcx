@@ -89,6 +89,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String HEADER_CONNECTION = "connection";
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
+    public static final String HEADER_JDBCX_PREFIX = Constants.PRODUCT_NAME.toLowerCase(Locale.ROOT) + "_";
     public static final String HEADER_LOCATION = "location";
 
     public static final String METHOD_HEAD = "HEAD";
@@ -132,11 +133,21 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
             String.valueOf(Math.max(Threads.DEFAULT_POOL_SIZE, Constants.MIN_CORE_THREADS * 2)));
 
-    protected static final Properties extractConfig(Map<String, String> params) {
+    protected static final Properties extractConfig(Map<String, String> headers, Map<String, String> params) {
         Properties config = new Properties();
         config.putAll(params);
         for (RequestParameter p : RequestParameter.values()) {
             config.remove(p.parameter());
+        }
+        for (Entry<String, String> entry : headers.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(HEADER_JDBCX_PREFIX)) {
+                key = key.substring(HEADER_JDBCX_PREFIX.length()).replace('_', '.');
+                final String val;
+                if (!key.isEmpty() && (!Checker.isNullOrEmpty(val = entry.getValue()))) { // NOSONAR
+                    config.setProperty(key, val);
+                }
+            }
         }
         return config;
     }
@@ -958,7 +969,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         } else {
             mode = QueryMode.of(queryMode);
         }
-        return respondQuery(clientAddress, extractConfig(params), create(method, mode, rawParams, qid,
+        return respondQuery(clientAddress, extractConfig(headers, params), create(method, mode, rawParams, qid,
                 RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
                 encodedToken, RequestParameter.USER.getValue(headers, params),
                 RequestParameter.AGENT.getValue(headers, params), RequestParameter.TENANT_ID.getValue(headers, params),
