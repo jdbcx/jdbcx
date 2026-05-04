@@ -21,7 +21,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -82,12 +84,23 @@ public final class Threads {
 
     public static final int DEFAULT_POOL_SIZE = 2 * Constants.DETECTED_PROCESSORS + 1;
 
+    public static final ExecutorService newCachedPool(Object owner, long keepAliveTimeoutMs) {
+        return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                keepAliveTimeoutMs, TimeUnit.MILLISECONDS, new SynchronousQueue<>(), new CustomThreadFactory(owner),
+                new ThreadPoolExecutor.AbortPolicy());
+    }
+
     public static final ExecutorService newPool(Object owner, int maxThreads, int maxRequests) {
-        return newPool(owner, maxThreads, 0, maxRequests, 0L, true);
+        return newPool(owner, maxThreads, 0, maxRequests, 0L, true, null);
     }
 
     public static final ExecutorService newPool(Object owner, int coreThreads, int maxThreads, int maxRequests,
             long keepAliveTimeoutMs, boolean allowCoreThreadTimeout) {
+        return newPool(owner, coreThreads, maxThreads, maxRequests, keepAliveTimeoutMs, allowCoreThreadTimeout, null);
+    }
+
+    public static final ExecutorService newPool(Object owner, int coreThreads, int maxThreads, int maxRequests,
+            long keepAliveTimeoutMs, boolean allowCoreThreadTimeout, RejectedExecutionHandler rejectHandler) {
         final BlockingQueue<Runnable> queue;
         if (coreThreads < Constants.MIN_CORE_THREADS) {
             coreThreads = Constants.MIN_CORE_THREADS;
@@ -108,7 +121,8 @@ public final class Threads {
         }
 
         ThreadPoolExecutor pool = new ThreadPoolExecutor(coreThreads, maxThreads, keepAliveTimeoutMs,
-                TimeUnit.MILLISECONDS, queue, new CustomThreadFactory(owner), new ThreadPoolExecutor.AbortPolicy());
+                TimeUnit.MILLISECONDS, queue, new CustomThreadFactory(owner),
+                rejectHandler != null ? rejectHandler : new ThreadPoolExecutor.AbortPolicy());
         if (allowCoreThreadTimeout) {
             pool.allowCoreThreadTimeOut(true);
         }
