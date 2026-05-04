@@ -155,9 +155,20 @@ public interface DriverExtension extends Comparable<DriverExtension> {
     default Properties getConfig(QueryContext context, Properties props) {
         final ConfigManager manager;
         final String tenant;
+        final Properties merged;
         if (context != null) {
             manager = (ConfigManager) context.get(QueryContext.KEY_CONFIG);
             tenant = (String) context.get(QueryContext.KEY_TENANT);
+            Properties passThruConf = (Properties) context.get(QueryContext.KEY_PASS_THRU);
+            if (passThruConf == null) {
+                merged = props;
+            } else {
+                merged = new Properties();
+                if (props != null) {
+                    merged.putAll(props);
+                }
+                merged.putAll(passThruConf);
+            }
         } else if (props == null) {
             return getDefaultConfig();
         } else {
@@ -175,8 +186,8 @@ public interface DriverExtension extends Comparable<DriverExtension> {
                 : Utils.split(overridableParams, ',', true, true, true);
 
         // ensures the configured properties won't be overrided
-        Properties config = new Properties(props);
-        for (Option option : getOptions(props)) {
+        Properties config = new Properties(merged);
+        for (Option option : getOptions(merged)) {
             String name = option.getName();
             Object value = defined.remove(name);
             config.put(name, value != null ? value : option.getDefaultValue());

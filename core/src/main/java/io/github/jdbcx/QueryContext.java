@@ -39,6 +39,10 @@ public final class QueryContext implements AutoCloseable, Serializable {
      */
     public static final String KEY_CONFIG = "config";
     /**
+     * Key for pass-through configuration.
+     */
+    public static final String KEY_PASS_THRU = "pass-thru";
+    /**
      * Key for {@link ResourceManager}.
      */
     public static final String KEY_RESOURCE = "resource";

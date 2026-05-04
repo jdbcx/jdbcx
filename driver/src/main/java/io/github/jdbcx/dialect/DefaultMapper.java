@@ -31,7 +31,7 @@ public class DefaultMapper implements ResultMapper {
         switch (f.type()) {
             case BIT:
                 if (f.precision() > 64) {
-                    type.append("DECIMAL(").append(f.precision() / 8 + f.precision() % 8 > 0 ? 1 : 0)
+                    type.append("DECIMAL(").append(f.precision() / 8 + (f.precision() % 8 > 0 ? 1 : 0))
                             .append(", 0)");
                 } else if (f.precision() > 32) {
                     type.append("BIGINT");
@@ -90,8 +90,8 @@ public class DefaultMapper implements ResultMapper {
             // case VARBINARY:
             // case LONGVARBINARY:
             // case BLOB:
-            //     type.append("BLOB");
-            //     break;
+            // type.append("BLOB");
+            // break;
             case VARCHAR:
             case NVARCHAR:
             case LONGVARCHAR:

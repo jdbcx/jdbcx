@@ -127,26 +127,36 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final Option OPTION_REQUEST_TIMEOUT = Option.of("server.request.timeout",
             "Milliseconds before a submitted request expires, zero or negative number means no expiration.", "10000");
     public static final Option OPTION_QUERY_TIMEOUT = Option.of("server.query.timeout",
-            "Maximum query execution time in millisecond", "30000");
+            "Maximum query execution time in millisecond.", "30000");
+    public static final Option OPTION_QUERY_PASSTHRU = Option.ofBool("server.passthru",
+            "Whether to enable query configuration pass-through or not.", false);
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
     public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
             String.valueOf(Math.max(Threads.DEFAULT_POOL_SIZE, Constants.MIN_CORE_THREADS * 2)));
 
-    protected static final Properties extractConfig(Map<String, String> headers, Map<String, String> params) {
+    protected static final Properties extractConfig(Map<String, String> headers, Map<String, String> params,
+            boolean queryPassThru) {
         Properties config = new Properties();
         config.putAll(params);
         for (RequestParameter p : RequestParameter.values()) {
             config.remove(p.parameter());
         }
-        for (Entry<String, String> entry : headers.entrySet()) {
-            String key = entry.getKey();
-            if (key.startsWith(HEADER_JDBCX_PREFIX)) {
-                key = key.substring(HEADER_JDBCX_PREFIX.length()).replace('_', '.');
-                final String val;
-                if (!key.isEmpty() && (!Checker.isNullOrEmpty(val = entry.getValue()))) { // NOSONAR
-                    config.setProperty(key, val);
+
+        if (queryPassThru) {
+            Properties passThruConf = new Properties();
+            for (Entry<String, String> entry : headers.entrySet()) {
+                String key = entry.getKey();
+                if (key.startsWith(HEADER_JDBCX_PREFIX)) {
+                    key = key.substring(HEADER_JDBCX_PREFIX.length()).replace('_', '.');
+                    final String val;
+                    if (!key.isEmpty() && (!Checker.isNullOrEmpty(val = entry.getValue()))) { // NOSONAR
+                        passThruConf.setProperty(key, val);
+                    }
                 }
+            }
+            if (!passThruConf.isEmpty()) {
+                QueryContext.getCurrentContext().put(QueryContext.KEY_PASS_THRU, passThruConf);
             }
         }
         return config;
@@ -160,6 +170,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
 
     protected final HikariDataSource datasource;
     protected final long queryTimeout;
+    protected final boolean queryPassThru;
 
     protected final boolean auth;
     protected final String host;
@@ -259,6 +270,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         }
 
         queryTimeout = Long.parseLong(OPTION_QUERY_TIMEOUT.getJdbcxValue(props));
+        queryPassThru = Boolean.parseBoolean(OPTION_QUERY_PASSTHRU.getJdbcxValue(props));
 
         final long userLimit = Long.parseLong(OPTION_USER_LIMIT.getJdbcxValue(props));
         final long requestLimit = Long.parseLong(OPTION_REQUEST_LIMIT.getJdbcxValue(props));
@@ -467,6 +479,10 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         int i = 1;
         String name = null;
         try (Connection conn = datasource.getConnection(); Statement stmt = conn.createStatement()) {
+            if (request.hasTenantId()) {
+                QueryContext.getCurrentContext().put(QueryContext.KEY_TENANT, request.getTenant());
+            }
+
             Result<?> lastResult = null;
             for (String[] q : list) {
                 name = q[0];
@@ -969,7 +985,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         } else {
             mode = QueryMode.of(queryMode);
         }
-        return respondQuery(clientAddress, extractConfig(headers, params), create(method, mode, rawParams, qid,
+        return respondQuery(clientAddress, extractConfig(headers, params, queryPassThru), create(method, mode,
+                rawParams, qid,
                 RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
                 encodedToken, RequestParameter.USER.getValue(headers, params),
                 RequestParameter.AGENT.getValue(headers, params), RequestParameter.TENANT_ID.getValue(headers, params),

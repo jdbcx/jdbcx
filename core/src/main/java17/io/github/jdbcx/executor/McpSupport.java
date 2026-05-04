@@ -99,13 +99,11 @@ public final class McpSupport {
 
     private static final List<Field> promptRespondFields = Collections
             .unmodifiableList(
-                    Arrays.asList(Field.of("role"), Field.of("contentType"), FIELD_MIME_TYPE, Field.of("priority"),
-                            Field.of("audience"), FIELD_CONTENT));
+                    Arrays.asList(Field.of("role"), Field.of("contentType"), FIELD_MIME_TYPE, FIELD_CONTENT));
     private static final List<Field> resourceRespondFields = Collections
             .unmodifiableList(Arrays.asList(FIELD_URI, FIELD_MIME_TYPE, FIELD_CONTENT));
     private static final List<Field> toolRespondFields = Collections
-            .unmodifiableList(Arrays.asList(Field.of("contentType"), FIELD_MIME_TYPE, Field.of("priority"),
-                    Field.of("audience"), FIELD_CONTENT));
+            .unmodifiableList(Arrays.asList(Field.of("contentType"), FIELD_MIME_TYPE, FIELD_CONTENT));
 
     static final String STR_CLIENT = "client";
     static final String STR_SERVER = "server";
@@ -124,28 +122,20 @@ public final class McpSupport {
             final TextContent content = (TextContent) obj;
             values.add(StringValue.of(content.type()));
             values.add(StringValue.of(Format.TXT.mimeType()));
-            values.add(DoubleValue.of(content.priority()));
-            values.add(StringValue.ofJson(content.audience()));
             values.add(StringValue.of(content.text()));
         } else if (obj instanceof ImageContent) { // NOSONAR
             final ImageContent content = (ImageContent) obj;
             values.add(StringValue.of(content.type()));
             values.add(StringValue.of(content.mimeType()));
-            values.add(DoubleValue.of(content.priority()));
-            values.add(StringValue.ofJson(content.audience()));
             values.add(StringValue.of(content.data()));
         } else if (obj instanceof EmbeddedResource) { // NOSONAR
             final EmbeddedResource content = (EmbeddedResource) obj;
             values.add(StringValue.of(content.type()));
             if (content.resource() == null) {
                 values.add(StringValue.of(Constants.EMPTY_STRING));
-                values.add(DoubleValue.of(content.priority()));
-                values.add(StringValue.ofJson(content.audience()));
                 values.add(StringValue.of(Constants.EMPTY_STRING));
             } else {
                 values.add(StringValue.of(content.resource().mimeType()));
-                values.add(DoubleValue.of(content.priority()));
-                values.add(StringValue.ofJson(content.audience()));
                 values.add(StringValue.of(content.resource().uri()));
             }
         } else {

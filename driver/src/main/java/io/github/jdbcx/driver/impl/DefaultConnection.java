@@ -29,8 +29,10 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
@@ -405,8 +407,9 @@ public final class DefaultConnection extends DefaultResource implements ManagedC
         }
 
         try {
+            final Set<AutoCloseable> stmts = new LinkedHashSet<>(children);
             CompletableFuture.runAsync(() -> {
-                for (AutoCloseable stmt : children) {
+                for (AutoCloseable stmt : stmts) {
                     try {
                         if (stmt instanceof Statement) { // NOSONAR
                             log.warn("Cancelling statement [%s]", stmt);

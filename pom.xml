@@ -83,11 +83,11 @@
         <arrow.version>18.3.0</arrow.version>
         <avro.version>1.12.1</avro.version>
         <brotli.version>0.1.2</brotli.version>
-        <brotli4j.version>1.20.0</brotli4j.version>
-        <bson.version>5.6.3</bson.version>
+        <brotli4j.version>1.23.0</brotli4j.version>
+        <bson.version>5.7.0</bson.version>
         <caffeine.version>3.2.3</caffeine.version>
         <clickhouse.version>0.4.6</clickhouse.version>
-        <codec.version>1.21.0</codec.version>
+        <codec.version>1.22.0</codec.version>
         <collections.version>4.5.0</collections.version>
         <compress.version>1.28.0</compress.version>
         <!--
@@ -96,34 +96,34 @@
         -->
         <congocc.version>0.0.1</congocc.version>
         <dnsjava.version>3.6.4</dnsjava.version>
-        <duckdb.version>1.4.4.0</duckdb.version>
-        <graphql.version>25.0</graphql.version>
-        <groovy.version>5.0.4</groovy.version>
-        <gson.version>2.13.2</gson.version>
-        <hadoop.version>3.4.2</hadoop.version>
+        <duckdb.version>1.5.2.1</duckdb.version>
+        <graphql.version>26.0</graphql.version>
+        <groovy.version>5.0.5</groovy.version>
+        <gson.version>2.14.0</gson.version>
+        <hadoop.version>3.4.3</hadoop.version>
         <hikaricp.version>7.0.2</hikaricp.version>
         <jackson.version>2.18.5</jackson.version>
         <janino.version>3.1.12</janino.version>
-        <jctools.version>4.0.5</jctools.version>
+        <jctools.version>4.0.6</jctools.version>
         <jmespath.version>0.6.0</jmespath.version>
         <jjwt.version>0.13.0</jjwt.version>
-        <lz4.version>1.10.3</lz4.version>
-        <mariadb.version>3.5.7</mariadb.version>
-        <micrometer.version>1.16.3</micrometer.version>
+        <lz4.version>1.11.0</lz4.version>
+        <mariadb.version>3.5.8</mariadb.version>
+        <micrometer.version>1.16.5</micrometer.version>
         <msgpack.version>0.9.11</msgpack.version>
-        <mysql.version>9.6.0</mysql.version>
-        <neo4j.version>6.10.5</neo4j.version>
+        <mysql.version>9.7.0</mysql.version>
+        <neo4j.version>6.12.2</neo4j.version>
         <parquet.version>1.17.0</parquet.version>
-        <postgresql.version>42.7.10</postgresql.version>
-        <repacked.version>1.0.2</repacked.version>
-        <reactor.version>3.8.3</reactor.version>
-        <sqlite.version>3.51.2.0</sqlite.version>
+        <postgresql.version>42.7.11</postgresql.version>
+        <repacked.version>1.1.1</repacked.version>
+        <reactor.version>3.8.5</reactor.version>
+        <sqlite.version>3.53.0.0</sqlite.version>
         <rhino.version>1.9.1</rhino.version>
-        <roaring-bitmap.version>1.6.10</roaring-bitmap.version>
+        <roaring-bitmap.version>1.6.14</roaring-bitmap.version>
         <slf4j.version>2.0.17</slf4j.version>
         <snappy.version>1.1.10.8</snappy.version>
-        <xz.version>1.11</xz.version>
-        <zstd-jni.version>1.5.7-7</zstd-jni.version>
+        <xz.version>1.12</xz.version>
+        <zstd-jni.version>1.5.7-8</zstd-jni.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <testng.version>7.12.0</testng.version>
 

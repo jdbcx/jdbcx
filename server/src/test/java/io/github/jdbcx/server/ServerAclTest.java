@@ -19,6 +19,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -28,16 +29,16 @@ public class ServerAclTest {
     public void testConstructor() throws UnknownHostException {
         ServerAcl acl = new ServerAcl(null, null);
         Assert.assertTrue(acl.allowAll);
-        Assert.assertEquals(acl.allowedHosts, Collections.emptyList());
-        Assert.assertEquals(acl.allowedIPs, Collections.emptyList());
+        Assert.assertEquals(acl.allowedHosts, Collections.emptySet());
+        Assert.assertEquals(acl.allowedIPs, Collections.emptySet());
         Assert.assertEquals(acl.ipRanges, Collections.emptyList());
         Assert.assertTrue(acl.isValidHost("unknown.host"));
         Assert.assertTrue(acl.isValidIP("192.168.5.6"));
 
         acl = new ServerAcl(" host.1 , host.2 ", null);
         Assert.assertFalse(acl.allowAll);
-        Assert.assertEquals(acl.allowedHosts, Arrays.asList("host.1", "host.2"));
-        Assert.assertEquals(acl.allowedIPs, Collections.emptyList());
+        Assert.assertEquals(acl.allowedHosts, new LinkedHashSet<>(Arrays.asList("host.1", "host.2")));
+        Assert.assertEquals(acl.allowedIPs, Collections.emptySet());
         Assert.assertEquals(acl.ipRanges, Collections.emptyList());
         Assert.assertFalse(acl.isValidHost("unknown.host"));
         Assert.assertTrue(acl.isValidHost("host.1"));
@@ -46,8 +47,8 @@ public class ServerAclTest {
 
         acl = new ServerAcl(null, " 192.168.3.1 , 192.168.1.2 / 24 ");
         Assert.assertFalse(acl.allowAll);
-        Assert.assertEquals(acl.allowedHosts, Collections.emptyList());
-        Assert.assertEquals(acl.allowedIPs, Arrays.asList("192.168.3.1"));
+        Assert.assertEquals(acl.allowedHosts, Collections.emptySet());
+        Assert.assertEquals(acl.allowedIPs, new LinkedHashSet<>(Arrays.asList("192.168.3.1")));
         Assert.assertEquals(acl.ipRanges, Collections.singletonList(
                 new ServerAcl.IPRange(InetAddress.getByName("192.168.1.2"), InetAddress.getByName("192.168.1.255"))));
         Assert.assertTrue(acl.isValidHost("unknown.host"));

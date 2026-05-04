@@ -82,7 +82,7 @@ final class CustomPipedInputStream extends PipedInputStream {
                     future.get();
                 }
             } catch (InterruptedException e) { // NOSONAR
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
                 throw new InterruptedIOException(e.getMessage());
             } catch (ExecutionException e) {
                 Throwable cause = e.getCause();

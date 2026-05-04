@@ -71,12 +71,12 @@
     </distributionManagement>
 
     <properties>
-        <revision>1.0.0-SNAPSHOT</revision>
+        <revision>1.2.0-SNAPSHOT</revision>
         <project.current.year>2026</project.current.year>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <mcp.version>0.18.1</mcp.version>
+        <mcp.version>1.1.2</mcp.version>
 
         <antrun-plugin.version>3.2.0</antrun-plugin.version>
         <compiler-plugin.version>3.14.1</compiler-plugin.version>
