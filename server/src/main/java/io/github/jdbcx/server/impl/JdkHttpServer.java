@@ -20,19 +20,21 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+
+import com.zaxxer.hikari.HikariDataSource;
 
 import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
@@ -57,6 +59,14 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
 
     private final HttpServer server;
 
+    final HikariDataSource getDatasource() {
+        return datasource;
+    }
+
+    final ExecutorService getPool() {
+        return fastPool;
+    }
+
     public JdkHttpServer() {
         this(ConfigManager.loadConfig(Option.CONFIG_PATH.getJdbcxValue(System.getProperties()), null,
                 System.getProperties()));
@@ -74,19 +84,13 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         server.createContext(context, this);
 
         final String desc;
-        final Executor pool;
         if (threads <= 0) {
             desc = "unlimited";
-            pool = Executors.newCachedThreadPool();
+            server.setExecutor(Threads.newCachedPool(THREAD_PREFIX, Duration.ofSeconds(60L).toMillis()));
         } else {
-            int max = 2 * Threads.DEFAULT_POOL_SIZE;
-            if (max < threads) {
-                max = threads;
-            }
-            desc = Utils.format("core: %d, max: %d", threads, max);
-            pool = Threads.newPool("JdbcxServer-", threads, max, 0, 0, false);
+            desc = String.valueOf(threads);
+            server.setExecutor(fastPool);
         }
-        server.setExecutor(pool);
         log.info("HttpServer instantiated - backlog (%d), threads (%s)", backlog, desc);
     }
 
@@ -271,6 +275,9 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
     public void stop() {
         log.info("Shutting down server...");
         server.stop(0);
+        if (fastPool != null) {
+            fastPool.shutdown();
+        }
         log.info("Server is shutdown");
 
         super.stop();

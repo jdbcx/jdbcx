@@ -28,6 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -37,6 +38,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -110,6 +114,12 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String CONNECTION_CLOSE = "close";
     public static final String RANGE_NONE = "none";
 
+    public static final int MAX_DB_POOL_SIZE = 1024;
+    public static final String THREAD_PREFIX = "JdbcxServer-";
+    public static final int TOO_MANY_REQUESTS = 429;
+    public static final String OVERLOAD_MSG = "Server is overloaded, please retry in a few seconds. "
+            + "Consider using async query mode and polling for results.";
+
     public static final long DEFAULT_USER_LIMIT = 100L;
     public static final long DEFAULT_REQUEST_LIMIT = 10000L;
 
@@ -132,7 +142,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             "Whether to enable query configuration pass-through or not.", false);
 
     public static final Option OPTION_BACKLOG = Option.of("server.backlog", "Server backlog", "0");
-    public static final Option OPTION_THREADS = Option.of("server.threads", "Maximum size of the thread pool.",
+    public static final Option OPTION_THREADS = Option.of("server.threads",
+            "Maximum size of the thread pool, also applied to HikariCP max pool size.",
             String.valueOf(Math.max(Threads.DEFAULT_POOL_SIZE, Constants.MIN_CORE_THREADS * 2)));
 
     protected static final Properties extractConfig(Map<String, String> headers, Map<String, String> params,
@@ -179,6 +190,9 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     protected final String context;
     protected final int backlog;
     protected final int threads;
+
+    protected final ExecutorService fastPool;
+    protected final Semaphore querySemaphore;
 
     protected final String tag;
 
@@ -232,6 +246,22 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         promRegistry.config().commonTags("instance", baseUrl);
         new UptimeMetrics().bindTo(promRegistry);
 
+        int confThreads = Integer.parseInt(OPTION_THREADS.getJdbcxValue(props));
+        if (confThreads > 0) {
+            threads = Math.max(Constants.MIN_CORE_THREADS, confThreads);
+            int maxSize = threads * 2;
+            int queueSize = threads * 4;
+            fastPool = Threads.newPool(THREAD_PREFIX, threads, maxSize, queueSize, Duration.ofSeconds(60L).toMillis(),
+                    true, new ThreadPoolExecutor.CallerRunsPolicy());
+            querySemaphore = new Semaphore(threads);
+            log.debug("Pools: fast[core=%d,max=%d,queue=%d], querySemaphore=%d",
+                    threads, maxSize, queueSize, threads);
+        } else {
+            threads = 0;
+            fastPool = null;
+            querySemaphore = null;
+        }
+
         log.debug("Initializing connection pool...");
         final String dsConfigFile = OPTION_DATASOURCE_CONFIG.getJdbcxValue(props);
         HikariConfig config = null;
@@ -253,6 +283,15 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             config.setPoolName("default");
         }
         config.setMetricRegistry(promRegistry);
+        if (threads > 0) {
+            config.setMaximumPoolSize(threads * 2);
+            config.setMinimumIdle(threads);
+        } else {
+            config.setMaximumPoolSize(Math.max(Constants.DETECTED_PROCESSORS * 2, MAX_DB_POOL_SIZE));
+            config.setMinimumIdle(0);
+        }
+        log.debug("HikariCP pool configured from server.threads: maxPoolSize={}, minIdle={}",
+                config.getMaximumPoolSize(), config.getMinimumIdle());
         if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
             config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver
             // FIXME needs a better way to pass all JDBCX properties from server to driver
@@ -294,7 +333,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         CaffeineCacheMetrics.monitor(promRegistry, queries, "query");
 
         backlog = Integer.parseInt(OPTION_BACKLOG.getJdbcxValue(props));
-        threads = Integer.parseInt(OPTION_THREADS.getJdbcxValue(props));
 
         tag = Option.TAG.getJdbcxValue(props);
 
@@ -807,76 +845,57 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return responseCode;
     }
 
-    protected final int respondQuery(InetSocketAddress clientAddress, Properties config, Request request)
+    protected final int respondQuery(Properties config, Request request)
             throws IOException {
-        log.debug("Dispatching %s", request);
+        log.debug("Executing query request %s", request);
         final int responseCode;
-        if (Checker.isNullOrBlank(request.getQuery())) {
-            log.warn("Non-existent or expired %s", request);
-            responseCode = respond(request, HttpURLConnection.HTTP_NOT_FOUND);
-        } else if (METHOD_HEAD.equals(request.getMethod())) {
-            responseCode = respond(request, HttpURLConnection.HTTP_OK);
-        } else {
-            switch (request.getQueryMode()) {
-                case SUBMIT: {
-                    queries.put(request.getQueryId(), request.getQueryInfo());
-                    responseCode = respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
-                    break;
-                }
-                case REDIRECT: {
-                    queries.put(request.getQueryId(), request.getQueryInfo());
-                    responseCode = redirect(request);
-                    break;
-                }
-                case ASYNC: {
-                    if (checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
-                        setResponseHeaders(request);
-                        responseCode = queryAsync(request, config);
-                    } else {
-                        responseCode = respond(request, HttpURLConnection.HTTP_FORBIDDEN);
-                    }
-                    break;
-                }
-                case BATCH:
-                    if (checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
-                        setResponseHeaders(request);
-                        responseCode = batch(request, config);
-                    } else {
-                        responseCode = respond(request, HttpURLConnection.HTTP_FORBIDDEN);
-                    }
-                    break;
-                case DIRECT:
-                case MUTATION: {
-                    if (checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
-                        setResponseHeaders(request);
-                        final int state = request.getResultState();
-                        if (state == 1) { // result ready for reading
-                            log.debug("Reusing cached query [%s]...", request.getQueryId());
-                            try (QueryInfo info = request.getQueryInfo();
-                                    Result<?> result = info.getResult();
-                                    OutputStream out = request.getCompression().provider()
-                                            .compress(prepareResponse(request))) {
-                                Result.writeTo(result, info.format, config, out);
-                                log.debug("Query [%s] finished successfully", info.qid);
-                            }
-                            responseCode = HttpURLConnection.HTTP_OK;
-                        } else if (state == 0) { // no result
-                            responseCode = query(request, config);
-                        } else { // active result
-                            responseCode = respond(request, HttpURLConnection.HTTP_NO_CONTENT);
-                        }
-                    } else {
-                        responseCode = respond(request, HttpURLConnection.HTTP_FORBIDDEN);
-                    }
-                    break;
-                }
-                default:
-                    log.warn("Unsupported %s", request);
-                    responseCode = respond(request, HttpURLConnection.HTTP_BAD_REQUEST,
-                            "Unsupported query mode: " + request.getQueryMode());
-                    break;
-
+        switch (request.getQueryMode()) {
+            case SUBMIT: {
+                queries.put(request.getQueryId(), request.getQueryInfo());
+                responseCode = respond(request, HttpURLConnection.HTTP_OK, request.toUrl(baseUrl));
+                break;
             }
+            case REDIRECT: {
+                queries.put(request.getQueryId(), request.getQueryInfo());
+                responseCode = redirect(request);
+                break;
+            }
+            case ASYNC: {
+                setResponseHeaders(request);
+                responseCode = queryAsync(request, config);
+                break;
+            }
+            case BATCH:
+                setResponseHeaders(request);
+                responseCode = batch(request, config);
+                break;
+            case DIRECT:
+            case MUTATION: {
+                setResponseHeaders(request);
+                final int state = request.getResultState();
+                if (state == 1) { // result ready for reading
+                    log.debug("Reusing cached query [%s]...", request.getQueryId());
+                    try (QueryInfo info = request.getQueryInfo();
+                            Result<?> result = info.getResult();
+                            OutputStream out = request.getCompression().provider()
+                                    .compress(prepareResponse(request))) {
+                        Result.writeTo(result, info.format, config, out);
+                        log.debug("Query [%s] finished successfully", info.qid);
+                    }
+                    responseCode = HttpURLConnection.HTTP_OK;
+                } else if (state == 0) { // no result
+                    responseCode = query(request, config);
+                } else { // active result
+                    responseCode = respond(request, HttpURLConnection.HTTP_NO_CONTENT);
+                }
+                break;
+            }
+            default:
+                log.warn("Unsupported %s", request);
+                responseCode = respond(request, HttpURLConnection.HTTP_BAD_REQUEST,
+                        "Unsupported query mode: " + request.getQueryMode());
+                break;
+
         }
         return responseCode;
     }
@@ -985,12 +1004,36 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         } else {
             mode = QueryMode.of(queryMode);
         }
-        return respondQuery(clientAddress, extractConfig(headers, params, queryPassThru), create(method, mode,
-                rawParams, qid,
+        final Request request = create(method, mode, rawParams, qid,
                 RequestParameter.QUERY.getValue(headers, params, Constants.EMPTY_STRING), txid, format, compress,
                 encodedToken, RequestParameter.USER.getValue(headers, params),
                 RequestParameter.AGENT.getValue(headers, params), RequestParameter.TENANT_ID.getValue(headers, params),
-                implementation));
+                implementation);
+
+        final int responseCode;
+        if (Checker.isNullOrBlank(request.getQuery())) {
+            log.warn("Non-existent or expired %s", request);
+            responseCode = respond(request, HttpURLConnection.HTTP_NOT_FOUND);
+        } else if (METHOD_HEAD.equals(request.getMethod())) {
+            responseCode = respond(request, HttpURLConnection.HTTP_OK);
+        } else if ((request.getQueryMode() == QueryMode.ASYNC || request.getQueryMode() == QueryMode.BATCH
+                || request.getQueryMode() == QueryMode.DIRECT || request.getQueryMode() == QueryMode.MUTATION)
+                && !checkAcl(request.getQueryInfo().token, clientAddress.getAddress())) {
+            responseCode = respond(request, HttpURLConnection.HTTP_FORBIDDEN);
+        } else {
+            if (querySemaphore != null && !querySemaphore.tryAcquire()) {
+                responseCode = respond(request, TOO_MANY_REQUESTS, OVERLOAD_MSG);
+            } else {
+                try {
+                    responseCode = respondQuery(extractConfig(headers, params, queryPassThru), request);
+                } finally {
+                    if (querySemaphore != null) {
+                        querySemaphore.release();
+                    }
+                }
+            }
+        }
+        return responseCode;
     }
 
     public final String getBaseUrl() {
