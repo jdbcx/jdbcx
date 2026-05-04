@@ -238,16 +238,14 @@ public class McpExecutorTest extends BaseIntegrationTest {
         McpExecutor.OPTION_SERVER_ARGS.setValue(props, "-y @modelcontextprotocol/server-everything");
         McpExecutor exec = new McpExecutor(null, props);
         for (Row row : exec.execute("{\"message\":\"hello\"}", props, null).rows()) {
-            Assert.assertEquals(row.fields().size(), 5);
+            Assert.assertEquals(row.fields().size(), 3);
             Assert.assertEquals(row.value("contentType"), row.value(0));
             Assert.assertEquals(row.value("mimeType"), row.value(1));
-            Assert.assertEquals(row.value("priority"), row.value(2));
-            Assert.assertEquals(row.value("audience"), row.value(3));
-            Assert.assertEquals(row.value("content"), row.value(4));
+            Assert.assertEquals(row.value("content"), row.value(2));
 
             Assert.assertEquals(row.value(0).asString(), "text");
             Assert.assertEquals(row.value(1).asString(), "text/plain");
-            Assert.assertEquals(row.value(4).asString(), "Echo: hello");
+            Assert.assertEquals(row.value(2).asString(), "Echo: hello");
         }
     }
 

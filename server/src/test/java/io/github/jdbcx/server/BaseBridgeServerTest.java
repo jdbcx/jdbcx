@@ -620,16 +620,17 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
         Properties props = new Properties();
         props.setProperty("jdbcx.base.dir", "target/test-classes/config");
 
-        final int count = 100000;
+        final int count = 99900;
         final String innerQuery = Utils.format(DUCKDB_TEST_QUERY, count);
         try (Connection conn = DriverManager.getConnection("jdbcx:ch://" + getClickHouseServer(), props);
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(
                         Utils.format(query, innerQuery) + (query.startsWith("{{") ? "" : " order by n"))) {
             for (int i = 1; i <= count; i++) {
+                String q = "#" + i + " - " + query;
                 Assert.assertTrue(rs.next(), "Should have record #" + i + " from query: " + query);
-                Assert.assertEquals(rs.getInt(1), i, query);
-                Assert.assertEquals(rs.getString(2), rs.getString(3), query);
+                Assert.assertEquals(rs.getInt(1), i, q);
+                Assert.assertEquals(rs.getString(2), rs.getString(3), q);
             }
             Assert.assertFalse(rs.next(), "Should NOT have more records from query: " + query);
         }

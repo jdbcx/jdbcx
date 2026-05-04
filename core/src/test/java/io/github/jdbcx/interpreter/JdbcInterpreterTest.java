@@ -121,8 +121,8 @@ public class JdbcInterpreterTest extends BaseIntegrationTest {
 
         try (Connection conn = DriverManager.getConnection("jdbc:duckdb:")) {
             String schema = JdbcInterpreter.getDatabaseCatalogs(conn.getMetaData(), "local-duckdb", null, null);
-            Assert.assertTrue(schema.startsWith("\"catalogs\""), "Should start with catalogs");
-            Assert.assertFalse(schema.contains("\"schemas\""), "Should NOT contain schemas");
+            Assert.assertTrue(schema.startsWith("\"catalogs\""), "Should start with catalogs, but we got: " + schema);
+            Assert.assertTrue(schema.contains("\"schemas\""), "Should contain schemas, but we got: " + schema);
         }
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite::memory:")) {

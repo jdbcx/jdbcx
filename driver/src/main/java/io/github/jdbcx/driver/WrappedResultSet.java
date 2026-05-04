@@ -957,7 +957,7 @@ public class WrappedResultSet implements ResultSet {
 
     @Override
     public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {
-        rs.updateNCharacterStream(columnIndex, x, columnIndex);
+        rs.updateNCharacterStream(columnIndex, x);
     }
 
     @Override

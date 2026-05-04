@@ -36,3 +36,6 @@ replay_pid*
 .vscode
 dependency-reduced-pom.xml
 target
+
+.graphify*
+graphify-out

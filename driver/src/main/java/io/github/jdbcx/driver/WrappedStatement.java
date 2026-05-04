@@ -198,7 +198,7 @@ public class WrappedStatement implements Statement {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return stmt.getClass() == iface ? iface.cast(iface) : stmt.unwrap(iface);
+        return stmt.getClass() == iface ? iface.cast(stmt) : stmt.unwrap(iface);
     }
 
     @Override

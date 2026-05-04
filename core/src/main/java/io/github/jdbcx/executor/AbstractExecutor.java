@@ -159,9 +159,9 @@ abstract class AbstractExecutor implements Executor {
         this.defaultDryRun = Boolean.parseBoolean(Option.EXEC_DRYRUN.getValue(props));
         this.defaultErrorHandling = Option.EXEC_ERROR.getValue(props);
         this.defaultInputFile = Option.INPUT_FILE.getValue(props);
-        this.defaultInputCharset = Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
+        this.defaultInputCharset = !Checker.isNullOrBlank(inputCharset) ? Charset.forName(inputCharset)
                 : Constants.DEFAULT_CHARSET;
-        this.defaultOutputCharset = Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
+        this.defaultOutputCharset = !Checker.isNullOrBlank(outputCharset) ? Charset.forName(outputCharset)
                 : Constants.DEFAULT_CHARSET;
         this.defaultParallelism = Integer.parseInt(Option.EXEC_PARALLELISM.getValue(props));
         this.defaultTimeout = Integer.parseInt(Option.EXEC_TIMEOUT.getValue(props));

@@ -28,9 +28,6 @@ import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -45,6 +42,7 @@ import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
 import io.github.jdbcx.Option;
+import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.Stream;
 import io.github.jdbcx.Threads;
@@ -186,9 +184,10 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         if (Checker.isNullOrEmpty(responseMsg)) {
             exchange.sendResponseHeaders(responseCode, -1L);
         } else {
-            exchange.sendResponseHeaders(responseCode, responseMsg.length());
             try (OutputStream out = exchange.getResponseBody()) {
-                out.write(responseMsg.getBytes(Constants.DEFAULT_CHARSET));
+                byte[] bytes = responseMsg.getBytes(Constants.DEFAULT_CHARSET);
+                exchange.sendResponseHeaders(responseCode, bytes.length);
+                out.write(bytes);
             }
         }
     }
@@ -218,7 +217,7 @@ public final class JdkHttpServer extends BridgeServer implements HttpHandler {
         final URI requestUri;
         final Map<String, String> headers;
 
-        try {
+        try (QueryContext currentContext = QueryContext.getCurrentContext()) {
             method = exchange.getRequestMethod();
             requestUri = exchange.getRequestURI();
             headers = new HashMap<>();
