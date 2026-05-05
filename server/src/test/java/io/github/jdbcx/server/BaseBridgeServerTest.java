@@ -272,6 +272,30 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
     }
 
     @Test(groups = { "integration" })
+    public void testLlmsTxt() throws IOException {
+        final String url = getServerUrl();
+
+        Properties config = new Properties();
+        Map<String, String> headers = new HashMap<>();
+        WebExecutor web = new WebExecutor(null, config);
+        WebExecutor.OPTION_FOLLOW_REDIRECT.setValue(config, Constants.FALSE_EXPR);
+        HttpURLConnection conn = web.openConnection(
+                Utils.toURL(url + BridgeServer.PATH_LLMS_TXT), config, headers);
+        Assert.assertEquals(conn.getResponseCode(), HttpURLConnection.HTTP_OK);
+        try (InputStream input = conn.getInputStream()) {
+            String str = Stream.readAllAsString(input);
+            Assert.assertTrue(str.startsWith("# JDBCX Bridge Server"),
+                    "Should start with H1 title");
+            Assert.assertTrue(str.contains("## Configuration"),
+                    "Should have Configuration section");
+            Assert.assertTrue(str.contains("## Query Endpoints"),
+                    "Should have Query Endpoints section");
+            Assert.assertTrue(str.contains("## Optional"),
+                    "Should have Optional section");
+        }
+    }
+
+    @Test(groups = { "integration" })
     public void testSubmitQuery() throws IOException {
         final String url = getServerUrl();
 
