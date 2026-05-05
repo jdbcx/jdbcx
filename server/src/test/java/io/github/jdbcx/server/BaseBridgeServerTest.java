@@ -290,8 +290,10 @@ public abstract class BaseBridgeServerTest extends BaseIntegrationTest {
                     "Should have Configuration section");
             Assert.assertTrue(str.contains("## Query Endpoints"),
                     "Should have Query Endpoints section");
-            Assert.assertTrue(str.contains("## Optional"),
-                    "Should have Optional section");
+            Assert.assertTrue(str.contains("## Supported Formats"),
+                    "Should have Supported Formats section");
+            Assert.assertTrue(str.contains("## Supported Compression"),
+                    "Should have Supported Compression section");
         }
     }
 
