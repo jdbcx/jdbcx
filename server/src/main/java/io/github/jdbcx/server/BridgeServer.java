@@ -65,6 +65,7 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
