@@ -16,6 +16,7 @@
 package io.github.jdbcx.server;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -64,6 +65,7 @@ import io.github.jdbcx.QueryContext;
 import io.github.jdbcx.QueryMode;
 import io.github.jdbcx.RequestParameter;
 import io.github.jdbcx.Result;
+import io.github.jdbcx.Stream;
 import io.github.jdbcx.Threads;
 import io.github.jdbcx.Utils;
 import io.github.jdbcx.ValueFactory;
@@ -108,6 +110,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String PATH_CONFIG = "config";
     public static final String PATH_ENCRYPT = "encrypt";
     public static final String PATH_ERROR = "error/";
+    public static final String PATH_LLMS_TXT = "llms.txt";
     public static final String PATH_METRICS = "metrics";
     public static final String PATH_REGISTER = "register";
 
@@ -792,6 +795,20 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
         return HttpURLConnection.HTTP_OK;
     }
 
+    protected final int respondLlmsTxt(InetSocketAddress clientAddress, Object implementation) throws IOException {
+        log.debug("Sending llms.txt to %s", clientAddress);
+        try (InputStream in = getClass().getResourceAsStream("/llms.txt")) {
+            if (in == null) {
+                return HttpURLConnection.HTTP_NOT_FOUND;
+            }
+            try (OutputStream out = getResponseStream(implementation, HEADER_CONTENT_TYPE,
+                    Format.MARKDOWN.mimeType())) {
+                Stream.pipe(in, out);
+            }
+        }
+        return HttpURLConnection.HTTP_OK;
+    }
+
     protected final boolean respondConfig(String path, InetSocketAddress clientAddress, Object implementation)
             throws IOException {
         boolean processed = true;
@@ -918,6 +935,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             }
         } else if (path.startsWith(PATH_ERROR)) {
             return respondError(path, clientAddress, implementation);
+        } else if (PATH_LLMS_TXT.equals(path)) {
+            return respondLlmsTxt(clientAddress, implementation);
         }
 
         final Map<String, String> params = Utils.toKeyValuePairs(rawParams, '&', true);

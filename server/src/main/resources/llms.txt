@@ -1,0 +1,104 @@
+# JDBCX Bridge Server
+
+> JDBCX Bridge Server is a multi-tenant HTTP API for remote database access. It allows submitting SQL queries via HTTP and receiving results in multiple formats (CSV, JSON, Parquet, Arrow, etc.) with optional compression.
+
+The server exposes a unified SQL interface across heterogeneous data sources (ClickHouse, DuckDB, SQLite, PostgreSQL, MySQL, Neo4j, etc.) through named configurations. All query results are streamed directly from the data source with configurable format and compression.
+
+## Configuration
+
+- [Server configuration](config): Returns server properties (authentication settings, URL, supported formats, compression) as text/plain.
+- [List data sources](config/db): Lists all named database sources registered with the server as JSON array.
+- [View data source config](config/db): Shows full configuration for a named data source as JSON. Append `/{name}` to the URL to target a specific data source (e.g., `config/db/my-duckdb`). Returns database product name, catalog/schema, and available tables.
+- [View data source detail](config/db): Shows a specific detail for a named data source as JSON. Append `/{name}/{detail}` to the URL (e.g., `config/db/my-sqlite/memory.main.nonexist`).
+
+## Query Endpoints
+
+- [Direct query](query): Execute SQL immediately and return results. Use `GET /query?q=select+1` or `POST /query` with SQL body. Specify format via `Accept` header or `f` parameter. Returns 200 with result body.
+- [Submit query](submit): Submit a query for later execution. Returns a URL with query ID for result polling. Use `POST /submit` with SQL body.
+- [Async query](async): Execute asynchronously and poll for results. Append `/{queryId}.{format}` to specify format and query ID. If compression is needed, append an additional `.` and compression extension (e.g., `/async/abc123.parquet.gz`). Result is available at the same URL.
+- [Batch query](batch): Execute multiple SQL statements. Use `POST /batch` with body containing batched SQL separated by `--;; group`. Returns combined results.
+- [Mutation](mutate): Execute INSERT/UPDATE/DELETE directly. Returns affected row count.
+
+### URL Parameters
+
+| Parameter | Header            | Key | Description                         |
+|-----------|-------------------|-----|-------------------------------------|
+| Query     | (body)            | `q` | SQL query string                    |
+| Format    | `Accept`          | `f` | Response format, as file extension (see below) |
+| Compression | `Accept-Encoding` | `c` | Response compression, as file extension (see below) |
+| Mode      | `X-Query-Mode`    | `m` | Query mode: `q`/`d` (direct), `a` (async), `b` (batch), `m` (mutation), `s` (submit), `r` (redirect) |
+
+### Examples
+
+- `GET /query?q=select+1` — basic direct query, returns CSV
+- `GET /query?q=select+*+from+table&f=json` — return result as JSON
+- `GET /query?q=select+*+from+table&f=parquet&c=gzip` — Parquet with gzip compression
+- `GET /query?q=select+*+from+table&f=arrow` — return as Arrow IPC file
+- `GET /query?q=select+*+from+table&f=jsonl&c=zstd` — JSON Lines with zstd compression
+- `GET /async/abc123.json?q=select+*+from+large_table` — async query, poll at `/async/abc123.json`
+- `GET /async/abc123.parquet.gz?q=select+*+from+large_table` — async with format and compression in URL
+
+## Supported Formats
+
+The `Accept` header uses MIME types (e.g., `application/json`). The `f` query parameter uses file extensions:
+
+| File Extension | MIME Type                        | Notes                          |
+|---------------|----------------------------------|--------------------------------|
+| `csv`         | `text/csv`                       | default                        |
+| `tsv`         | `text/tab-separated-values`      |                                |
+| `txt`         | `text/plain`                     |                                |
+| `md`          | `text/markdown`                  |                                |
+| `json`        | `application/json`               |                                |
+| `jsonl`       | `application/jsonl`              |                                |
+| `jsons`       | `application/json-seq`           |                                |
+| `ndjson`      | `application/x-ndjson`           |                                |
+| `bson`        | `application/bson`               |                                |
+| `xml`         | `application/xml`                |                                |
+| `values`      | `application/x-values`           |                                |
+| `parquet`     | `application/vnd.apache.parquet` | supports compression and encryption |
+| `arrow`       | `application/vnd.apache.arrow.file` |                            |
+| `arrows`      | `application/vnd.apache.arrow.stream` |                          |
+| `avro`        | `avro/binary`                    |                                |
+| `avrob`       | `application/vnd.apache.avro+binary` |                            |
+| `avroj`       | `application/vnd.apache.avro+json` |                              |
+| `bin`         | `application/octet-stream`       |                                |
+
+## Supported Compression
+
+The `Accept-Encoding` header and `c` query parameter use encoding tokens (e.g., `gzip`):
+
+| File Extension | Encoding Token | Notes                      |
+|---------------|---------------|----------------------------|
+|               | `identity`    | default, no compression    |
+| `gz`          | `gzip`        |                            |
+| `br`          | `br`          |                            |
+| `zst`         | `zstd`        |                            |
+| `lz4`         | `lz4`         |                            |
+| `sz`          | `snappy`      |                            |
+| `xz`          | `xz`          |                            |
+| `bz2`         | `bz2`         |                            |
+| `zz`          | `deflate`     |                            |
+
+Compression is available for binary and columnar formats (Parquet, Avro). Text formats do not support server-side compression.
+
+## Authentication
+
+Server authentication is disabled by default. When enabled (`jdbcx.server.auth=true`), requests to query endpoints require an `Authorization: Bearer <token>` header with a JWT token signed by the server secret.
+
+The following endpoints do NOT require authentication:
+- [config](config) and all sub-paths
+- [metrics](metrics)
+- [llms.txt](llms.txt)
+- [error](error) with query ID appended (e.g., `error/abc123`)
+
+## Monitoring
+
+- [Prometheus metrics](metrics): Returns Prometheus-format metrics including query counts, cache evictions, HikariCP connection pool statistics, and JVM metrics as text/plain.
+
+## Error Handling
+
+- [Query error](error): Retrieve error details for a failed async query. Append `/{queryId}` to the URL (e.g., `error/abc123`). Returns the error message as text/plain, or 404 if no error is associated with the query ID.
+
+## Optional
+
+- [JDBCX project repository](https://github.com/jdbcx/jdbcx): Main project repository with driver documentation, quick-start guides, and examples.
