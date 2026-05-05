@@ -292,7 +292,7 @@ public abstract class ConfigManager {
     static final JwtAlgorithm createAlgorithm(String secret) {
         final List<String> parts;
         if (Checker.isNullOrEmpty(secret)) {
-            log.warn(
+            log.debug(
                     "Please set '%s' to a secure, randomly generated key to protect access tokens. You can create one using the command: \"openssl rand -base64 66 | tr -d '\\n'\".",
                     Option.SERVER_SECRET.getJdbcxName());
             parts = Collections.emptyList();

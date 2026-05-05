@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -308,6 +309,15 @@ public class BridgeDriverExtension implements DriverExtension {
         value = (String) context.get(QueryContext.KEY_TENANT);
         if (!Checker.isNullOrEmpty(value)) {
             builder.append(',').append(RequestParameter.TENANT_ID.header()).append('=').append(value);
+        }
+
+        Properties passThruConf = (Properties) context.get(QueryContext.KEY_PASS_THRU);
+        if (passThruConf != null) {
+            for (Entry<Object, Object> entry : passThruConf.entrySet()) {
+                String key = (String) entry.getKey();
+                String val = (String) entry.getValue();
+                builder.append(',').append(PASS_THRU_PREFIX).append(key.replace('.', '_')).append('=').append(val);
+            }
         }
 
         final String queryId = UUID.randomUUID().toString();

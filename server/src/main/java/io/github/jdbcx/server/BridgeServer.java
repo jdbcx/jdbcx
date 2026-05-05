@@ -55,6 +55,7 @@ import io.github.jdbcx.Checker;
 import io.github.jdbcx.Compression;
 import io.github.jdbcx.ConfigManager;
 import io.github.jdbcx.Constants;
+import io.github.jdbcx.DriverExtension;
 import io.github.jdbcx.Format;
 import io.github.jdbcx.Logger;
 import io.github.jdbcx.LoggerFactory;
@@ -93,7 +94,6 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
     public static final String HEADER_CONNECTION = "connection";
     public static final String HEADER_CONTENT_ENCODING = "content-encoding";
     public static final String HEADER_CONTENT_TYPE = "content-type";
-    public static final String HEADER_JDBCX_PREFIX = Constants.PRODUCT_NAME.toLowerCase(Locale.ROOT) + "_";
     public static final String HEADER_LOCATION = "location";
 
     public static final String METHOD_HEAD = "HEAD";
@@ -158,8 +158,8 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             Properties passThruConf = new Properties();
             for (Entry<String, String> entry : headers.entrySet()) {
                 String key = entry.getKey();
-                if (key.startsWith(HEADER_JDBCX_PREFIX)) {
-                    key = key.substring(HEADER_JDBCX_PREFIX.length()).replace('_', '.');
+                if (key.startsWith(DriverExtension.PASS_THRU_PREFIX)) {
+                    key = key.substring(DriverExtension.PASS_THRU_PREFIX.length()).replace('_', '.');
                     final String val;
                     if (!key.isEmpty() && (!Checker.isNullOrEmpty(val = entry.getValue()))) { // NOSONAR
                         passThruConf.setProperty(key, val);
@@ -290,7 +290,7 @@ public abstract class BridgeServer implements RemovalListener<String, QueryInfo>
             config.setMaximumPoolSize(Math.max(Constants.DETECTED_PROCESSORS * 2, MAX_DB_POOL_SIZE));
             config.setMinimumIdle(0);
         }
-        log.debug("HikariCP pool configured from server.threads: maxPoolSize={}, minIdle={}",
+        log.debug("HikariCP pool configured from server.threads: maxPoolSize=%d, minIdle=%d",
                 config.getMaximumPoolSize(), config.getMinimumIdle());
         if (Utils.startsWith(config.getJdbcUrl(), ConnectionManager.JDBCX_PREFIX, true)) {
             config.setDriverClassName(WrappedDriver.class.getName()); // activate the driver

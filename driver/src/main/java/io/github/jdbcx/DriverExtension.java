@@ -35,6 +35,8 @@ import io.github.jdbcx.driver.DefaultDriverExtension;
 // query extension:
 // result extension
 public interface DriverExtension extends Comparable<DriverExtension> {
+    static final String PASS_THRU_PREFIX = Constants.PRODUCT_NAME.toLowerCase(Locale.ROOT) + "_";
+
     static final String PROPERTY_BRIDGE_URL = "url";
     static final String PROPERTY_BRIDGE_TOKEN = "token";
     static final String PROPERTY_PATH = "path";

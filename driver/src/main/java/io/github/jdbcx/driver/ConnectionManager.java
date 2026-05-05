@@ -289,13 +289,18 @@ public final class ConnectionManager implements AutoCloseable {
         context.put(QueryContext.KEY_MANAGED_CONNECTION, wrappedConnSupplier);
         context.put(QueryContext.KEY_TAG, tagSupplier);
         String tenant = Option.TENANT.getJdbcxValue(originalProps);
+        Properties passThruConf = null;
         if (Checker.isNullOrEmpty(tenant)) {
             QueryContext current = QueryContext.getCurrentContext();
             tenant = (String) current.get(QueryContext.KEY_TENANT);
+            passThruConf = (Properties) current.get(QueryContext.KEY_PASS_THRU);
         }
 
         if (!Checker.isNullOrEmpty(tenant)) {
             context.put(QueryContext.KEY_TENANT, tenant);
+        }
+        if (passThruConf != null) {
+            context.put(QueryContext.KEY_PASS_THRU, passThruConf);
         }
         return context;
     }
