@@ -16,5 +16,5 @@ COPY --from=jdk /min-jre ./openjdk
 
 USER jdbcx
 
-RUN for ext in avro aws azure encodings excel fts httpfs inet json mysql parquet postgres spatial sqlite vss; \
+RUN for ext in $DUCKDB_EXTS; \
     do ./openjdk/bin/java -Dverbose=true -cp jdbcx.jar io.github.jdbcx.Main 'jdbcx:duckdb:' "INSTALL $ext" || true; done
