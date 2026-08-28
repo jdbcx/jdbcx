@@ -108,7 +108,7 @@
         <jmespath.version>0.6.0</jmespath.version>
         <jjwt.version>0.13.0</jjwt.version>
         <lz4.version>1.11.0</lz4.version>
-        <mariadb.version>3.5.8</mariadb.version>
+        <mariadb.version>3.5.9</mariadb.version>
         <micrometer.version>1.16.5</micrometer.version>
         <msgpack.version>0.9.11</msgpack.version>
         <mysql.version>9.7.0</mysql.version>
